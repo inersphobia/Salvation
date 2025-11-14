@@ -153,6 +153,9 @@ let running=false, finished=false;
 let startMs=0, pauseMs=0;
 let timerStr="0000:000₃";
 
+/* Wake Lock */
+let wakeLock = null;
+
 /* canvas - dual layer system */
 const canvasStatic = document.getElementById("canvasStatic");
 const canvasAnim = document.getElementById("canvasAnim");
@@ -184,6 +187,28 @@ function pulseButton(btn){
   btn.classList.add("pulse");
   setTimeout(()=>btn.classList.remove("pulse"), 150);
   haptic(35);
+}
+
+/* ---------- WAKE LOCK ---------- */
+async function requestWakeLock(){
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      console.log('Wake Lock acquired');
+    }
+  } catch (err) {
+    console.log('Wake Lock failed:', err.message);
+  }
+}
+
+function releaseWakeLock(){
+  if (wakeLock !== null) {
+    wakeLock.release()
+      .then(() => {
+        wakeLock = null;
+        console.log('Wake Lock released');
+      });
+  }
 }
 
 /* ---------- RESPONSIVE SCALING ---------- */
@@ -360,11 +385,13 @@ function startClock(){
   if (running||finished) return;
   startMs = pauseMs>0 ? performance.now()-pauseMs : performance.now();
   running=true;
+  requestWakeLock();
 }
 function pauseClock(){
   if (!running||finished) return;
   running=false;
   pauseMs=performance.now()-startMs;
+  releaseWakeLock();
 }
 function resetClock(){
   running=false; finished=false;
@@ -374,11 +401,13 @@ function resetClock(){
   centerSize =Array(numDials).fill(8);
   glowAlpha =Array(numDials).fill(0);
   updateTimerText(0);
+  releaseWakeLock();
 }
 function finishClock(){
   finished=true;
   running=false;
   updateTimerText(totalCycle);
+  releaseWakeLock();
 }
 
 function toggleMode(){
@@ -572,6 +601,13 @@ if ('serviceWorker' in navigator) {
       .catch(err => console.log('Service Worker registration failed:', err));
   });
 }
+
+/* ---------- WAKE LOCK RE-ACQUIRE ON VISIBILITY CHANGE ---------- */
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && running) {
+    await requestWakeLock();
+  }
+});
 
 /* ---------- INIT ---------- */
 updateTables();
