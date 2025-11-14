@@ -1,6 +1,6 @@
-# Triangle Time Dials - Progressive Web App
+# Septagram timer. 
 
-Your timer is now ready to install as a native Mac app!
+You can run this on Mac, iOS, or Android. 
 
 ## Installation Instructions for MacBook
 
