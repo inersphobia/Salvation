@@ -1,7 +1,7 @@
 {
-  "name": "Triangle Time Dials",
-  "short_name": "TriTime",
-  "description": "Base-3 heptagram timer with triangle dials",
+  "name": "Salvation",
+  "short_name": "Salvation",
+  "description": "Base-3 heptagram timer",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#000000",
