@@ -403,11 +403,20 @@ function updateTimerText(el){
 }
 
 function updateOvertimeText(el){
-  // Always use 4 digits for overtime, regardless of mode
-  const minsIdx=[0,1,2,3];
-
-  const m=minsIdx.map(i=>posIndex(i,el)-1).join("");
-  timerStr="+"+m+"₃";
+  // Convert seconds to whole minutes
+  const minutes = Math.floor(el / 60);
+  
+  // Convert decimal minutes to base-3
+  let base3 = '';
+  let num = minutes;
+  
+  // Generate 4 base-3 digits
+  for (let i = 0; i < 4; i++) {
+    base3 = (num % 3) + base3;
+    num = Math.floor(num / 3);
+  }
+  
+  timerStr = "+" + base3 + "₃";
 }
 
 /* ---------- CLOCK CONTROL ---------- */
