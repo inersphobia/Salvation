@@ -152,6 +152,7 @@ let centerColor=[], centerSize=[], glowAlpha=[];
 let running=false, finished=false;
 let startMs=0, pauseMs=0;
 let timerStr="0000:000₃";
+let overtimeStart=0; // When overtime counting began
 
 /* Wake Lock */
 let wakeLock = null;
@@ -208,6 +209,40 @@ function releaseWakeLock(){
         wakeLock = null;
         console.log('Wake Lock released');
       });
+  }
+}
+
+/* ---------- COMPLETION TONE ---------- */
+function playCompletionTone(){
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Create a pleasant two-tone chime
+    const playTone = (freq, startTime, duration) => {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = freq;
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+      
+      oscillator.start(startTime);
+      oscillator.stop(startTime + duration);
+    };
+    
+    const now = audioContext.currentTime;
+    playTone(523.25, now, 0.3);        // C5
+    playTone(659.25, now + 0.15, 0.4); // E5
+    playTone(783.99, now + 0.3, 0.5);  // G5
+    
+  } catch (err) {
+    console.log('Audio playback failed:', err);
   }
 }
 
@@ -367,6 +402,22 @@ function updateTimerText(el){
   timerStr=m+":"+f+"₃";
 }
 
+function updateOvertimeText(el){
+  let minsIdx, fracIdx;
+
+  if (fastMode){
+    minsIdx=[0,1,2];
+    fracIdx=[3,4,5,6];
+  } else {
+    minsIdx=[0,1,2,3];
+    fracIdx=[4,5,6];
+  }
+
+  const m=minsIdx.map(i=>posIndex(i,el)-1).join("");
+  const f=fracIdx.map(i=>posIndex(i,el)-1).join("");
+  timerStr="+"+m+":"+f+"₃";
+}
+
 /* ---------- CLOCK CONTROL ---------- */
 function startClock(){
   if (running||finished) return;
@@ -383,6 +434,7 @@ function pauseClock(){
 function resetClock(){
   running=false; finished=false;
   pauseMs=0; startMs=performance.now();
+  overtimeStart=0;
   buildLedPaths();
   centerColor=Array(numDials).fill("white");
   centerSize =Array(numDials).fill(8);
@@ -393,7 +445,9 @@ function resetClock(){
 function finishClock(){
   finished=true;
   running=false;
+  overtimeStart=performance.now();
   updateTimerText(totalCycle);
+  playCompletionTone();
   releaseWakeLock();
 }
 
@@ -489,7 +543,7 @@ function drawLEDs(){
 }
 
 function drawTimerText(){
-  ctx.fillStyle="white";
+  ctx.fillStyle = finished ? "#ff9500" : "white";
   ctx.font = canvasAnim.width < 500 ? "32px monospace" : "40px monospace";
   ctx.textAlign="center";
   ctx.fillText(timerStr, canvasAnim.width/2, canvasAnim.height/2 - 40);
@@ -524,6 +578,12 @@ function draw(now){
         p===1 ? "blue" :
         p===2 ? "orange" : "red";
     }
+  }
+  
+  // Handle overtime display when finished
+  if (finished){
+    const overtime = (now - overtimeStart) / 1000;
+    updateOvertimeText(overtime);
   }
 
   // Draw only animated elements
