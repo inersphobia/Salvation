@@ -571,10 +571,15 @@ function draw(now){
     updateTimerText(elapsed);
 
     if (elapsed>=totalCycle && !finished) finishClock();
-
+  }
+  
+  // Continue animations even when finished (overtime mode)
+  if (running || finished) {
+    const animTime = finished ? (now - overtimeStart)/1000 + totalCycle : elapsed;
+    
     for (let i=0;i<numDials;i++){
-      updateLedPosition(i,elapsed);
-      const p=posIndex(i,elapsed);
+      updateLedPosition(i, animTime);
+      const p=posIndex(i, animTime);
       centerColor[i] =
         p===1 ? "blue" :
         p===2 ? "orange" : "red";
