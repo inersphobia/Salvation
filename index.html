@@ -403,19 +403,11 @@ function updateTimerText(el){
 }
 
 function updateOvertimeText(el){
-  let minsIdx, fracIdx;
-
-  if (fastMode){
-    minsIdx=[0,1,2];
-    fracIdx=[3,4,5,6];
-  } else {
-    minsIdx=[0,1,2,3];
-    fracIdx=[4,5,6];
-  }
+  // Always use 4 digits for overtime, regardless of mode
+  const minsIdx=[0,1,2,3];
 
   const m=minsIdx.map(i=>posIndex(i,el)-1).join("");
-  const f=fracIdx.map(i=>posIndex(i,el)-1).join("");
-  timerStr="+"+m+":"+f+"₃";
+  timerStr="+"+m+"₃";
 }
 
 /* ---------- CLOCK CONTROL ---------- */
