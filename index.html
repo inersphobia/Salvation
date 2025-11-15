@@ -441,6 +441,7 @@ function resetClock(){
   centerSize =Array(numDials).fill(8);
   glowAlpha =Array(numDials).fill(0);
   updateTimerText(0);
+  needsStaticRedraw = true;
   releaseWakeLock();
 }
 function finishClock(){
@@ -453,7 +454,7 @@ function finishClock(){
 }
 
 function toggleMode(){
-  if (running) return;
+  if (running || finished) return;
   fastMode=!fastMode;
   btnMode.textContent=fastMode? "27-MIN" : "81-MIN";
   updateTables();
@@ -462,7 +463,7 @@ function toggleMode(){
 }
 
 function toggleRes(){
-  if (running) return;
+  if (running || finished) return;
   ledRes=(ledRes+1)%2;
   btnRes.textContent=["CORNERS","HALF"][ledRes];
   buildLedPaths();
