@@ -403,8 +403,9 @@ function updateTimerText(el){
 }
 
 function updateOvertimeText(el){
-  // Use dial positions 0-4 (81min, 27min, 9min, 3min, 1min)
-  const digits = [0,1,2,3,4].map(i => posIndex(i, el) - 1).join("");
+  // Fixed overtime tick rates (same for both modes)
+  const overtimeTicks = [81*60, 27*60, 9*60, 3*60, 60]; // 81min, 27min, 9min, 3min, 1min
+  const digits = overtimeTicks.map(T => Math.floor(el/T) % 3).join("");
   timerStr = "+" + digits + "₃";
 }
 
