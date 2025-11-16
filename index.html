@@ -567,41 +567,42 @@ function drawTimerText(){
 
 /* ---------- MAIN DRAW LOOP ---------- */
 function draw(now){
-  if (now-lastFrameTime < frameInterval){
-    requestAnimationFrame(draw); return;
-  }
-  lastFrameTime=now;
+  try {
+    if (now-lastFrameTime < frameInterval){
+      requestAnimationFrame(draw); return;
+    }
+    lastFrameTime=now;
 
-  // Only redraw static layer when needed (resize, mode change, etc)
-  if (needsStaticRedraw) {
-    drawStaticLayer();
-  }
+    // Only redraw static layer when needed (resize, mode change, etc)
+    if (needsStaticRedraw) {
+      drawStaticLayer();
+    }
 
-  // Clear only the animation canvas (not the static background)
-  ctx.clearRect(0, 0, canvasAnim.width, canvasAnim.height);
+    // Clear only the animation canvas (not the static background)
+    ctx.clearRect(0, 0, canvasAnim.width, canvasAnim.height);
 
-  const elapsed = running ? (now-startMs)/1000 : pauseMs/1000;
+    const elapsed = running ? (now-startMs)/1000 : pauseMs/1000;
 
-  if (running){
-    updateTimerText(elapsed);
+    if (running){
+      updateTimerText(elapsed);
 
-    if (elapsed>=totalCycle && !finished) finishClock();
-  }
-  
-  // Continue animations even when finished (overtime mode)
-  if (running || finished) {
-    const animTime = finished ? (now - overtimeStart)/1000 : elapsed;
+      if (elapsed>=totalCycle && !finished) finishClock();
+    }
 
-    for (let i=0;i<numDials;i++){
-      if (finished) {
-        updateLedPositionOvertime(i, animTime);
-        const p=posIndexOvertime(i, animTime);
-        centerColor[i] =
-          p===1 ? "blue" :
-          p===2 ? "orange" : "red";
-      } else {
-        updateLedPosition(i, animTime);
-        const p=posIndex(i, animTime);
+    // Continue animations even when finished (overtime mode)
+    if (running || finished) {
+      const animTime = finished ? (now - overtimeStart)/1000 : elapsed;
+
+      for (let i=0;i<numDials;i++){
+        if (finished) {
+          updateLedPositionOvertime(i, animTime);
+          const p=posIndexOvertime(i, animTime);
+          centerColor[i] =
+            p===1 ? "blue" :
+            p===2 ? "orange" : "red";
+        } else {
+          updateLedPosition(i, animTime);
+          const p=posIndex(i, animTime);
         centerColor[i] =
           p===1 ? "blue" :
           p===2 ? "orange" : "red";
@@ -620,6 +621,9 @@ function draw(now){
   drawLEDs();
   drawTimerText();
 
+  } catch (err) {
+    console.error('Draw loop error:', err);
+  }
   requestAnimationFrame(draw);
 }
 
