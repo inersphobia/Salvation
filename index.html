@@ -403,8 +403,8 @@ function updateTimerText(el){
 }
 
 function updateOvertimeText(el){
-  // Use dial positions 4-0 (1min, 3min, 9min, 27min, 81min)
-  const digits = [4,3,2,1,0].map(i => posIndex(i, el) - 1).join("");
+  // Use dial positions 0-4 (81min, 27min, 9min, 3min, 1min)
+  const digits = [0,1,2,3,4].map(i => posIndex(i, el) - 1).join("");
   timerStr = "+" + digits + "₃";
 }
 
