@@ -421,7 +421,8 @@ function updateOvertimeText(el){
 
 /* ---------- CLOCK CONTROL ---------- */
 function startClock(){
-  if (running||finished) return;
+  if (running) return;
+  if (finished) resetClock();
   startMs = pauseMs>0 ? performance.now()-pauseMs : performance.now();
   running=true;
   requestWakeLock();
