@@ -288,6 +288,13 @@ function posIndex(i,elapsed){
   return (Math.floor(elapsed/T)%3)+1;
 }
 
+function posIndexOvertime(i,elapsed){
+  if (elapsed<0) elapsed=0;
+  const overtimeTicks = [81*60, 27*60, 9*60, 3*60, 60, 20, 20/3];
+  const T=overtimeTicks[i];
+  return (Math.floor(elapsed/T)%3)+1;
+}
+
 /* ---------- GEOMETRY ---------- */
 function setupGeometry(){
   dialPos=[]; dialAngle=[]; starLines=[];
@@ -374,6 +381,22 @@ function updateLedPosition(i,elapsed){
   const path=ledPath[i];
   const T=ticks[i];
   const pos=posIndex(i,elapsed);
+  const frac=(elapsed%T)/T;
+
+  const posFrac=(pos-1)/3;
+  const total=(posFrac + frac/3) % 1;
+
+  let idx=Math.floor(total*path.length);
+  if (idx>=path.length) idx=path.length-1;
+
+  activeIdx[i]=idx;
+}
+
+function updateLedPositionOvertime(i,elapsed){
+  const path=ledPath[i];
+  const overtimeTicks = [81*60, 27*60, 9*60, 3*60, 60, 20, 20/3];
+  const T=overtimeTicks[i];
+  const pos=posIndexOvertime(i,elapsed);
   const frac=(elapsed%T)/T;
 
   const posFrac=(pos-1)/3;
@@ -567,14 +590,22 @@ function draw(now){
   
   // Continue animations even when finished (overtime mode)
   if (running || finished) {
-    const animTime = finished ? (now - overtimeStart)/1000 + totalCycle : elapsed;
-    
+    const animTime = finished ? (now - overtimeStart)/1000 : elapsed;
+
     for (let i=0;i<numDials;i++){
-      updateLedPosition(i, animTime);
-      const p=posIndex(i, animTime);
-      centerColor[i] =
-        p===1 ? "blue" :
-        p===2 ? "orange" : "red";
+      if (finished) {
+        updateLedPositionOvertime(i, animTime);
+        const p=posIndexOvertime(i, animTime);
+        centerColor[i] =
+          p===1 ? "blue" :
+          p===2 ? "orange" : "red";
+      } else {
+        updateLedPosition(i, animTime);
+        const p=posIndex(i, animTime);
+        centerColor[i] =
+          p===1 ? "blue" :
+          p===2 ? "orange" : "red";
+      }
     }
   }
   
