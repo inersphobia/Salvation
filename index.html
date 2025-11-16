@@ -624,24 +624,7 @@ function draw(now){
 }
 
 /* ---------- TOUCH GESTURES ---------- */
-let tapTimer=null;
-
-canvasAnim.addEventListener("touchstart", e=>{
-  e.preventDefault();
-
-  if (tapTimer==null){
-    tapTimer=setTimeout(()=>{
-      tapTimer=null;
-      running? pauseClock() : startClock();
-      haptic(30);
-    },180);
-  } else {
-    clearTimeout(tapTimer);
-    tapTimer=null;
-    resetClock();
-    haptic(40);
-  }
-}, {passive:false});
+// Touch gestures disabled - use buttons only
 
 /* ---------- PWA INSTALL PROMPT ---------- */
 let deferredPrompt;
