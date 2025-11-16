@@ -403,20 +403,9 @@ function updateTimerText(el){
 }
 
 function updateOvertimeText(el){
-  // Convert seconds to whole minutes
-  const minutes = Math.floor(el / 60);
-
-  // Convert decimal minutes to base-3
-  let base3 = '';
-  let num = minutes;
-
-  // Generate 5 base-3 digits
-  for (let i = 0; i < 5; i++) {
-    base3 = (num % 3) + base3;
-    num = Math.floor(num / 3);
-  }
-
-  timerStr = "+" + base3 + "₃";
+  // Use dial positions 0-4 (81min, 27min, 9min, 3min, 1min)
+  const digits = [0,1,2,3,4].map(i => posIndex(i, el) - 1).join("");
+  timerStr = "+" + digits + "₃";
 }
 
 /* ---------- CLOCK CONTROL ---------- */
