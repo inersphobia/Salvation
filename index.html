@@ -438,7 +438,7 @@ function resetClock(){
 function finishClock(){
   finished=true;
   running=false;
-  overtimeStart=performance.now();
+  overtimeStart = startMs + totalCycle * 1000;
   updateTimerText(totalCycle);
   playCompletionTone();
   releaseWakeLock();
