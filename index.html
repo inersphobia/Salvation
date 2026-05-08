@@ -53,7 +53,6 @@
   #btnStart  { background:#0074ff; }
   #btnPause  { background:#f28b02; }
   #btnReset  { background:#e03131; }
-  #btnFinish { background:#666666; }
   #btnMode   { background:#5b3fd6; }
   #btnRes    { background:#008b8b; }
 
@@ -124,7 +123,6 @@
   <button id="btnStart">START</button>
   <button id="btnPause">PAUSE</button>
   <button id="btnReset">RESET</button>
-  <button id="btnFinish">FINISH</button>
   <button id="btnMode">27-MIN</button>
   <button id="btnRes">CORNERS</button>
 </div>
@@ -173,7 +171,6 @@ let lastFrameTime=0;
 const btnStart=document.getElementById("btnStart");
 const btnPause=document.getElementById("btnPause");
 const btnReset=document.getElementById("btnReset");
-const btnFinish=document.getElementById("btnFinish");
 const btnMode=document.getElementById("btnMode");
 const btnRes=document.getElementById("btnRes");
 
@@ -680,7 +677,6 @@ drawStaticLayer();
 btnStart.onclick = ()=>{ pulseButton(btnStart); startClock(); };
 btnPause.onclick = ()=>{ pulseButton(btnPause); pauseClock(); };
 btnReset.onclick = ()=>{ pulseButton(btnReset); resetClock(); };
-btnFinish.onclick= ()=>{ pulseButton(btnFinish); finishClock(); };
 btnMode.onclick  = ()=>{ pulseButton(btnMode); toggleMode(); };
 btnRes.onclick   = ()=>{ pulseButton(btnRes); toggleRes(); };
 
