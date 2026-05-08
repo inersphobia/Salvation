@@ -151,6 +151,7 @@ let centerColor=[], centerSize=[], glowAlpha=[];
 
 let running=false, finished=false;
 let startMs=0, pauseMs=0;
+let lastBeepMinute = 0;
 let timerStr="0000:000₃";
 let overtimeStart=0; // When overtime counting began
 
@@ -210,6 +211,25 @@ function releaseWakeLock(){
         console.log('Wake Lock released');
       });
   }
+}
+
+/* ---------- BEEP ---------- */
+function playBeep(){
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+    osc.frequency.value = 440;
+    osc.type = 'sine';
+    const now = audioContext.currentTime;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.2, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+    osc.start(now);
+    osc.stop(now + 0.3);
+  } catch(err) {}
 }
 
 /* ---------- COMPLETION TONE ---------- */
@@ -426,7 +446,7 @@ function pauseClock(){
 function resetClock(){
   running=false; finished=false;
   pauseMs=0; startMs=performance.now();
-  overtimeStart=0;
+  overtimeStart=0; lastBeepMinute=0;
   buildLedPaths();
   centerColor=Array(numDials).fill("white");
   centerSize =Array(numDials).fill(8);
@@ -562,6 +582,9 @@ function draw(now){
 
     if (running){
       updateTimerText(elapsed);
+
+      const beepMinute = Math.floor(elapsed / 180);
+      if (beepMinute > lastBeepMinute) { lastBeepMinute = beepMinute; playBeep(); }
 
       if (elapsed>=totalCycle && !finished) finishClock();
     }
