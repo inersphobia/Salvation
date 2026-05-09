@@ -1,4 +1,4 @@
-const CACHE_NAME = 'triangle-timer-v1';
+const CACHE_NAME = 'salvation-v2';
 const urlsToCache = [
   './',
   './index.html',
