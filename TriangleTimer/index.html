@@ -493,17 +493,14 @@ function drawSubCounter(elapsed){
   if (timeMode === 0) return;
 
   const e = finished ? totalCycle : elapsed;
-  const pos = posIndex(6, e) - 1; // 0, 1, or 2; matches fastest dial
+  const pos = Math.floor(e / (20/27)) % 3; // 1/81 min per step, same as fastest dial in 27-min mode
 
   const cellW = canvasAnim.width < 500 ? 20 : 24;
   const cellH = cellW;
   const totalW = cellW * 3;
   const left = canvasAnim.width / 2 - totalW / 2;
   const top  = canvasAnim.height / 2 - 40 + 14;
-
-  // Fill active cell
-  ctx.fillStyle = finished ? '#ff9500' : 'white';
-  ctx.fillRect(left + pos * cellW + 1, top + 1, cellW - 2, cellH - 2);
+  const dotR = cellW * 0.22;
 
   // Outer border and dividers
   ctx.strokeStyle = 'rgba(255,255,255,0.5)';
@@ -513,6 +510,14 @@ function drawSubCounter(elapsed){
   ctx.moveTo(left + cellW,     top); ctx.lineTo(left + cellW,     top + cellH);
   ctx.moveTo(left + cellW * 2, top); ctx.lineTo(left + cellW * 2, top + cellH);
   ctx.stroke();
+
+  // Dot in active cell
+  ctx.fillStyle = finished ? '#ff9500' : 'white';
+  const dotX = left + pos * cellW + cellW / 2;
+  const dotY = top + cellH / 2;
+  ctx.beginPath();
+  ctx.arc(dotX, dotY, dotR, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawTimerText(){
