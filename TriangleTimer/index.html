@@ -54,7 +54,6 @@
   #btnPause  { background:#f28b02; }
   #btnReset  { background:#e03131; }
   #btnMode   { background:#5b3fd6; }
-  #btnRes    { background:#008b8b; }
 
   /* --- TRUE MOBILE BIG BUTTONS --- */
   /* This is the reliable fix: phones only, never laptops */
@@ -124,14 +123,12 @@
   <button id="btnPause">PAUSE</button>
   <button id="btnReset">RESET</button>
   <button id="btnMode">27-MIN</button>
-  <button id="btnRes">CORNERS</button>
 </div>
 
 <script>
 /* ---------- CONFIG ---------- */
 const numDials = 7;
 let timeMode = 0; // 0=27-min, 1=54-min, 2=81-min
-let ledRes = 0;
 
 const dotsPerEdge = [1,2,4];
 const baseIntervals = [4860,1620,540,180,60,20,20/3];
@@ -168,7 +165,6 @@ const btnStart=document.getElementById("btnStart");
 const btnPause=document.getElementById("btnPause");
 const btnReset=document.getElementById("btnReset");
 const btnMode=document.getElementById("btnMode");
-const btnRes=document.getElementById("btnRes");
 
 /* ---------- HAPTICS ---------- */
 function haptic(duration=35){
@@ -289,32 +285,7 @@ function buildLedPaths(){
     let pts=[];
     const V=triVerts[i];
 
-    if (ledRes===0){
-      pts=[V[0],V[1],V[2]];
-    }
-    else if (ledRes===1){
-      const mid=(a,b)=>({x:(a.x+b.x)/2, y:(a.y+b.y)/2});
-      pts=[
-        V[0], mid(V[0],V[1]),
-        V[1], mid(V[1],V[2]),
-        V[2], mid(V[2],V[0])
-      ];
-    }
-    else {
-      function edge(a,b,n){
-        let arr=[];
-        for (let k=0;k<n;k++){
-          const t=k/(n-1);
-          arr.push({x:a.x+(b.x-a.x)*t, y:a.y+(b.y-a.y)*t});
-        }
-        return arr;
-      }
-      const n=dotsPerEdge[2];
-      pts=[]
-        .concat(edge(V[0],V[1],n))
-        .concat(edge(V[1],V[2],n).slice(1))
-        .concat(edge(V[2],V[0],n).slice(1));
-    }
+    pts=[V[0],V[1],V[2]];
 
     ledPath.push(pts);
     activeIdx.push(0);
@@ -407,14 +378,6 @@ function toggleMode(){
   needsStaticRedraw = true;
 }
 
-function toggleRes(){
-  if (running) return;
-  ledRes=(ledRes+1)%3;
-  btnRes.textContent=["CORNERS","HALF","FULL"][ledRes];
-  buildLedPaths();
-  resetClock();
-  needsStaticRedraw = true;
-}
 
 /* ---------- DRAW HELPERS ---------- */
 function drawStaticLayer(){
@@ -643,7 +606,6 @@ btnStart.onclick = ()=>{ pulseButton(btnStart); startClock(); };
 btnPause.onclick = ()=>{ pulseButton(btnPause); pauseClock(); };
 btnReset.onclick = ()=>{ pulseButton(btnReset); resetClock(); };
 btnMode.onclick  = ()=>{ pulseButton(btnMode); toggleMode(); };
-btnRes.onclick   = ()=>{ pulseButton(btnRes); toggleRes(); };
 
 requestAnimationFrame(draw);
 </script>
