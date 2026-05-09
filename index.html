@@ -574,12 +574,11 @@ function drawSubCounter(elapsed){
   ctx.moveTo(left + cellW * 2, top); ctx.lineTo(left + cellW * 2, top + cellH);
   ctx.stroke();
 
-  // Dot in active cell
-  ctx.fillStyle = finished ? '#ff9500' : 'white';
-  const dotX = left + pos * cellW + cellW / 2;
-  const dotY = top + cellH / 2;
+  // Single dot; color depends on which box it's in
+  const dotColors = ['rgb(0,120,255)', 'rgb(255,160,0)', 'rgb(255,70,70)'];
+  ctx.fillStyle = finished ? '#ff9500' : dotColors[pos];
   ctx.beginPath();
-  ctx.arc(dotX, dotY, dotR, 0, Math.PI * 2);
+  ctx.arc(left + pos * cellW + cellW / 2, top + cellH / 2, dotR, 0, Math.PI * 2);
   ctx.fill();
 }
 
