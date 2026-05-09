@@ -552,6 +552,32 @@ function drawLEDs(){
   }
 }
 
+function drawSubCounter(elapsed){
+  if (timeMode === 0) return;
+
+  const e = finished ? totalCycle : elapsed;
+  const pos = posIndex(1, e) - 1; // 0, 1, or 2; steps every 9 min
+
+  const cellW = canvasAnim.width < 500 ? 20 : 24;
+  const cellH = cellW;
+  const totalW = cellW * 3;
+  const left = canvasAnim.width / 2 - totalW / 2;
+  const top  = canvasAnim.height / 2 - 40 + 14;
+
+  // Fill active cell
+  ctx.fillStyle = finished ? '#ff9500' : 'white';
+  ctx.fillRect(left + pos * cellW + 1, top + 1, cellW - 2, cellH - 2);
+
+  // Outer border and dividers
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(left, top, totalW, cellH);
+  ctx.beginPath();
+  ctx.moveTo(left + cellW,     top); ctx.lineTo(left + cellW,     top + cellH);
+  ctx.moveTo(left + cellW * 2, top); ctx.lineTo(left + cellW * 2, top + cellH);
+  ctx.stroke();
+}
+
 function drawTimerText(){
   ctx.fillStyle = finished ? "#ff9500" : "white";
   ctx.font = canvasAnim.width < 500 ? "32px monospace" : "40px monospace";
@@ -607,6 +633,7 @@ function draw(now){
   drawCenterDots(now);
   drawLEDs();
   drawTimerText();
+  drawSubCounter(elapsed);
 
   } catch (err) {
     console.error('Draw loop error:', err);
