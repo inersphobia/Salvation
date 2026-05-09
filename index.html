@@ -574,16 +574,12 @@ function drawSubCounter(elapsed){
   ctx.moveTo(left + cellW * 2, top); ctx.lineTo(left + cellW * 2, top + cellH);
   ctx.stroke();
 
-  // Dots: blue, orange, red — active full brightness, inactive dim
+  // Single dot; color depends on which box it's in
   const dotColors = ['rgb(0,120,255)', 'rgb(255,160,0)', 'rgb(255,70,70)'];
-  const dotColorsDim = ['rgba(0,120,255,0.25)', 'rgba(255,160,0,0.25)', 'rgba(255,70,70,0.25)'];
-  for (let i = 0; i < 3; i++) {
-    ctx.fillStyle = finished ? (i === pos ? '#ff9500' : 'rgba(255,149,0,0.25)') :
-                               (i === pos ? dotColors[i] : dotColorsDim[i]);
-    ctx.beginPath();
-    ctx.arc(left + i * cellW + cellW / 2, top + cellH / 2, dotR, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  ctx.fillStyle = finished ? '#ff9500' : dotColors[pos];
+  ctx.beginPath();
+  ctx.arc(left + pos * cellW + cellW / 2, top + cellH / 2, dotR, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawTimerText(){
