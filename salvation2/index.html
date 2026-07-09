@@ -309,8 +309,8 @@ function resizeCanvas(){
   canvasStatic.height = canvasAnim.height = h;
 
   scaleF = Math.min(
-    (h * 0.33) / WORLD_RADIUS,
-    (w * 0.45) / WORLD_RADIUS
+    (h * 0.37) / WORLD_RADIUS,
+    (w * 0.48) / WORLD_RADIUS
   );
   
   needsStaticRedraw = true;
@@ -371,7 +371,7 @@ function setupGeometry(){
 
 function setupTriangles(){
   triVerts=[];
-  const h=1.0, w=1.15;
+  const h=1.35, w=0.82; // slender blades pointing outward, not squat wedges
 
   for (let i=0;i<numDials;i++){
     const C=dialPos[i];
@@ -479,7 +479,7 @@ function resetClock(){
   overtimeStart=0; lastBeepMinute=0;
   buildLedPaths();
   centerColor=Array(numDials).fill("white");
-  centerSize =Array(numDials).fill(8);
+  centerSize =Array(numDials).fill(6);
   glowAlpha =Array(numDials).fill(0);
   updateTimerText(0);
   needsStaticRedraw = true;
@@ -515,15 +515,32 @@ function toggleMode(){
 function drawStaticLayer(){
   ctxStatic.clearRect(0, 0, canvasStatic.width, canvasStatic.height);
   
-  // Draw star lines on static canvas
-  ctxStatic.lineWidth = 3;
-  ctxStatic.strokeStyle = "#00bfff";
-  for (let s of starLines){
-    let a = worldToScreen(s.x1, s.y1);
-    let b = worldToScreen(s.x2, s.y2);
+  // Star lines: wide soft halo pass under a fine crisp core
+  for (const [lw, style] of [[4.5, "rgba(0,191,255,0.18)"], [1.5, "#00bfff"]]){
+    ctxStatic.lineWidth = lw;
+    ctxStatic.strokeStyle = style;
+    for (let s of starLines){
+      let a = worldToScreen(s.x1, s.y1);
+      let b = worldToScreen(s.x2, s.y2);
+      ctxStatic.beginPath();
+      ctxStatic.moveTo(a.x, a.y);
+      ctxStatic.lineTo(b.x, b.y);
+      ctxStatic.stroke();
+    }
+  }
+
+  // Faint rails: the triangles the LEDs actually travel
+  ctxStatic.lineWidth = 1;
+  ctxStatic.strokeStyle = "rgba(0,191,255,0.3)";
+  for (let V of triVerts){
+    const a = worldToScreen(V[0].x, V[0].y);
+    const b = worldToScreen(V[1].x, V[1].y);
+    const c = worldToScreen(V[2].x, V[2].y);
     ctxStatic.beginPath();
     ctxStatic.moveTo(a.x, a.y);
     ctxStatic.lineTo(b.x, b.y);
+    ctxStatic.lineTo(c.x, c.y);
+    ctxStatic.closePath();
     ctxStatic.stroke();
   }
   
@@ -539,7 +556,7 @@ function drawCenterDots(now){
   if (finished){
     const t=now/1000;
     for (let i=0;i<numDials;i++){
-      centerSize[i]=8+4*(0.5+0.5*Math.sin(t*1.5));
+      centerSize[i]=6+3*(0.5+0.5*Math.sin(t*1.5));
       glowAlpha[i]=0.15 + 0.15*(0.5+0.5*Math.sin(t*1.5+i*0.3));
     }
   }
@@ -758,7 +775,7 @@ setupTriangles();
 buildLedPaths();
 
 centerColor=Array(numDials).fill("white");
-centerSize =Array(numDials).fill(8);
+centerSize =Array(numDials).fill(6);
 glowAlpha =Array(numDials).fill(0);
 updateTimerText(0);
 
