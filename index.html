@@ -658,7 +658,9 @@ function drawFractalView(t){
   // leaf: it holds still while the dot wanders inside the frame, and
   // glides only when that cell's digit prefix changes (a rare,
   // deliberate scene change instead of constant leaf-chasing)
-  const k = Math.max(0, Math.min(numDials, Math.floor(Math.log2(Z))));
+  // ceil, not floor: the framed cell must be AT MOST screen-sized, or its
+  // apex (where the dot lives early in a cycle) gets pushed off the top
+  const k = Math.max(0, Math.min(numDials, Math.ceil(Math.log2(Z))));
   const anc = k === 0 ? null : levels[k-1];
   const target = anc
     ? {x:(anc.a.x+anc.b.x+anc.c.x)/3, y:(anc.a.y+anc.b.y+anc.c.y)/3}
