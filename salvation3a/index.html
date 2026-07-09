@@ -706,17 +706,29 @@ function drawFractalView(t){
   }
   for (let i=0;i<fracTrail.length;i++){
     const p = X(fracTrail[i]);
-    ctx.fillStyle = `rgba(255,255,255,${(i+1)/fracTrail.length * 0.45})`;
+    ctx.fillStyle = `rgba(255,90,90,${(i+1)/fracTrail.length * 0.4})`;
     ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI*2); ctx.fill();
   }
 
-  // Leaf marker: bright dot with a halo ring
-  const m = X(leaf);
-  ctx.strokeStyle = "rgba(255,255,255,0.35)";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(m.x, m.y, 9, 0, Math.PI*2); ctx.stroke();
-  ctx.fillStyle = "white";
-  ctx.beginPath(); ctx.arc(m.x, m.y, 5, 0, Math.PI*2); ctx.fill();
+  // Current-cell highlight: the triangle being worked on, in red
+  // (replaces the dot marker - the cell itself is the position)
+  let ta = X(a), tb = X(b), tc = X(c);
+  const tcx = (ta.x+tb.x+tc.x)/3, tcy = (ta.y+tb.y+tc.y)/3;
+  const hSize = Math.max(ta.y,tb.y,tc.y) - Math.min(ta.y,tb.y,tc.y);
+  const MIN_H = 12; // never let the highlight shrink out of sight
+  if (hSize > 0 && hSize < MIN_H){
+    const s = MIN_H / hSize;
+    ta = {x: tcx+(ta.x-tcx)*s, y: tcy+(ta.y-tcy)*s};
+    tb = {x: tcx+(tb.x-tcx)*s, y: tcy+(tb.y-tcy)*s};
+    tc = {x: tcx+(tc.x-tcx)*s, y: tcy+(tc.y-tcy)*s};
+  }
+  ctx.fillStyle = "rgba(255,70,70,0.9)";
+  ctx.beginPath();
+  ctx.moveTo(ta.x,ta.y); ctx.lineTo(tb.x,tb.y); ctx.lineTo(tc.x,tc.y);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.5)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
 
   // Mini-map (top right): the whole triangle, the framed region, and you.
   // This is what makes the zoom legible despite the fractal's self-similarity.
@@ -737,7 +749,7 @@ function drawFractalView(t){
   ctx.moveTo(fa.x,fa.y); ctx.lineTo(fb.x,fb.y); ctx.lineTo(fc.x,fc.y);
   ctx.closePath(); ctx.fill();
   const lm = M(leaf);
-  ctx.fillStyle = "white";
+  ctx.fillStyle = "rgb(255,70,70)";
   ctx.beginPath(); ctx.arc(lm.x, lm.y, 2, 0, Math.PI*2); ctx.fill();
 }
 
