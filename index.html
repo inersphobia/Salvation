@@ -622,8 +622,8 @@ function fractalLayout(){
 function drawFractalStatic(){
   const F = fractalLayout();
   const sub = (a,b,c,depth) => {
-    ctxStatic.lineWidth = depth === 3 ? 2 : 1;
-    ctxStatic.strokeStyle = `rgba(0,191,255,${0.15 + depth*0.18})`;
+    ctxStatic.lineWidth = depth === 2 ? 2 : 1;
+    ctxStatic.strokeStyle = `rgba(0,191,255,${0.18 + depth*0.3})`;
     ctxStatic.beginPath();
     ctxStatic.moveTo(a.x,a.y); ctxStatic.lineTo(b.x,b.y); ctxStatic.lineTo(c.x,c.y);
     ctxStatic.closePath(); ctxStatic.stroke();
@@ -633,7 +633,14 @@ function drawFractalStatic(){
     const mCA={x:(c.x+a.x)/2, y:(c.y+a.y)/2};
     sub(a,mAB,mCA,depth-1); sub(mAB,b,mBC,depth-1); sub(mCA,mBC,c,depth-1);
   };
-  sub(F.A, F.B, F.C, 3);
+  sub(F.A, F.B, F.C, 2); // two levels only: calm grid of 9
+}
+
+function fractalFillColor(pos){
+  if (!running && !finished && pauseMs === 0) return "rgba(255,255,255,0.08)";
+  return pos===1 ? "rgba(0,120,255,0.16)" :
+         pos===2 ? "rgba(255,160,0,0.16)" :
+                   "rgba(255,70,70,0.16)";
 }
 
 function drawFractalMarker(t){
@@ -647,16 +654,19 @@ function drawFractalMarker(t){
     if (pos===1)      { b=mAB; c=mCA; }   // apex sub-triangle
     else if (pos===2) { a=mAB; c=mBC; }   // right sub-triangle
     else              { a=mCA; b=mBC; }   // left sub-triangle
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = `rgba(255,255,255,${0.10 + i*0.09})`;
+    // translucent fill in the digit's color; overlaps brighten toward "now"
+    ctx.fillStyle = fractalFillColor(pos);
     ctx.beginPath();
     ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.lineTo(c.x,c.y);
-    ctx.closePath(); ctx.stroke();
+    ctx.closePath(); ctx.fill();
   }
-  ctx.fillStyle = digitColor(posIndex(numDials-1, t));
-  ctx.beginPath();
-  ctx.arc((a.x+b.x+c.x)/3, (a.y+b.y+c.y)/3, 5, 0, Math.PI*2);
-  ctx.fill();
+  // leaf marker: bright dot with a halo ring so it reads at any size
+  const cx=(a.x+b.x+c.x)/3, cy=(a.y+b.y+c.y)/3;
+  ctx.strokeStyle = "rgba(255,255,255,0.35)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI*2); ctx.stroke();
+  ctx.fillStyle = "white";
+  ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI*2); ctx.fill();
 }
 
 /* --- shared layout: where the timer text sits in each view --- */
