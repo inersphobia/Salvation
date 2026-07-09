@@ -586,7 +586,7 @@ function drawLEDs(){
 
 function drawSubCounter(elapsed){
   const e = finished ? totalCycle : elapsed;
-  const pos = Math.floor(e / (20/9)) % 3; // 1/27 min per step, same real-time rate in every mode
+  const pos = Math.floor(e / (ticks[6]/3)) % 3; // always one subdivision (3x) faster than the top triangle
 
   const cellW = canvasAnim.width < 500 ? 20 : 24;
   const cellH = cellW;
