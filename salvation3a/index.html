@@ -1015,6 +1015,12 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+/* ---------- ORIENTATION LOCK ---------- */
+// Honored in the installed app; plain browser tabs reject it (harmless)
+if (screen.orientation && screen.orientation.lock) {
+  screen.orientation.lock('portrait').catch(() => {});
+}
+
 /* ---------- WAKE LOCK RE-ACQUIRE ON VISIBILITY CHANGE ---------- */
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState === 'visible' && running) {
