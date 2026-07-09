@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TriTime">
+<meta name="theme-color" content="#000000">
+<title>Salvation 2</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  body { 
+    margin: 0; 
+    background: black; 
+    overflow: hidden; 
+    touch-action: manipulation;
+  }
+  canvas { 
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+  #canvasStatic { z-index: 1; }
+  #canvasAnim { z-index: 2; }
+
+  /* --- BOTTOM SHEET UI (edge-to-edge safe) --- */
+  #ui {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: system-ui, sans-serif;
+    z-index: 20;
+    background: rgba(20, 20, 20, 0.92);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px 16px 0 0;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ui-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* 48dp minimum touch targets (Material guidelines) */
+  #ui button {
+    min-width: 48px;
+    min-height: 48px;
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    color: white;
+    touch-action: manipulation;
+    transition: box-shadow 0.15s;
+  }
+  #ui button:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
+  }
+
+  /* BUTTON COLORS */
+  #btnReset  { background:#e03131; }
+  #btnMode   { background:#5b3fd6; }
+  #btnView   { background:#008b8b; }
+
+  #ui button.pulse {
+    box-shadow: 0 0 16px rgba(255,255,255,0.6);
+  }
+
+  /* Install prompt styling */
+  #installPrompt {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 116, 255, 0.95);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-family: system-ui, sans-serif;
+    font-size: 14px;
+    z-index: 100;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  #installPrompt button {
+    background: white;
+    color: #0074ff;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 4px;
+    margin-left: 12px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="canvasStatic"></canvas>
+<canvas id="canvasAnim"></canvas>
+
+<div id="installPrompt">
+  <span>Install Triangle Timer as an app?</span>
+  <button id="installBtn">Install</button>
+  <button id="dismissBtn" style="background:#666;">Not now</button>
+</div>
+
+<div id="ui">
+  <div class="ui-row" id="uiPrimary">
+    <button id="btnReset">RESET</button>
+    <button id="btnMode">27-MIN</button>
+    <button id="btnView">STAR</button>
+  </div>
+</div>
+
+<script>
+/* ---------- CONFIG ---------- */
+const numDials = 7;
+let timeMode = 0; // 0=27-min, 1=54-min, 2=81-min
+let viewMode = 0; // 0=septagram, 1=rings, 2=abacus, 3=fractal
+const VIEW_NAMES = ["STAR", "RINGS", "ABACUS", "FRACTAL"];
+
+const dotsPerEdge = [1,2];
+const baseIntervals = [4860,1620,540,180,60,20,20/3];
+const baseTicks     = [27*60,9*60,3*60,60,20,20/3,20/9];
+
+let intervals=[], ticks=[], totalCycle=0;
+
+const WORLD_RADIUS = 6;
+let scaleF = 60;
+
+let dialPos=[], dialAngle=[], starLines=[];
+let triVerts=[], ledPath=[], activeIdx=[];
+
+let centerColor=[], centerSize=[], glowAlpha=[];
+
+let running=false, finished=false;
+let startMs=0, pauseMs=0;
+let lastBeepMinute = 0;
+let timerStr="0000:000₃";
+let overtimeStart=0; // When overtime counting began
+
+/* Wake Lock */
+let wakeLock = null;
+
+/* canvas - dual layer system */
+const canvasStatic = document.getElementById("canvasStatic");
+const canvasAnim = document.getElementById("canvasAnim");
+const ctxStatic = canvasStatic.getContext("2d");
+const ctx = canvasAnim.getContext("2d");
+
+/* ---------- 30 FPS THROTTLE ---------- */
+let targetFPS=30;
+let frameInterval=1000/targetFPS;
+let lastFrameTime=0;
+
+/* BUTTONS */
+const btnReset=document.getElementById("btnReset");
+const btnMode=document.getElementById("btnMode");
+const btnView=document.getElementById("btnView");
+
+/* ---------- HAPTICS (Material-style patterns) ---------- */
+const HAPTIC_PATTERNS = {
+  light:  10,                  // mode toggle, sheet handle
+  medium: 35,                  // start / pause / reset
+  heavy:  [60,40,60,40,120]    // cycle completion
+};
+function haptic(pattern="medium"){
+  if (navigator.vibrate){
+    navigator.vibrate(HAPTIC_PATTERNS[pattern] ?? pattern);
+  }
+}
+
+/* ---------- BUTTON PULSE ---------- */
+function pulseButton(btn, pattern="medium"){
+  btn.classList.add("pulse");
+  setTimeout(()=>btn.classList.remove("pulse"), 150);
+  haptic(pattern);
+}
+
+/* ---------- WAKE LOCK ---------- */
+async function requestWakeLock(){
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      console.log('Wake Lock acquired');
+    }
+  } catch (err) {
+    console.log('Wake Lock failed:', err.message);
+  }
+}
+
+function releaseWakeLock(){
+  if (wakeLock !== null) {
+    wakeLock.release()
+      .then(() => {
+        wakeLock = null;
+        console.log('Wake Lock released');
+      });
+  }
+}
+
+/* ---------- MEDIA-STYLE TIMER NOTIFICATION ---------- */
+// Serialized so a clear() queued before a show() can never close the newer notification
+let notifyQueue = Promise.resolve();
+function queueNotify(fn){
+  notifyQueue = notifyQueue.then(fn).catch(()=>{});
+  return notifyQueue;
+}
+
+async function ensureNotifyPermission(){
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) return false;
+  if (Notification.permission === 'default'){
+    try { await Notification.requestPermission(); } catch (err) {}
+  }
+  return Notification.permission === 'granted';
+}
+
+function showTimerNotification(title, body, actions){
+  queueNotify(async () => {
+    if (!(await ensureNotifyPermission())) return;
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification(title, {
+      tag: 'salvation-timer',
+      silent: true,
+      body,
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      actions
+    });
+  });
+}
+
+function clearTimerNotification(){
+  queueNotify(async () => {
+    if (!('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.ready;
+    (await reg.getNotifications({tag: 'salvation-timer'})).forEach(n => n.close());
+  });
+}
+
+/* ---------- BEEP ---------- */
+function playBeep(){
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+    osc.frequency.value = 440;
+    osc.type = 'sine';
+    const now = audioContext.currentTime;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.2, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+    osc.start(now);
+    osc.stop(now + 0.3);
+  } catch(err) {}
+}
+
+/* ---------- COMPLETION TONE ---------- */
+function playCompletionTone(){
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Create a pleasant two-tone chime
+    const playTone = (freq, startTime, duration) => {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = freq;
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+      
+      oscillator.start(startTime);
+      oscillator.stop(startTime + duration);
+    };
+    
+    const now = audioContext.currentTime;
+    playTone(523.25, now, 0.3);        // C5
+    playTone(659.25, now + 0.15, 0.4); // E5
+    playTone(783.99, now + 0.3, 0.5);  // G5
+    
+  } catch (err) {
+    console.log('Audio playback failed:', err);
+  }
+}
+
+/* ---------- RESPONSIVE SCALING ---------- */
+let needsStaticRedraw = true;
+
+function resizeCanvas(){
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  
+  canvasStatic.width = canvasAnim.width = w;
+  canvasStatic.height = canvasAnim.height = h;
+
+  scaleF = Math.min(
+    (h * 0.33) / WORLD_RADIUS,
+    (w * 0.45) / WORLD_RADIUS
+  );
+  
+  needsStaticRedraw = true;
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+/* ---------- TABLES ---------- */
+function updateTables(){
+  const m = timeMode === 0 ? 3 : 1;
+  intervals = baseIntervals.map(v=>v/m);
+  ticks     = baseTicks.map(v=>v/m);
+  totalCycle = [27*60, 54*60, 81*60][timeMode];
+}
+
+/* ---------- UTILS ---------- */
+function worldToScreen(x,y){
+  return {
+    x: x*scaleF + canvasAnim.width/2,
+    y: -y*scaleF + canvasAnim.height/2 - 40
+  };
+}
+
+function posIndex(i,elapsed){
+  if (elapsed<0) elapsed=0;
+  const T=ticks[i];
+  return (Math.floor(elapsed/T)%3)+1;
+}
+
+/* ---------- GEOMETRY ---------- */
+function setupGeometry(){
+  dialPos=[]; dialAngle=[]; starLines=[];
+
+  for (let i=0;i<numDials;i++){
+    const adj=(i-6+numDials)%numDials;
+    const ang=adj*2*Math.PI/7 + Math.PI/2;
+    const x=4.5*Math.cos(ang);
+    const y=4.5*Math.sin(ang);
+
+    dialPos.push({x,y});
+    dialAngle.push(ang);
+  }
+
+  const R=6;
+  for (let i=0;i<numDials;i++){
+    const adj1=(i-6+numDials)%numDials;
+    const a1=adj1*2*Math.PI/7 + Math.PI/2;
+    const x1=R*Math.cos(a1), y1=R*Math.sin(a1);
+
+    const j=(i+2)%numDials;
+    const adj2=(j-6+numDials)%numDials;
+    const a2=adj2*2*Math.PI/7 + Math.PI/2;
+    const x2=R*Math.cos(a2), y2=R*Math.sin(a2);
+
+    starLines.push({x1,y1,x2,y2});
+  }
+}
+
+function setupTriangles(){
+  triVerts=[];
+  const h=1.0, w=1.15;
+
+  for (let i=0;i<numDials;i++){
+    const C=dialPos[i];
+    const ang=dialAngle[i];
+
+    const local=[
+      {x:0, y:h},
+      {x:w, y:-h*0.45},
+      {x:-w,y:-h*0.45}
+    ];
+
+    const rot=ang - Math.PI/2;
+    const c=Math.cos(rot), s=Math.sin(rot);
+
+    const verts=local.map(v=>({
+      x:v.x*c - v.y*s + C.x,
+      y:v.x*s + v.y*c + C.y
+    }));
+
+    triVerts.push(verts);
+  }
+}
+
+/* ---------- LED PATHS ---------- */
+function buildLedPaths(){
+  ledPath=[]; activeIdx=[];
+
+  for (let i=0;i<numDials;i++){
+    let pts=[];
+    const V=triVerts[i];
+
+    pts=[V[0],V[1],V[2]];
+
+    ledPath.push(pts);
+    activeIdx.push(0);
+  }
+}
+
+function updateLedPosition(i,elapsed){
+  const path=ledPath[i];
+  const T=ticks[i];
+  const pos=posIndex(i,elapsed);
+  const frac=(elapsed%T)/T;
+
+  const posFrac=(pos-1)/3;
+  const total=(posFrac + frac/3) % 1;
+
+  let idx=Math.floor(total*path.length);
+  if (idx>=path.length) idx=path.length-1;
+
+  activeIdx[i]=idx;
+}
+
+/* ---------- TIMER TEXT ---------- */
+function updateTimerText(el){
+  let minsIdx, fracIdx;
+
+  if (timeMode === 0){
+    minsIdx=[0,1,2];
+    fracIdx=[3,4,5];
+  } else {
+    minsIdx=[0,1,2,3];
+    fracIdx=[4,5,6];
+  }
+
+  const m=minsIdx.map(i=>posIndex(i,el)-1).join("");
+  const f=fracIdx.map(i=>posIndex(i,el)-1).join("");
+  timerStr=m+":"+f+"₃";
+}
+
+function updateOvertimeText(el){
+  // Fixed overtime tick rates (same for both modes)
+  const overtimeTicks = [81*60, 27*60, 9*60, 3*60, 60]; // 81min, 27min, 9min, 3min, 1min
+  const digits = overtimeTicks.map(T => Math.floor(el/T) % 3).join("");
+  timerStr = "+" + digits + "₃";
+}
+
+/* ---------- CLOCK CONTROL ---------- */
+function startClock(){
+  if (running) return;
+  if (finished) resetClock();
+  startMs = pauseMs>0 ? performance.now()-pauseMs : performance.now();
+  running=true;
+  requestWakeLock();
+  showTimerNotification(
+    'Salvation timer running',
+    ["27", "54", "81"][timeMode] + '-minute cycle in progress',
+    [{action:'pause', title:'Pause'}, {action:'reset', title:'Reset'}]
+  );
+}
+function pauseClock(){
+  if (!running||finished) return;
+  running=false;
+  pauseMs=performance.now()-startMs;
+  releaseWakeLock();
+  showTimerNotification(
+    'Salvation timer paused',
+    'Tap to return to the timer',
+    [{action:'reset', title:'Reset'}]
+  );
+}
+function resetClock(){
+  running=false; finished=false;
+  pauseMs=0; startMs=performance.now();
+  overtimeStart=0; lastBeepMinute=0;
+  buildLedPaths();
+  centerColor=Array(numDials).fill("white");
+  centerSize =Array(numDials).fill(8);
+  glowAlpha =Array(numDials).fill(0);
+  updateTimerText(0);
+  needsStaticRedraw = true;
+  releaseWakeLock();
+  clearTimerNotification();
+}
+function finishClock(){
+  finished=true;
+  running=false;
+  overtimeStart = startMs + totalCycle * 1000;
+  updateTimerText(totalCycle);
+  playCompletionTone();
+  haptic('heavy');
+  releaseWakeLock();
+  showTimerNotification(
+    'Cycle complete',
+    'Overtime is counting',
+    [{action:'reset', title:'Reset'}]
+  );
+}
+
+function toggleMode(){
+  if (running || finished) return;
+  timeMode = (timeMode + 1) % 3;
+  btnMode.textContent = ["27-MIN", "54-MIN", "81-MIN"][timeMode];
+  updateTables();
+  resetClock();
+  needsStaticRedraw = true;
+}
+
+
+/* ---------- ALTERNATE VIEWS (rings / abacus / fractal) ---------- */
+/* All views read the same engine: posIndex(i,t) is digit i (1..3), dial 0 slowest. */
+
+const RING_OUTER = 6, RING_STEP = 0.45;
+
+function digitColor(pos){
+  if (!running && !finished && pauseMs === 0) return "white"; // idle, like the star view
+  return pos===1 ? "rgb(0,120,255)" :
+         pos===2 ? "rgb(255,160,0)" :
+                   "rgb(255,70,70)";
+}
+
+/* --- rings: ternary orrery, outer ring = slowest digit --- */
+function drawRingsStatic(){
+  const c = worldToScreen(0,0);
+  ctxStatic.lineWidth = 2;
+  ctxStatic.strokeStyle = "rgba(0,191,255,0.85)";
+  for (let i=0;i<numDials;i++){
+    ctxStatic.beginPath();
+    ctxStatic.arc(c.x, c.y, (RING_OUTER - i*RING_STEP)*scaleF, 0, Math.PI*2);
+    ctxStatic.stroke();
+  }
+  // third boundaries
+  ctxStatic.lineWidth = 1.5;
+  ctxStatic.strokeStyle = "rgba(0,191,255,0.3)";
+  const rIn = (RING_OUTER - (numDials-1)*RING_STEP)*scaleF;
+  const rOut = (RING_OUTER + 0.25)*scaleF;
+  for (let k=0;k<3;k++){
+    const ang = Math.PI/2 - k*2*Math.PI/3;
+    ctxStatic.beginPath();
+    ctxStatic.moveTo(c.x + Math.cos(ang)*rIn,  c.y - Math.sin(ang)*rIn);
+    ctxStatic.lineTo(c.x + Math.cos(ang)*rOut, c.y - Math.sin(ang)*rOut);
+    ctxStatic.stroke();
+  }
+}
+
+function drawRingDots(t){
+  const c = worldToScreen(0,0);
+  for (let i=0;i<numDials;i++){
+    const T = ticks[i];
+    const pos = posIndex(i,t);
+    const frac = (t % T) / T;
+    const total = ((pos-1) + frac) / 3;       // 0..1 around the ring, clockwise from top
+    const ang = Math.PI/2 - total*2*Math.PI;
+    const r = (RING_OUTER - i*RING_STEP)*scaleF;
+    ctx.fillStyle = digitColor(pos);
+    ctx.beginPath();
+    ctx.arc(c.x + Math.cos(ang)*r, c.y - Math.sin(ang)*r, 6, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+/* --- abacus: 7 rows of 3 cells, top row = slowest digit --- */
+function abacusLayout(){
+  const w = canvasAnim.width, h = canvasAnim.height;
+  const gap = 6;
+  const cell = Math.max(22, Math.min(52,
+    Math.floor(Math.min((w*0.7 - 2*gap)/3, (h - 320 - 6*gap)/7))));
+  const gridW = 3*cell + 2*gap, gridH = 7*cell + 6*gap;
+  return { cell, gap, gridW, gridH,
+           left: (w - gridW)/2,
+           top: Math.max(16, (h - 230 - gridH)/2) };
+}
+
+function drawAbacusStatic(){
+  const L = abacusLayout();
+  ctxStatic.lineWidth = 2;
+  ctxStatic.strokeStyle = "rgba(0,191,255,0.85)";
+  for (let i=0;i<numDials;i++){
+    const y = L.top + i*(L.cell + L.gap);
+    for (let k=0;k<3;k++){
+      ctxStatic.strokeRect(L.left + k*(L.cell + L.gap), y, L.cell, L.cell);
+    }
+  }
+}
+
+function drawAbacusDots(t){
+  const L = abacusLayout();
+  for (let i=0;i<numDials;i++){
+    const pos = posIndex(i,t);
+    ctx.fillStyle = digitColor(pos);
+    ctx.beginPath();
+    ctx.arc(L.left + (pos-1)*(L.cell + L.gap) + L.cell/2,
+            L.top + i*(L.cell + L.gap) + L.cell/2,
+            L.cell*0.28, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+/* --- fractal: Sierpinski descent, each digit picks a sub-triangle --- */
+function fractalLayout(){
+  const w = canvasAnim.width, h = canvasAnim.height;
+  const S = Math.min(w*0.88, (h - 300)/0.866);
+  const triH = S*0.866;
+  const topY = Math.max(16, (h - 230 - triH)/2);
+  return {
+    A: {x: w/2,        y: topY},
+    B: {x: w/2 + S/2,  y: topY + triH},
+    C: {x: w/2 - S/2,  y: topY + triH},
+    triH, topY
+  };
+}
+
+function fractalFillColor(pos){
+  if (!running && !finished && pauseMs === 0) return "rgba(255,255,255,0.08)";
+  return pos===1 ? "rgba(0,120,255,0.16)" :
+         pos===2 ? "rgba(255,160,0,0.16)" :
+                   "rgba(255,70,70,0.16)";
+}
+
+/* Camera: starts zoomed in on the action, zooms out over the session */
+const FRACTAL_Z0 = 16; // starting zoom (frames roughly a level-4 cell)
+let fracCam = {x:0, y:0, init:false};
+
+function drawFractalView(t){
+  const F = fractalLayout();
+
+  // Descend the address, keeping every level
+  const levels = [];
+  let a=F.A, b=F.B, c=F.C;
+  for (let i=0;i<numDials;i++){
+    const pos = posIndex(i,t);
+    const mAB={x:(a.x+b.x)/2, y:(a.y+b.y)/2};
+    const mBC={x:(b.x+c.x)/2, y:(b.y+c.y)/2};
+    const mCA={x:(c.x+a.x)/2, y:(c.y+a.y)/2};
+    if (pos===1)      { b=mAB; c=mCA; }   // apex sub-triangle
+    else if (pos===2) { a=mAB; c=mBC; }   // right sub-triangle
+    else              { a=mCA; b=mBC; }   // left sub-triangle
+    levels.push({a,b,c,pos});
+  }
+  const leaf = {x:(a.x+b.x+c.x)/3, y:(a.y+b.y+c.y)/3};
+  const cen  = {x:(F.A.x+F.B.x+F.C.x)/3, y:(F.A.y+F.B.y+F.C.y)/3};
+
+  // Zoom out with session progress; camera glides after the dot,
+  // easing toward the triangle center so the end state sits in place
+  const f = Math.min(1, Math.max(0, t/totalCycle));
+  const Z = Math.pow(FRACTAL_Z0, 1-f);
+  const target = {x: leaf.x + (cen.x-leaf.x)*f, y: leaf.y + (cen.y-leaf.y)*f};
+  if (!fracCam.init){ fracCam.x=target.x; fracCam.y=target.y; fracCam.init=true; }
+  fracCam.x += (target.x - fracCam.x)*0.08;
+  fracCam.y += (target.y - fracCam.y)*0.08;
+  const X = p => ({x:(p.x-fracCam.x)*Z + cen.x, y:(p.y-fracCam.y)*Z + cen.y});
+
+  // Address fills, big -> small, so tints stack toward "now"
+  for (const L of levels){
+    const ta=X(L.a), tb=X(L.b), tc=X(L.c);
+    ctx.fillStyle = fractalFillColor(L.pos);
+    ctx.beginPath();
+    ctx.moveTo(ta.x,ta.y); ctx.lineTo(tb.x,tb.y); ctx.lineTo(tc.x,tc.y);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // Adaptive grid: subdivide only what is on-screen and big enough to see
+  const w=canvasAnim.width, h=canvasAnim.height;
+  const grid = (pa,pb,pc,depth) => {
+    const ta=X(pa), tb=X(pb), tc=X(pc);
+    const minX=Math.min(ta.x,tb.x,tc.x), maxX=Math.max(ta.x,tb.x,tc.x);
+    const minY=Math.min(ta.y,tb.y,tc.y), maxY=Math.max(ta.y,tb.y,tc.y);
+    if (maxX<0 || minX>w || maxY<0 || minY>h) return;
+    ctx.lineWidth = depth===0 ? 2 : 1;
+    ctx.strokeStyle = `rgba(0,191,255,${Math.max(0.12, 0.4 - depth*0.05)})`;
+    ctx.beginPath();
+    ctx.moveTo(ta.x,ta.y); ctx.lineTo(tb.x,tb.y); ctx.lineTo(tc.x,tc.y);
+    ctx.closePath(); ctx.stroke();
+    if (depth>=numDials || (maxX-minX) < 80) return;
+    const mAB={x:(pa.x+pb.x)/2, y:(pa.y+pb.y)/2};
+    const mBC={x:(pb.x+pc.x)/2, y:(pb.y+pc.y)/2};
+    const mCA={x:(pc.x+pa.x)/2, y:(pc.y+pa.y)/2};
+    grid(pa,mAB,mCA,depth+1); grid(mAB,pb,mBC,depth+1); grid(mCA,mBC,pc,depth+1);
+  };
+  grid(F.A, F.B, F.C, 0);
+
+  // Leaf marker: bright dot with a halo ring
+  const m = X(leaf);
+  ctx.strokeStyle = "rgba(255,255,255,0.35)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(m.x, m.y, 9, 0, Math.PI*2); ctx.stroke();
+  ctx.fillStyle = "white";
+  ctx.beginPath(); ctx.arc(m.x, m.y, 5, 0, Math.PI*2); ctx.fill();
+}
+
+/* --- shared layout: where the timer text sits in each view --- */
+function getTextY(){
+  if (viewMode===2){ const L = abacusLayout();  return L.top + L.gridH + 56; }
+  if (viewMode===3){ const F = fractalLayout(); return F.topY + F.triH + 52; }
+  return canvasAnim.height/2 - 40;
+}
+
+function toggleView(){
+  viewMode = (viewMode + 1) % 4;
+  btnView.textContent = VIEW_NAMES[viewMode];
+  if (viewMode === 3) fracCam.init = false; // snap camera on entry
+  needsStaticRedraw = true;
+  try { localStorage.setItem('salvationView', viewMode); } catch(e) {}
+}
+
+/* ---------- DRAW HELPERS ---------- */
+function drawStaticLayer(){
+  ctxStatic.clearRect(0, 0, canvasStatic.width, canvasStatic.height);
+  
+  if (viewMode===1){ drawRingsStatic();   needsStaticRedraw = false; return; }
+  if (viewMode===2){ drawAbacusStatic();  needsStaticRedraw = false; return; }
+  if (viewMode===3){ needsStaticRedraw = false; return; } // fractal renders on the anim layer (moving camera)
+
+  // Draw star lines on static canvas
+  ctxStatic.lineWidth = 3;
+  ctxStatic.strokeStyle = "#00bfff";
+  for (let s of starLines){
+    let a = worldToScreen(s.x1, s.y1);
+    let b = worldToScreen(s.x2, s.y2);
+    ctxStatic.beginPath();
+    ctxStatic.moveTo(a.x, a.y);
+    ctxStatic.lineTo(b.x, b.y);
+    ctxStatic.stroke();
+  }
+  
+  needsStaticRedraw = false;
+}
+
+function drawStarLines(){
+  // Star lines are now on static layer - this function kept for compatibility
+  // but does nothing (drawing happens in drawStaticLayer)
+}
+
+function drawCenterDots(now){
+  if (finished){
+    const t=now/1000;
+    for (let i=0;i<numDials;i++){
+      centerSize[i]=8+4*(0.5+0.5*Math.sin(t*1.5));
+      glowAlpha[i]=0.15 + 0.15*(0.5+0.5*Math.sin(t*1.5+i*0.3));
+    }
+  }
+
+  for (let i=0;i<numDials;i++){
+    const C=dialPos[i];
+    const p=worldToScreen(C.x,C.y);
+
+    let ga=glowAlpha[i];
+    if (ga>0.01){
+      const r=0.6*scaleF;
+      let g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r);
+      g.addColorStop(0,`rgba(255,255,255,${ga})`);
+      g.addColorStop(1,"rgba(255,255,255,0)");
+      ctx.fillStyle=g;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,r,0,Math.PI*2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle=
+      centerColor[i]==="blue"   ? "rgb(0,120,255)" :
+      centerColor[i]==="orange" ? "rgb(255,160,0)" :
+      centerColor[i]==="red"    ? "rgb(255,70,70)" :
+                                  "white";
+
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,centerSize[i],0,Math.PI*2);
+    ctx.fill();
+  }
+}
+
+function drawLEDs(){
+  ctx.fillStyle="white";
+  for (let i=0;i<numDials;i++){
+    const idx=activeIdx[i];
+    const P=ledPath[i][idx];
+    const s=worldToScreen(P.x,P.y);
+    ctx.beginPath();
+    ctx.arc(s.x,s.y,6,0,Math.PI*2);
+    ctx.fill();
+  }
+}
+
+function drawSubCounter(elapsed){
+  const e = finished ? totalCycle : elapsed;
+  const pos = Math.floor(e / (ticks[6]/3)) % 3; // always one subdivision (3x) faster than the top triangle
+
+  const cellW = canvasAnim.width < 500 ? 20 : 24;
+  const cellH = cellW;
+  const totalW = cellW * 3;
+  const left = canvasAnim.width / 2 - totalW / 2;
+  const top  = getTextY() + 14;
+  const dotR = cellW * 0.22;
+
+  // Outer border and dividers
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(left, top, totalW, cellH);
+  ctx.beginPath();
+  ctx.moveTo(left + cellW,     top); ctx.lineTo(left + cellW,     top + cellH);
+  ctx.moveTo(left + cellW * 2, top); ctx.lineTo(left + cellW * 2, top + cellH);
+  ctx.stroke();
+
+  // Single dot; color depends on which box it's in
+  const dotColors = ['rgb(0,120,255)', 'rgb(255,160,0)', 'rgb(255,70,70)'];
+  ctx.fillStyle = finished ? '#ff9500' : dotColors[pos];
+  ctx.beginPath();
+  ctx.arc(left + pos * cellW + cellW / 2, top + cellH / 2, dotR, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawTimerText(){
+  ctx.fillStyle = finished ? "#ff9500" : "white";
+  ctx.font = canvasAnim.width < 500 ? "32px monospace" : "40px monospace";
+  ctx.textAlign="center";
+  ctx.fillText(timerStr, canvasAnim.width/2, getTextY());
+}
+
+function drawTapHint(){
+  if (running) return;
+  const hint = finished ? "tap to restart"
+             : pauseMs > 0 ? "tap to resume"
+             : "tap to start";
+  ctx.fillStyle = "rgba(255,255,255,0.45)";
+  ctx.font = canvasAnim.width < 500 ? "14px system-ui, sans-serif" : "16px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(hint, canvasAnim.width/2, getTextY() + 74);
+}
+
+/* ---------- MAIN DRAW LOOP ---------- */
+function draw(now){
+  try {
+    if (now-lastFrameTime < frameInterval){
+      requestAnimationFrame(draw); return;
+    }
+    lastFrameTime=now;
+
+    // Only redraw static layer when needed (resize, mode change, etc)
+    if (needsStaticRedraw) {
+      drawStaticLayer();
+    }
+
+    // Clear only the animation canvas (not the static background)
+    ctx.clearRect(0, 0, canvasAnim.width, canvasAnim.height);
+
+    const elapsed = running ? (now-startMs)/1000 : pauseMs/1000;
+
+    if (running){
+      updateTimerText(elapsed);
+
+      const beepMinute = Math.floor(elapsed / 180);
+      if (beepMinute > lastBeepMinute) { lastBeepMinute = beepMinute; playBeep(); }
+
+      if (elapsed>=totalCycle && !finished) finishClock();
+    }
+
+    // Continue animations only when running (not in overtime)
+    if (running) {
+      for (let i=0;i<numDials;i++){
+        updateLedPosition(i, elapsed);
+        const p=posIndex(i, elapsed);
+        centerColor[i] =
+          p===1 ? "blue" :
+          p===2 ? "orange" : "red";
+      }
+    }
+  
+  // Handle overtime display when finished
+  if (finished){
+    const overtime = (now - overtimeStart) / 1000;
+    updateOvertimeText(overtime);
+  }
+
+  // Draw only animated elements
+  const vizT = finished ? totalCycle : elapsed;
+  if (viewMode===0){
+    drawCenterDots(now);
+    drawLEDs();
+  } else if (viewMode===1){
+    drawRingDots(vizT);
+  } else if (viewMode===2){
+    drawAbacusDots(vizT);
+  } else {
+    drawFractalView(vizT);
+  }
+  drawTimerText();
+  drawSubCounter(elapsed);
+  drawTapHint();
+
+  } catch (err) {
+    console.error('Draw loop error:', err);
+  }
+  requestAnimationFrame(draw);
+}
+
+/* ---------- TAP THE CLOCK: start -> pause -> resume ---------- */
+function toggleClock(){
+  if (running) pauseClock();
+  else startClock(); // startClock() itself restarts fresh after a finished cycle
+  haptic('medium');
+}
+canvasAnim.addEventListener("click", toggleClock);
+
+/* ---------- PWA INSTALL PROMPT ---------- */
+let deferredPrompt;
+const installPrompt = document.getElementById('installPrompt');
+const installBtn = document.getElementById('installBtn');
+const dismissBtn = document.getElementById('dismissBtn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installPrompt.style.display = 'block';
+});
+
+installBtn.addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    installPrompt.style.display = 'none';
+  }
+});
+
+dismissBtn.addEventListener('click', () => {
+  installPrompt.style.display = 'none';
+  deferredPrompt = null;
+});
+
+/* ---------- SERVICE WORKER REGISTRATION ---------- */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('Service Worker registered'))
+      .catch(err => console.log('Service Worker registration failed:', err));
+  });
+
+  // Notification action buttons (Pause/Reset) arrive as messages from the SW
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if (e.data === 'pause') pauseClock();
+    else if (e.data === 'reset') resetClock();
+  });
+}
+
+/* ---------- WAKE LOCK RE-ACQUIRE ON VISIBILITY CHANGE ---------- */
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && running) {
+    await requestWakeLock();
+  }
+});
+
+/* ---------- INIT ---------- */
+// Launcher shortcut deep links (?mode=27|54|81)
+const modeParam = new URLSearchParams(location.search).get('mode');
+const modeIdx = {"27": 0, "54": 1, "81": 2}[modeParam];
+if (modeIdx !== undefined) {
+  timeMode = modeIdx;
+  btnMode.textContent = ["27-MIN", "54-MIN", "81-MIN"][timeMode];
+}
+
+// Restore last-used view
+try {
+  const savedView = parseInt(localStorage.getItem('salvationView'), 10);
+  if (savedView >= 0 && savedView <= 3){
+    viewMode = savedView;
+    btnView.textContent = VIEW_NAMES[viewMode];
+  }
+} catch(e) {}
+
+updateTables();
+setupGeometry();
+setupTriangles();
+buildLedPaths();
+
+centerColor=Array(numDials).fill("white");
+centerSize =Array(numDials).fill(8);
+glowAlpha =Array(numDials).fill(0);
+updateTimerText(0);
+
+// Draw static layer once on init
+drawStaticLayer();
+
+/* ---------- BUTTON HOOKS ---------- */
+btnReset.onclick = ()=>{ pulseButton(btnReset); resetClock(); };
+btnMode.onclick  = ()=>{ pulseButton(btnMode, 'light'); toggleMode(); };
+btnView.onclick  = ()=>{ pulseButton(btnView, 'light'); toggleView(); };
+
+requestAnimationFrame(draw);
+</script>
+
+</body>
+</html>
