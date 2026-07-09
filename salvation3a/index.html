@@ -549,13 +549,13 @@ function drawRingsStatic(){
     ctxStatic.arc(c.x, c.y, (RING_OUTER - i*RING_STEP)*scaleF, 0, Math.PI*2);
     ctxStatic.stroke();
   }
-  // third boundaries
-  ctxStatic.lineWidth = 1.5;
-  ctxStatic.strokeStyle = "rgba(0,191,255,0.3)";
+  // third boundaries, each colored as the third it opens: blue / orange / red
+  ctxStatic.lineWidth = 2;
   const rIn = (RING_OUTER - (numDials-1)*RING_STEP)*scaleF;
   const rOut = (RING_OUTER + 0.25)*scaleF;
   for (let k=0;k<3;k++){
     const ang = Math.PI/2 - k*2*Math.PI/3;
+    ctxStatic.strokeStyle = withA(WEAVE_COL[k], "0.6");
     ctxStatic.beginPath();
     ctxStatic.moveTo(c.x + Math.cos(ang)*rIn,  c.y - Math.sin(ang)*rIn);
     ctxStatic.lineTo(c.x + Math.cos(ang)*rOut, c.y - Math.sin(ang)*rOut);
@@ -572,10 +572,26 @@ function drawRingDots(t){
     const total = ((pos-1) + frac) / 3;       // 0..1 around the ring, clockwise from top
     const ang = Math.PI/2 - total*2*Math.PI;
     const r = (RING_OUTER - i*RING_STEP)*scaleF;
+    const dx = c.x + Math.cos(ang)*r, dy = c.y - Math.sin(ang)*r;
+    // burst: a brief white-cored glow the instant the dot enters a new
+    // third (i.e. changes color), like the WEAVE traveler
+    const pulse = running ? Math.max(0, 1 - frac/0.2) : 0;
+    if (pulse > 0.01){
+      const gc = WEAVE_COL[pos-1];
+      const R = 7 + 22*pulse;
+      const g = ctx.createRadialGradient(dx,dy,0, dx,dy, R);
+      g.addColorStop(0,   `rgba(255,255,255,${(0.9*pulse).toFixed(3)})`);
+      g.addColorStop(0.4, withA(gc, (0.5*pulse).toFixed(3)));
+      g.addColorStop(1,   withA(gc, "0"));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(dx,dy, R, 0, Math.PI*2); ctx.fill();
+    }
     ctx.fillStyle = digitColor(pos);
-    ctx.beginPath();
-    ctx.arc(c.x + Math.cos(ang)*r, c.y - Math.sin(ang)*r, 6, 0, Math.PI*2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(dx,dy, 6, 0, Math.PI*2); ctx.fill();
+    if (pulse > 0.01){
+      ctx.fillStyle = `rgba(255,255,255,${pulse.toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(dx,dy, 3, 0, Math.PI*2); ctx.fill();
+    }
   }
 }
 
