@@ -129,7 +129,7 @@
 const numDials = 7;
 let timeMode = 0; // 0=27-min, 1=54-min, 2=81-min
 let viewMode = 0; // 0=septagram, 1=rings, 2=abacus, 3=fractal
-const VIEW_NAMES = ["STAR", "RINGS", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "SEP", "MOTHER"];
+const VIEW_NAMES = ["STAR", "RINGS", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "SEPT"];
 
 const dotsPerEdge = [1,2];
 const baseIntervals = [4860,1620,540,180,60,20,20/3];
@@ -969,15 +969,122 @@ function drawWeave(t){
   ctx.beginPath(); ctx.arc(tx,ty, 0.07*scaleF, 0,Math.PI*2); ctx.fill();
 }
 
+/* --- SEPT: instrument panel of base-3 batteries. One panel per digit,
+   each a stack of three lines (0 bottom, 1 middle, 2 top); the lit line
+   is the digit's value in the app colors. Minutes row (27/9/3/1 as the
+   mode provides) with a standalone 81 lamp that lights at completion;
+   fractions row (1/3, 1/9, 1/27). The 1/27 blinks with each 1/81
+   sub-tick - three blinks, then it changes. --- */
+function septLayout(){
+  const minDials  = timeMode===0 ? [0,1,2] : [0,1,2,3];
+  const minLabels = timeMode===0 ? ["9","3","1"] : ["27","9","3","1"];
+  const fracDials = timeMode===0 ? [3,4,5] : [4,5,6];
+  const fracLabels = ["1/3","1/9","1/27"];
+  const pw=64, gap=14, lampR=11, lineH=12, lineGap=7, padX=8, padY=8;
+  const ph = padY*2 + lineH*3 + lineGap*2;
+  const rowGap = 74;
+  const minW = lampR*2 + gap + minDials.length*pw + (minDials.length-1)*gap;
+  const fracW = 3*pw + 2*gap;
+  const blockH = ph + 22 + rowGap + ph + 22;
+  const top = Math.max(70, (viewH - 250 - blockH)/2);
+  return { minDials, minLabels, fracDials, fracLabels, pw, gap, lampR,
+           lineH, lineGap, padX, padY, ph, rowGap,
+           minX:  (viewW - minW)/2 + lampR*2 + gap,
+           lampX: (viewW - minW)/2 + lampR,
+           fracX: (viewW - fracW)/2,
+           top, fracTop: top + ph + 22 + rowGap, blockH };
+}
+
+function septRect(c, x, y, w, h, r){
+  c.beginPath();
+  if (c.roundRect) c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h);
+}
+
+function drawSeptStatic(){
+  const L = septLayout();
+  ctxStatic.lineWidth = 1.5;
+  ctxStatic.strokeStyle = "rgba(0,191,255,0.5)";
+  ctxStatic.fillStyle = "rgba(0,191,255,0.8)";
+  ctxStatic.font = "13px monospace";
+  ctxStatic.textAlign = "center";
+  const frame = (x, y, label) => {
+    septRect(ctxStatic, x, y, L.pw, L.ph, 8);
+    ctxStatic.stroke();
+    ctxStatic.fillText(label, x + L.pw/2, y + L.ph + 16);
+  };
+  L.minLabels.forEach((lab,k)=> frame(L.minX + k*(L.pw+L.gap), L.top, lab));
+  L.fracLabels.forEach((lab,k)=> frame(L.fracX + k*(L.pw+L.gap), L.fracTop, lab));
+  ctxStatic.beginPath();
+  ctxStatic.arc(L.lampX, L.top + L.ph/2, L.lampR, 0, Math.PI*2);
+  ctxStatic.stroke();
+  ctxStatic.fillText("81", L.lampX, L.top + L.ph + 16);
+  ctxStatic.fillStyle = "rgba(120,150,170,0.5)";
+  ctxStatic.font = "11px monospace";
+  ctxStatic.fillText("M I N U T E S", viewW/2, L.top - 14);
+  ctxStatic.fillText("F R A C T I O N S", viewW/2, L.fracTop - 14);
+  // 0/1/2 key beside the fractions row
+  ctxStatic.font = "10px monospace";
+  ctxStatic.textAlign = "right";
+  for (let v=0; v<3; v++){
+    const y = L.fracTop + L.padY + (2-v)*(L.lineH+L.lineGap) + L.lineH - 2;
+    ctxStatic.fillText(String(v), L.fracX - 6, y);
+  }
+  ctxStatic.textAlign = "left";
+}
+
+function drawSept(t){
+  const L = septLayout();
+  const panel = (x, y, dial, blink) => {
+    const pos = posIndex(dial, t);
+    for (let v=0; v<3; v++){
+      const ly = y + L.padY + (2-v)*(L.lineH + L.lineGap);
+      const lit = (v === pos-1);
+      septRect(ctx, x + L.padX, ly, L.pw - L.padX*2, L.lineH, 6);
+      if (!lit){
+        ctx.fillStyle = "rgba(120,150,170,0.13)";
+        ctx.fill();
+        continue;
+      }
+      ctx.fillStyle = digitColor(pos);
+      ctx.fill();
+      if (blink && running){
+        // three blinks per dwell: one white pulse at each 1/81 sub-tick
+        const subT = ticks[dial] / 3;
+        const sf = (t % subT) / subT;
+        const pulse = Math.max(0, 1 - sf/0.35);
+        if (pulse > 0.01){
+          ctx.fillStyle = `rgba(255,255,255,${(0.75*pulse).toFixed(3)})`;
+          ctx.fill();
+        }
+      }
+    }
+  };
+  L.minDials.forEach((d,k)=> panel(L.minX + k*(L.pw+L.gap), L.top, d, false));
+  L.fracDials.forEach((d,k)=> panel(L.fracX + k*(L.pw+L.gap), L.fracTop, d, k===2));
+  // 81 lamp: dark all session, lights at completion
+  const lx = L.lampX, lyc = L.top + L.ph/2;
+  if (finished){
+    const g = ctx.createRadialGradient(lx,lyc,0, lx,lyc, L.lampR*2.6);
+    g.addColorStop(0, "rgba(255,149,0,0.6)");
+    g.addColorStop(1, "rgba(255,149,0,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(lx,lyc,L.lampR*2.6,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#ff9500";
+  } else {
+    ctx.fillStyle = "rgba(120,150,170,0.10)";
+  }
+  ctx.beginPath(); ctx.arc(lx,lyc,L.lampR,0,Math.PI*2); ctx.fill();
+}
+
 function getTextY(){
   if (viewMode===2){ const L = abacusLayout();  return L.top + L.gridH + 56; }
-  if (viewMode===7){ const L = motherLayout();  return L.top + L.gridH + 34; }
   if (viewMode===3){ const F = fractalLayout(); return F.topY + F.triH + 52; }
+  if (viewMode===6){ const L = septLayout();    return L.fracTop + L.ph + 22 + 42; }
   return viewH/2 - 40;
 }
 
 function toggleView(){
-  viewMode = (viewMode + 1) % 8;
+  viewMode = (viewMode + 1) % 7;
   btnView.textContent = VIEW_NAMES[viewMode];
   if (viewMode === 3){ fracCam.init = false; fracTrail.length = 0; } // snap camera on entry
   needsStaticRedraw = true;
@@ -993,12 +1100,11 @@ function drawStaticLayer(){
   if (viewMode===3){ needsStaticRedraw = false; return; } // fractal renders on the anim layer (moving camera)
   if (viewMode===4){ needsStaticRedraw = false; return; } // wheels render on the anim layer (spinning)
   if (viewMode===5){ needsStaticRedraw = false; return; } // weave renders on the anim layer (traveler)
-  if (viewMode===6){ drawSepStatic(); needsStaticRedraw = false; return; } // sep: bolder frame
-  if (viewMode===7){ needsStaticRedraw = false; return; } // mother renders on the anim layer
+  if (viewMode===6){ drawSeptStatic(); needsStaticRedraw = false; return; } // sept panel frames
 
   // Star lines - matched to the WEAVE track (thin, faint)
   ctxStatic.lineWidth = 1.5;
-  ctxStatic.strokeStyle = "rgba(0,191,255,0.16)";
+  ctxStatic.strokeStyle = "rgba(0,191,255,0.34)";
   for (let s of starLines){
     let a = worldToScreen(s.x1, s.y1);
     let b = worldToScreen(s.x2, s.y2);
@@ -1079,115 +1185,6 @@ function drawLEDs(t){
     if (pulse > 0.01){
       ctx.fillStyle = `rgba(255,255,255,${pulse.toFixed(3)})`;
       ctx.beginPath(); ctx.arc(s.x,s.y, 3, 0, Math.PI*2); ctx.fill();
-    }
-  }
-}
-
-/* --- SEP: like STAR, but each triangle has a watch-style hand that pivots
-   from its center to point at the current corner, flashing blue -> orange
-   -> red (three times) before pivoting to the next corner. --- */
-function drawSepStatic(){
-  ctxStatic.lineWidth = 2.5;                    // slightly bolder than STAR's 1.5
-  ctxStatic.strokeStyle = "rgba(0,191,255,0.4)";
-  for (let s of starLines){
-    const a = worldToScreen(s.x1, s.y1);
-    const b = worldToScreen(s.x2, s.y2);
-    ctxStatic.beginPath();
-    ctxStatic.moveTo(a.x, a.y); ctxStatic.lineTo(b.x, b.y);
-    ctxStatic.stroke();
-  }
-}
-
-function drawSep(t){
-  ctx.lineCap = "round";
-  for (let i=0;i<numDials;i++){
-    const C = worldToScreen(dialPos[i].x, dialPos[i].y);   // pivot = triangle center
-    const P = ledPath[i][activeIdx[i]];                    // current corner
-    const tip = worldToScreen(P.x, P.y);
-    const T = ticks[i], subT = T/3;
-    const sub = Math.floor((t % T)/subT) % 3;              // 0/1/2 -> blue/orange/red
-    const subFrac = (t % subT)/subT;
-    const pulse = running ? Math.max(0, 1 - subFrac/0.4) : 0;
-    const col = digitColor(sub+1);
-    const gc = WEAVE_COL[sub];
-    // the hand
-    ctx.strokeStyle = running ? withA(gc, (0.55 + 0.45*pulse).toFixed(3)) : col;
-    ctx.lineWidth = 3 + 2*pulse;
-    ctx.beginPath(); ctx.moveTo(C.x, C.y); ctx.lineTo(tip.x, tip.y); ctx.stroke();
-    // tip flash
-    if (pulse > 0.01){
-      const R = 6 + 16*pulse;
-      const g = ctx.createRadialGradient(tip.x,tip.y,0, tip.x,tip.y, R);
-      g.addColorStop(0,   `rgba(255,255,255,${(0.9*pulse).toFixed(3)})`);
-      g.addColorStop(0.4, withA(gc, (0.5*pulse).toFixed(3)));
-      g.addColorStop(1,   withA(gc, "0"));
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(tip.x,tip.y, R, 0, Math.PI*2); ctx.fill();
-    }
-    ctx.fillStyle = col;
-    ctx.beginPath(); ctx.arc(tip.x, tip.y, 5, 0, Math.PI*2); ctx.fill();
-    // pivot hub
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.beginPath(); ctx.arc(C.x, C.y, 3.5, 0, Math.PI*2); ctx.fill();
-  }
-  ctx.lineCap = "butt";
-}
-
-/* --- MOTHER: Alien-cockpit console. Seven rows of incandescent bulbs (one
-   per dial); the lit bulb chases green -> amber -> red at the dial's rate,
-   with warm bloom, a filament hot-core, quasi-random flicker, and an
-   incandescent cool-down trail on the just-vacated bulb. --- */
-const MOTHER_COL = [[70,220,95],[255,175,45],[255,65,50]]; // green / amber / red
-function motherLayout(){
-  const w = viewW, h = viewH, rows = numDials;
-  const radius = Math.max(9, Math.min(20, Math.floor((h - 360) / rows / 2.6)));
-  const rowH = radius*2 + Math.max(9, radius*0.8);
-  const gridH = rows*rowH;
-  const colGap = Math.min(w*0.26, radius*4.6);
-  return { rows, radius, rowH, gridH, colGap,
-           top: Math.max(80, (h - 240 - gridH)/2), cx: w/2 };
-}
-function drawBulb(x, y, r, c, b){
-  if (b > 0.04){
-    const bloomR = r * (1.6 + b*1.8);
-    const g = ctx.createRadialGradient(x,y,0, x,y,bloomR);
-    g.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},${(0.45*b).toFixed(3)})`);
-    g.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`);
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(x,y,bloomR,0,Math.PI*2); ctx.fill();
-  }
-  const bb = 0.12 + 0.88*b;   // dark filament when off, warm when lit
-  ctx.fillStyle = `rgb(${Math.round(c[0]*bb)},${Math.round(c[1]*bb)},${Math.round(c[2]*bb)})`;
-  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
-  if (b > 0.55){             // white-hot filament core
-    ctx.fillStyle = `rgba(255,250,235,${((b-0.55)*1.5).toFixed(3)})`;
-    ctx.beginPath(); ctx.arc(x,y,r*0.5,0,Math.PI*2); ctx.fill();
-  }
-}
-function drawMother(t){
-  const L = motherLayout();
-  // console frame
-  ctx.strokeStyle = "rgba(255,150,40,0.22)";
-  ctx.lineWidth = 2;
-  const pad = L.radius*2.2;
-  const fx = L.cx - L.colGap - pad, fy = L.top - pad*0.5;
-  const fw = (L.colGap + pad)*2, fh = L.gridH + pad*0.5;
-  ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(fx, fy, fw, fh, 12); else ctx.rect(fx, fy, fw, fh);
-  ctx.stroke();
-
-  for (let i=0;i<numDials;i++){
-    const pos = posIndex(i, t);
-    const frac = (t % ticks[i]) / ticks[i];
-    const cy = L.top + i*L.rowH + L.radius;
-    for (let k=0;k<3;k++){
-      const cx = L.cx + (k-1)*L.colGap;
-      let b;
-      if (k === pos-1) b = 1;                                   // lit
-      else if (running && k === (pos+1)%3) b = Math.max(0, 0.7*(1 - frac/0.4)); // cooling trail
-      else b = 0.05;                                            // dark filament
-      if (b > 0.1 && running) b *= (0.85 + 0.09*Math.sin(t*17+i*3) + 0.06*Math.sin(t*41+k*5));
-      drawBulb(cx, cy, L.radius, MOTHER_COL[k], b);
     }
   }
 }
@@ -1333,10 +1330,8 @@ function draw(now){
     drawSevenRings(vizT);
   } else if (viewMode===5){
     drawWeave(vizT);
-  } else if (viewMode===6){
-    drawSep(vizT);
   } else {
-    drawMother(vizT);
+    drawSept(vizT);
   }
   drawTimerText();
   drawTapHint();
@@ -1429,7 +1424,7 @@ if (modeIdx !== undefined) {
 // Restore last-used view
 try {
   const savedView = parseInt(localStorage.getItem('salvationView'), 10);
-  if (savedView >= 0 && savedView <= 7){
+  if (savedView >= 0 && savedView <= 6){
     viewMode = savedView;
     btnView.textContent = VIEW_NAMES[viewMode];
   }
