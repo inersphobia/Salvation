@@ -691,9 +691,10 @@ function drawFractalView(t){
   const ancCell = anc || {a:F.A, b:F.B, c:F.C};
   const posK  = posIndex(k, t);
   const fracK = (t % ticks[k]) / ticks[k];
-  let holeCol = null;
-  if (posK === 2)      holeCol = "rgba(0,120,255,0.85)";  // first third filled
-  else if (posK === 3) holeCol = fracK > 0.85
+  let holeCol;
+  if (posK === 1)      holeCol = "rgb(0,0,0)";            // nothing filled yet: black
+  else if (posK === 2) holeCol = "rgba(0,120,255,0.85)";  // first third filled
+  else                 holeCol = fracK > 0.85
                          ? "rgba(255,70,70,0.95)"          // last filling -> pan
                          : "rgba(255,160,0,0.85)";         // second third filled
   if (holeCol){
