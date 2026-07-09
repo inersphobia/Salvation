@@ -682,6 +682,28 @@ function drawFractalView(t){
     ctx.closePath(); ctx.fill();
   }
 
+  // Cardinal hole: the central inverted triangle of the dot's parent
+  // counts how many of its three surrounding cells are already filled.
+  // Start black; above filled -> blue; right filled -> orange; left
+  // filling -> red, flushing exactly as the dot jumps to the next block.
+  const parent = levels[numDials-2];
+  const pos6  = posIndex(numDials-1, t);
+  const frac6 = (t % ticks[numDials-1]) / ticks[numDials-1];
+  let holeCol = null;
+  if (pos6 === 2)      holeCol = "rgba(0,120,255,0.9)";   // above filled
+  else if (pos6 === 3) holeCol = frac6 > 0.85
+                         ? "rgba(255,70,70,0.95)"         // left filling -> jump
+                         : "rgba(255,160,0,0.9)";         // right filled
+  if (holeCol){
+    const hAB=X({x:(parent.a.x+parent.b.x)/2, y:(parent.a.y+parent.b.y)/2});
+    const hBC=X({x:(parent.b.x+parent.c.x)/2, y:(parent.b.y+parent.c.y)/2});
+    const hCA=X({x:(parent.c.x+parent.a.x)/2, y:(parent.c.y+parent.a.y)/2});
+    ctx.fillStyle = holeCol;
+    ctx.beginPath();
+    ctx.moveTo(hAB.x,hAB.y); ctx.lineTo(hBC.x,hBC.y); ctx.lineTo(hCA.x,hCA.y);
+    ctx.closePath(); ctx.fill();
+  }
+
   // Adaptive grid: subdivide only what is on-screen and big enough to see
   const w=canvasAnim.width, h=canvasAnim.height;
   const grid = (pa,pb,pc,depth) => {
