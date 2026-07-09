@@ -129,7 +129,7 @@
 const numDials = 7;
 let timeMode = 0; // 0=27-min, 1=54-min, 2=81-min
 let viewMode = 0; // 0=septagram, 1=rings, 2=abacus, 3=fractal
-const VIEW_NAMES = ["STAR", "RINGS", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "SEPT"];
+const VIEW_NAMES = ["STAR", "RINGS", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "SEPT", "FRAME"];
 
 const dotsPerEdge = [1,2];
 const baseIntervals = [4860,1620,540,180,60,20,20/3];
@@ -1076,6 +1076,160 @@ function drawSept(t){
   ctx.beginPath(); ctx.arc(lx,lyc,L.lampR,0,Math.PI*2); ctx.fill();
 }
 
+/* --- FRAME: the practice flowchart as an interactive status board. Drag
+   the dark space to pan; tap a rectangle to make it the current status,
+   which then shows top-left on every view. --- */
+const FRAME_S = 0.8, FRAME_W = 1440, FRAME_H = 1180;
+const FRAME_BOXES = [
+  {x:255,  y:605,  w:170, h:110, lines:["Hold a mental","image of the goal"]},
+  {x:600,  y:745,  w:170, h:110, lines:["Hold a mental","image of the","process"]},
+  {x:872,  y:880,  w:170, h:110, lines:["Hold a mental","image of the","next step"]},
+  {x:1168, y:1005, w:195, h:115, lines:["Hold a mental model","of the structure of","the process"]},
+  {x:612,  y:372,  w:160, h:92,  lines:["Struggle to","hold it."]},
+  {x:612,  y:222,  w:160, h:92,  lines:["Write notes"]},
+  {x:612,  y:72,   w:160, h:92,  lines:["Take a walk"]},
+  {x:818,  y:72,   w:160, h:92,  lines:["Reset the","counter to (0,3]"]},
+  {x:868,  y:578,  w:160, h:115, lines:[], empty:true},
+  {x:1165, y:712,  w:160, h:115, lines:[], empty:true},
+];
+const FRAME_CIRCLES = [
+  {x:505, y:660, r:22, t:"<n>"}, {x:830, y:800, r:22, t:"<n>"}, {x:1122, y:935, r:22, t:"<n>"},
+  {x:505, y:418, r:27, t:"(0,3]"}, {x:505, y:267, r:27, t:"[4,6]"}, {x:505, y:117, r:27, t:"[7]"},
+];
+const FRAME_DOTS = [ {x:218, y:660, t:"0"}, {x:505, y:538, t:"1"}, {x:1032, y:267, t:"0"} ];
+const FRAME_EDGES = [
+  {c:"w", p:[[231,660],[249,660]]}, {c:"w", p:[[425,660],[478,660]]},
+  {c:"w", p:[[505,525],[505,452]]}, {c:"w", p:[[770,800],[803,800]]},
+  {c:"w", p:[[1042,935],[1095,935]]}, {c:"w", p:[[772,267],[1013,267]]},
+  {c:"w", p:[[772,117],[812,117]]},
+  {c:"w", p:[[772,418],[1032,418],[1032,286]]},
+  {c:"w", p:[[978,117],[1032,117],[1032,248]]},
+  {c:"b", p:[[532,418],[606,418]], l:"Y", lx:556, ly:407},
+  {c:"b", p:[[532,267],[606,267]], l:"Y", lx:556, ly:256},
+  {c:"b", p:[[532,117],[606,117]]},
+  {c:"b", p:[[505,682],[505,800],[594,800]], l:"Y", lx:514, ly:735},
+  {c:"b", p:[[830,822],[830,935],[866,935]], l:"Y", lx:839, ly:878},
+  {c:"b", p:[[1122,957],[1122,1062],[1162,1062]], l:"Y", lx:1131, ly:1010},
+  {c:"r", p:[[505,638],[505,556]], l:"N", lx:514, ly:600},
+  {c:"r", p:[[505,391],[505,299]], l:"N", lx:514, ly:349},
+  {c:"r", p:[[505,240],[505,149]], l:"N", lx:514, ly:198},
+  {c:"r", p:[[830,778],[830,636],[862,636]], l:"N", lx:839, ly:715},
+  {c:"r", p:[[1122,913],[1122,770],[1159,770]], l:"N", lx:1131, ly:848},
+];
+const FRAME_EDGE_COL = { w:"rgba(255,255,255,0.55)", b:"rgb(0,120,255)", r:"rgb(255,70,70)" };
+let frameCam = {x:-60, y:-15};
+let frameStatus = null;
+let frameSelected = -1;
+
+function clampFrameCam(){
+  frameCam.x = Math.max(Math.min(20, viewW - FRAME_W*FRAME_S - 20), Math.min(20, frameCam.x));
+  frameCam.y = Math.max(Math.min(20, viewH - FRAME_H*FRAME_S - 20), Math.min(20, frameCam.y));
+}
+
+function drawFrameView(){
+  clampFrameCam();
+  const s = FRAME_S, ox = frameCam.x, oy = frameCam.y;
+  const X = x => x*s + ox, Y = y => y*s + oy;
+  // edges
+  for (const e of FRAME_EDGES){
+    ctx.strokeStyle = FRAME_EDGE_COL[e.c];
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(X(e.p[0][0]), Y(e.p[0][1]));
+    for (let i=1;i<e.p.length;i++) ctx.lineTo(X(e.p[i][0]), Y(e.p[i][1]));
+    ctx.stroke();
+    // arrowhead along the final segment
+    const [x1,y1] = e.p[e.p.length-2], [x2,y2] = e.p[e.p.length-1];
+    const ang = Math.atan2(Y(y2)-Y(y1), X(x2)-X(x1));
+    ctx.fillStyle = FRAME_EDGE_COL[e.c];
+    ctx.beginPath();
+    ctx.moveTo(X(x2), Y(y2));
+    ctx.lineTo(X(x2)-9*Math.cos(ang-0.42), Y(y2)-9*Math.sin(ang-0.42));
+    ctx.lineTo(X(x2)-9*Math.cos(ang+0.42), Y(y2)-9*Math.sin(ang+0.42));
+    ctx.closePath(); ctx.fill();
+    if (e.l){
+      ctx.fillStyle = FRAME_EDGE_COL[e.c];
+      ctx.font = "bold 12px monospace";
+      ctx.textAlign = "left";
+      ctx.fillText(e.l, X(e.lx), Y(e.ly));
+    }
+  }
+  // boxes
+  FRAME_BOXES.forEach((b, i) => {
+    const sel = (i === frameSelected);
+    ctx.setLineDash(b.empty ? [5,5] : []);
+    ctx.strokeStyle = sel ? "rgba(255,255,255,0.95)"
+                          : b.empty ? "rgba(0,191,255,0.3)" : "rgba(0,191,255,0.55)";
+    ctx.lineWidth = sel ? 2.5 : 1.5;
+    ctx.fillStyle = sel ? "rgba(0,191,255,0.16)" : "rgba(0,191,255,0.06)";
+    septRect(ctx, X(b.x), Y(b.y), b.w*s, b.h*s, 9);
+    ctx.fill(); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = sel ? "#ffffff" : "#c7d3da";
+    ctx.font = "12px monospace";
+    ctx.textAlign = "left";
+    b.lines.forEach((ln, k) => ctx.fillText(ln, X(b.x+13), Y(b.y+34+k*20)));
+  });
+  // circles
+  ctx.textAlign = "center";
+  for (const c of FRAME_CIRCLES){
+    ctx.strokeStyle = "rgba(0,191,255,0.7)";
+    ctx.lineWidth = 1.5;
+    ctx.fillStyle = "black";
+    ctx.beginPath(); ctx.arc(X(c.x), Y(c.y), c.r*s, 0, Math.PI*2);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#9fd8ea";
+    ctx.font = "12px monospace";
+    ctx.fillText(c.t, X(c.x), Y(c.y)+4);
+  }
+  // LED junction dots
+  for (const d of FRAME_DOTS){
+    const dx = X(d.x), dy = Y(d.y);
+    const g = ctx.createRadialGradient(dx,dy,0, dx,dy, 22);
+    g.addColorStop(0, "rgba(255,255,255,0.5)");
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(dx,dy,22,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = "white";
+    ctx.beginPath(); ctx.arc(dx,dy,10,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = "black";
+    ctx.font = "bold 12px monospace";
+    ctx.fillText(d.t, dx, dy+4);
+  }
+  // hint
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.font = "12px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("drag dark space to pan - tap a box to set status", viewW/2, viewH - 130);
+}
+
+function frameBoxAt(cx, cy){
+  const wx = (cx - frameCam.x)/FRAME_S, wy = (cy - frameCam.y)/FRAME_S;
+  for (let i=0;i<FRAME_BOXES.length;i++){
+    const b = FRAME_BOXES[i];
+    if (!b.empty && wx>=b.x && wx<=b.x+b.w && wy>=b.y && wy<=b.y+b.h) return i;
+  }
+  return -1;
+}
+
+function drawStatus(){
+  if (!frameStatus) return;
+  ctx.font = "12px monospace";
+  ctx.textAlign = "left";
+  ctx.fillStyle = "rgba(0,191,255,0.85)";
+  // wrap to at most three short lines
+  const words = frameStatus.split(" ");
+  const lines = [];
+  let cur = "";
+  for (const w of words){
+    if ((cur + " " + w).trim().length > 26){ lines.push(cur.trim()); cur = w; }
+    else cur += " " + w;
+    if (lines.length === 3) break;
+  }
+  if (lines.length < 3 && cur.trim()) lines.push(cur.trim());
+  lines.forEach((ln, k) => ctx.fillText(ln, 14, 24 + k*16));
+}
+
 function getTextY(){
   if (viewMode===2){ const L = abacusLayout();  return L.top + L.gridH + 56; }
   if (viewMode===3){ const F = fractalLayout(); return F.topY + F.triH + 52; }
@@ -1084,7 +1238,7 @@ function getTextY(){
 }
 
 function toggleView(){
-  viewMode = (viewMode + 1) % 7;
+  viewMode = (viewMode + 1) % 8;
   btnView.textContent = VIEW_NAMES[viewMode];
   if (viewMode === 3){ fracCam.init = false; fracTrail.length = 0; } // snap camera on entry
   needsStaticRedraw = true;
@@ -1101,6 +1255,7 @@ function drawStaticLayer(){
   if (viewMode===4){ needsStaticRedraw = false; return; } // wheels render on the anim layer (spinning)
   if (viewMode===5){ needsStaticRedraw = false; return; } // weave renders on the anim layer (traveler)
   if (viewMode===6){ drawSeptStatic(); needsStaticRedraw = false; return; } // sept panel frames
+  if (viewMode===7){ needsStaticRedraw = false; return; } // frame renders on the anim layer (pannable)
 
   // Star lines - matched to the WEAVE track (thin, faint)
   ctxStatic.lineWidth = 1.5;
@@ -1330,11 +1485,16 @@ function draw(now){
     drawSevenRings(vizT);
   } else if (viewMode===5){
     drawWeave(vizT);
-  } else {
+  } else if (viewMode===6){
     drawSept(vizT);
+  } else {
+    drawFrameView();
   }
-  drawTimerText();
-  drawTapHint();
+  if (viewMode !== 7){
+    drawTimerText();
+    drawTapHint();
+  }
+  drawStatus();
 
   } catch (err) {
     console.error('Draw loop error:', err);
@@ -1351,12 +1511,55 @@ function toggleClock(){
 // The tap target sits on the icon itself (tap-to-start / pause / play),
 // drawn at (viewW/2, getTextY()+74) - so you tap the visible control.
 canvasAnim.addEventListener("click", (e) => {
+  if (viewMode === 7) return; // FRAME taps select boxes, not the clock
   const rect = canvasAnim.getBoundingClientRect();
   const dx = (e.clientX - rect.left) - rect.width/2;
   const dy = (e.clientY - rect.top)  - (getTextY() + 74);
   const r = 70;
   if (dx*dx + dy*dy <= r*r) toggleClock();
 });
+
+/* ---------- FRAME VIEW: pan (drag dark space) + select (tap a box) ---------- */
+let framePtr = null;
+canvasAnim.addEventListener("pointerdown", (e) => {
+  if (viewMode !== 7) return;
+  const rect = canvasAnim.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  framePtr = { x: cx, y: cy, camX: frameCam.x, camY: frameCam.y,
+               moved: false, boxAtDown: frameBoxAt(cx, cy) };
+});
+canvasAnim.addEventListener("pointermove", (e) => {
+  if (viewMode !== 7 || !framePtr) return;
+  const rect = canvasAnim.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  const dx = cx - framePtr.x, dy = cy - framePtr.y;
+  if (Math.abs(dx) + Math.abs(dy) > 8) framePtr.moved = true;
+  // pan only when the drag started on dark space, not on a box
+  if (framePtr.moved && framePtr.boxAtDown === -1){
+    frameCam.x = framePtr.camX + dx;
+    frameCam.y = framePtr.camY + dy;
+    clampFrameCam();
+  }
+});
+canvasAnim.addEventListener("pointerup", (e) => {
+  if (viewMode !== 7 || !framePtr){ framePtr = null; return; }
+  const rect = canvasAnim.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  if (!framePtr.moved){
+    const hit = frameBoxAt(cx, cy);
+    if (hit >= 0){
+      frameSelected = hit;
+      frameStatus = FRAME_BOXES[hit].lines.join(" ");
+      try {
+        localStorage.setItem('salvationStatus', frameStatus);
+        localStorage.setItem('salvationStatusIdx', hit);
+      } catch(err) {}
+      haptic('light');
+    }
+  }
+  framePtr = null;
+});
+canvasAnim.addEventListener("pointercancel", () => { framePtr = null; });
 
 /* ---------- PWA INSTALL PROMPT ---------- */
 let deferredPrompt;
@@ -1421,13 +1624,17 @@ if (modeIdx !== undefined) {
   btnMode.textContent = ["27-MIN", "54-MIN", "81-MIN"][timeMode];
 }
 
-// Restore last-used view
+// Restore last-used view and selected status
 try {
   const savedView = parseInt(localStorage.getItem('salvationView'), 10);
-  if (savedView >= 0 && savedView <= 6){
+  if (savedView >= 0 && savedView <= 7){
     viewMode = savedView;
     btnView.textContent = VIEW_NAMES[viewMode];
   }
+  const savedStatus = localStorage.getItem('salvationStatus');
+  if (savedStatus) frameStatus = savedStatus;
+  const savedIdx = parseInt(localStorage.getItem('salvationStatusIdx'), 10);
+  if (savedIdx >= 0 && savedIdx < FRAME_BOXES.length) frameSelected = savedIdx;
 } catch(e) {}
 
 updateTables();
