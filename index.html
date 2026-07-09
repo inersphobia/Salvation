@@ -1055,14 +1055,15 @@ function drawLEDs(t){
     const idx=activeIdx[i];
     const P=ledPath[i][idx];
     const s=worldToScreen(P.x,P.y);
-    const pos = posIndex(i, t);
-    // burst: a brief white-cored colored flash the instant the dot hops to
-    // a new corner (i.e. flashes blue -> orange -> red as it teleports)
-    const frac = (t % ticks[i]) / ticks[i];
-    const pulse = running ? Math.max(0, 1 - frac/0.2) : 0;
+    // At each corner the dot iterates blue -> orange -> red across the dwell
+    // (three sub-steps), bursting at each, then teleports to the next corner.
+    const T = ticks[i], subT = T/3;
+    const sub = Math.floor((t % T) / subT) % 3;      // 0/1/2 -> blue/orange/red
+    const subFrac = (t % subT) / subT;               // 0..1 within this color
+    const pulse = running ? Math.max(0, 1 - subFrac/0.4) : 0;
     if (pulse > 0.01){
-      const gc = WEAVE_COL[pos-1];
-      const R = 7 + 22*pulse;
+      const gc = WEAVE_COL[sub];
+      const R = 7 + 20*pulse;
       const g = ctx.createRadialGradient(s.x,s.y,0, s.x,s.y, R);
       g.addColorStop(0,   `rgba(255,255,255,${(0.9*pulse).toFixed(3)})`);
       g.addColorStop(0.4, withA(gc, (0.5*pulse).toFixed(3)));
@@ -1070,7 +1071,7 @@ function drawLEDs(t){
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(s.x,s.y, R, 0, Math.PI*2); ctx.fill();
     }
-    ctx.fillStyle = digitColor(pos);
+    ctx.fillStyle = digitColor(sub + 1);             // blue/orange/red (white when idle)
     ctx.beginPath(); ctx.arc(s.x,s.y, 6, 0, Math.PI*2); ctx.fill();
     if (pulse > 0.01){
       ctx.fillStyle = `rgba(255,255,255,${pulse.toFixed(3)})`;
