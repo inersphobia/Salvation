@@ -651,20 +651,6 @@ const FRACTAL_Z0 = 16; // starting zoom (frames roughly a level-4 cell)
 let fracCam = {x:0, y:0, init:false};
 let fracTrail = []; // recent leaf positions (world coords) for the motion trail
 
-// Leaf centroid (pre-camera coords) at an arbitrary time - used to glide
-// the dot smoothly toward where it will be at the next deepest tick.
-function fractalLeaf(F, tt){
-  let a=F.A, b=F.B, c=F.C;
-  for (let i=0;i<numDials;i++){
-    const pos=posIndex(i,tt);
-    const mAB={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
-    const mBC={x:(b.x+c.x)/2,y:(b.y+c.y)/2};
-    const mCA={x:(c.x+a.x)/2,y:(c.y+a.y)/2};
-    if(pos===1){b=mAB;c=mCA;} else if(pos===2){a=mAB;c=mBC;} else {a=mCA;b=mBC;}
-  }
-  return {x:(a.x+b.x+c.x)/3, y:(a.y+b.y+c.y)/3};
-}
-
 function drawFractalView(t){
   const F = fractalLayout();
 
@@ -681,14 +667,7 @@ function drawFractalView(t){
     else              { a=mCA; b=mBC; }   // left sub-triangle
     levels.push({a,b,c,pos});
   }
-  // Glide the dot toward its next cell over each deepest tick instead of
-  // teleporting - continuous motion, so there's no frozen wait to fill.
-  const beat6 = ticks[numDials-1];
-  const frac6 = (t % beat6) / beat6;
-  const leafNow = {x:(a.x+b.x+c.x)/3, y:(a.y+b.y+c.y)/3};
-  const leafNxt = fractalLeaf(F, t + beat6);
-  const leaf = { x: leafNow.x + (leafNxt.x-leafNow.x)*frac6,
-                 y: leafNow.y + (leafNxt.y-leafNow.y)*frac6 };
+  const leaf = {x:(a.x+b.x+c.x)/3, y:(a.y+b.y+c.y)/3};
   const cen  = {x:(F.A.x+F.B.x+F.C.x)/3, y:(F.A.y+F.B.y+F.C.y)/3};
 
   // Zoom out over the session, but linger deep through the middle and
@@ -770,25 +749,37 @@ function drawFractalView(t){
   };
   grid(F.A, F.B, F.C, 0);
 
-  // Motion trail: ~2.5s of fading breadcrumbs so the dance always reads
-  if (running) {
-    fracTrail.push({x: leaf.x, y: leaf.y});
-    if (fracTrail.length > 75) fracTrail.shift();
+  // Bursting traveler (WEAVE-style: bright white core + colored glow) that
+  // teleports and pulses at each stop. 27-min: hops cell-centers, colored by
+  // the cell's value. 54/81: hops the three corners of each cell in turn -
+  // top (blue), bottom-right (orange), bottom-left (red) - then the next
+  // cell's top; no separate center dot. Both hop about every 0.74s.
+  let px, py, col;
+  if (timeMode === 0){
+    const p = X(leaf);
+    px = p.x; py = p.y;
+    col = WEAVE_COL[posIndex(numDials-1, t) - 1];
+  } else {
+    const mc = X(leaf);
+    const subVal = Math.floor(t / (ticks[numDials-1]/3)) % 3;   // 0/1/2 corner
+    const raw = [X(a), X(b), X(c)][subVal];
+    // push the corner out to a minimum radius so each hop is visible
+    const MIN = 26, dx = raw.x-mc.x, dy = raw.y-mc.y, d = Math.hypot(dx,dy)||1, s = Math.max(1, MIN/d);
+    px = mc.x + dx*s; py = mc.y + dy*s;
+    col = WEAVE_COL[subVal];
   }
-  for (let i=0;i<fracTrail.length;i++){
-    const p = X(fracTrail[i]);
-    ctx.fillStyle = `rgba(255,255,255,${(i+1)/fracTrail.length * 0.45})`;
-    ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI*2); ctx.fill();
-  }
-
-  // Leaf marker: colored by posIndex(6) - in 54/81 that IS the 1/27
-  // counter, the same rate the dot moves - with a white edge for contrast.
-  const m = X(leaf);
-  ctx.fillStyle = WEAVE_COL[posIndex(numDials-1, t) - 1];
-  ctx.beginPath(); ctx.arc(m.x, m.y, 5.5, 0, Math.PI*2); ctx.fill();
-  ctx.lineWidth = 1.5;
-  ctx.strokeStyle = "rgba(255,255,255,0.85)";
-  ctx.stroke();
+  // burst: brightest and biggest right after each teleport, easing down
+  const hopRate = timeMode === 0 ? ticks[numDials-1] : ticks[numDials-1]/3;
+  const pulse = 1 - (t % hopRate) / hopRate;          // 1 at arrival -> 0 before next hop
+  const R = 10 + 16*pulse;
+  const gr = ctx.createRadialGradient(px,py,0, px,py, R);
+  gr.addColorStop(0,   "rgba(255,255,255,0.95)");
+  gr.addColorStop(0.4, withA(col, (0.15 + 0.5*pulse).toFixed(3)));
+  gr.addColorStop(1,   withA(col, "0"));
+  ctx.fillStyle = gr;
+  ctx.beginPath(); ctx.arc(px,py, R, 0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = "white";
+  ctx.beginPath(); ctx.arc(px,py, 4.5, 0,Math.PI*2); ctx.fill();
 
   // Mini-map (top right): the whole triangle, the framed region, and you.
   // This is what makes the zoom legible despite the fractal's self-similarity.
@@ -1213,12 +1204,13 @@ function toggleClock(){
   else startClock(); // startClock() itself restarts fresh after a finished cycle
   haptic('medium');
 }
-// Only taps near the middle of the screen start/pause/resume - edge taps ignored
+// The tap target sits on the icon itself (tap-to-start / pause / play),
+// drawn at (viewW/2, getTextY()+74) - so you tap the visible control.
 canvasAnim.addEventListener("click", (e) => {
   const rect = canvasAnim.getBoundingClientRect();
-  const dx = e.clientX - rect.left - rect.width/2;
-  const dy = e.clientY - rect.top  - rect.height/2;
-  const r = Math.min(rect.width, rect.height) * 0.30;
+  const dx = (e.clientX - rect.left) - rect.width/2;
+  const dy = (e.clientY - rect.top)  - (getTextY() + 74);
+  const r = 70;
   if (dx*dx + dy*dy <= r*r) toggleClock();
 });
 
