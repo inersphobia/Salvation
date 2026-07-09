@@ -724,21 +724,20 @@ function drawFractalView(t){
   const mmX = canvasAnim.width - mmW - 14, mmY = 16;
   const sx = mmW / (F.B.x - F.C.x);
   const M = p => ({x: mmX + (p.x - F.C.x)*sx, y: mmY + (p.y - F.topY)*sx});
+  // Red outline so the map reads over the blue geometry behind it
   const ma=M(F.A), mb=M(F.B), mc=M(F.C);
-  ctx.strokeStyle = "rgba(0,191,255,0.6)";
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(255,80,80,0.9)";
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(ma.x,ma.y); ctx.lineTo(mb.x,mb.y); ctx.lineTo(mc.x,mc.y);
   ctx.closePath(); ctx.stroke();
+  // The highlighted region IS the position indicator - no dot
   const va = anc || {a:F.A, b:F.B, c:F.C};
   const fa=M(va.a), fb=M(va.b), fc=M(va.c);
-  ctx.fillStyle = "rgba(255,255,255,0.3)";
+  ctx.fillStyle = "rgba(255,80,80,0.45)";
   ctx.beginPath();
   ctx.moveTo(fa.x,fa.y); ctx.lineTo(fb.x,fb.y); ctx.lineTo(fc.x,fc.y);
   ctx.closePath(); ctx.fill();
-  const lm = M(leaf);
-  ctx.fillStyle = "white";
-  ctx.beginPath(); ctx.arc(lm.x, lm.y, 2, 0, Math.PI*2); ctx.fill();
 }
 
 /* --- shared layout: where the timer text sits in each view --- */
