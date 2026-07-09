@@ -993,9 +993,9 @@ function drawStaticLayer(){
   if (viewMode===4){ needsStaticRedraw = false; return; } // wheels render on the anim layer (spinning)
   if (viewMode===5){ needsStaticRedraw = false; return; } // weave renders on the anim layer (traveler)
 
-  // Draw star lines on static canvas
-  ctxStatic.lineWidth = 3;
-  ctxStatic.strokeStyle = "#00bfff";
+  // Star lines - matched to the WEAVE track (thin, faint)
+  ctxStatic.lineWidth = 1.5;
+  ctxStatic.strokeStyle = "rgba(0,191,255,0.16)";
   for (let s of starLines){
     let a = worldToScreen(s.x1, s.y1);
     let b = worldToScreen(s.x2, s.y2);
@@ -1050,15 +1050,32 @@ function drawCenterDots(now){
   }
 }
 
-function drawLEDs(){
-  ctx.fillStyle="white";
+function drawLEDs(t){
   for (let i=0;i<numDials;i++){
     const idx=activeIdx[i];
     const P=ledPath[i][idx];
     const s=worldToScreen(P.x,P.y);
-    ctx.beginPath();
-    ctx.arc(s.x,s.y,6,0,Math.PI*2);
-    ctx.fill();
+    const pos = posIndex(i, t);
+    // burst: a brief white-cored colored flash the instant the dot hops to
+    // a new corner (i.e. flashes blue -> orange -> red as it teleports)
+    const frac = (t % ticks[i]) / ticks[i];
+    const pulse = running ? Math.max(0, 1 - frac/0.2) : 0;
+    if (pulse > 0.01){
+      const gc = WEAVE_COL[pos-1];
+      const R = 7 + 22*pulse;
+      const g = ctx.createRadialGradient(s.x,s.y,0, s.x,s.y, R);
+      g.addColorStop(0,   `rgba(255,255,255,${(0.9*pulse).toFixed(3)})`);
+      g.addColorStop(0.4, withA(gc, (0.5*pulse).toFixed(3)));
+      g.addColorStop(1,   withA(gc, "0"));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(s.x,s.y, R, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.fillStyle = digitColor(pos);
+    ctx.beginPath(); ctx.arc(s.x,s.y, 6, 0, Math.PI*2); ctx.fill();
+    if (pulse > 0.01){
+      ctx.fillStyle = `rgba(255,255,255,${pulse.toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(s.x,s.y, 3, 0, Math.PI*2); ctx.fill();
+    }
   }
 }
 
@@ -1192,7 +1209,7 @@ function draw(now){
   const vizT = finished ? totalCycle : elapsed;
   if (viewMode===0){
     drawCenterDots(now);
-    drawLEDs();
+    drawLEDs(vizT);
   } else if (viewMode===1){
     drawRingDots(vizT);
   } else if (viewMode===2){
@@ -1205,7 +1222,6 @@ function draw(now){
     drawWeave(vizT);
   }
   drawTimerText();
-  drawSubCounter(elapsed);
   drawTapHint();
 
   } catch (err) {
