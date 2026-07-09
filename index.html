@@ -682,22 +682,25 @@ function drawFractalView(t){
     ctx.closePath(); ctx.fill();
   }
 
-  // Cardinal hole: the central inverted triangle of the dot's parent
-  // counts how many of its three surrounding cells are already filled.
-  // Start black; above filled -> blue; right filled -> orange; left
-  // filling -> red, flushing exactly as the dot jumps to the next block.
-  const parent = levels[numDials-2];
-  const pos6  = posIndex(numDials-1, t);
-  const frac6 = (t % ticks[numDials-1]) / ticks[numDials-1];
-  let holeCol = null;
-  if (pos6 === 2)      holeCol = "rgba(0,120,255,0.9)";   // above filled
-  else if (pos6 === 3) holeCol = frac6 > 0.85
-                         ? "rgba(255,70,70,0.95)"         // left filling -> jump
-                         : "rgba(255,160,0,0.9)";         // right filled
+  // Cardinal hole: the central inverted triangle of the FRAMED region
+  // (the cell the camera is focused on, dead center). It counts how many
+  // of its three sub-regions are filled - black -> blue -> orange -> red -
+  // going red exactly as the last fills and the camera pans to the next
+  // section. anc's children are selected by posIndex(k); one full cycle
+  // of that digit == exactly how long this region stays framed.
+  const ancCell = anc || {a:F.A, b:F.B, c:F.C};
+  const posK  = posIndex(k, t);
+  const fracK = (t % ticks[k]) / ticks[k];
+  let holeCol;
+  if (posK === 1)      holeCol = "rgb(0,0,0)";            // nothing filled yet: black
+  else if (posK === 2) holeCol = "rgba(0,120,255,0.85)";  // first third filled
+  else                 holeCol = fracK > 0.85
+                         ? "rgba(255,70,70,0.95)"          // last filling -> pan
+                         : "rgba(255,160,0,0.85)";         // second third filled
   if (holeCol){
-    const hAB=X({x:(parent.a.x+parent.b.x)/2, y:(parent.a.y+parent.b.y)/2});
-    const hBC=X({x:(parent.b.x+parent.c.x)/2, y:(parent.b.y+parent.c.y)/2});
-    const hCA=X({x:(parent.c.x+parent.a.x)/2, y:(parent.c.y+parent.a.y)/2});
+    const hAB=X({x:(ancCell.a.x+ancCell.b.x)/2, y:(ancCell.a.y+ancCell.b.y)/2});
+    const hBC=X({x:(ancCell.b.x+ancCell.c.x)/2, y:(ancCell.b.y+ancCell.c.y)/2});
+    const hCA=X({x:(ancCell.c.x+ancCell.a.x)/2, y:(ancCell.c.y+ancCell.a.y)/2});
     ctx.fillStyle = holeCol;
     ctx.beginPath();
     ctx.moveTo(hAB.x,hAB.y); ctx.lineTo(hBC.x,hBC.y); ctx.lineTo(hCA.x,hCA.y);
