@@ -855,7 +855,10 @@ function weaveSite(v){
   return worldToScreen(6*Math.cos(ang), 6*Math.sin(ang));
 }
 function drawWeave(t){
-  const beat = ticks[numDials-1];              // fastest tick: one edge per beat
+  // One leg per tick of the smallest DISPLAYED counter (1/27 of a minute),
+  // in every mode - the traveler arrives at each site exactly as that
+  // counter ticks. (1/27 min is dial 5 in 27-min mode, dial 6 in 54/81.)
+  const beat = ticks[timeMode===0 ? 5 : 6];
   const Eg = Math.floor(t / beat);             // global edge (leg) index
   const p  = (t / beat) - Eg;                  // 0..1 along the current leg
   const vtx = k => (2*(((k%7)+7)%7)) % 7;      // loop position -> vertex index
