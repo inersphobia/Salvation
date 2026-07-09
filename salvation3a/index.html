@@ -737,23 +737,35 @@ function drawFractalView(t){
   mmFill({a:F.A, b:F.B, c:F.C}, "rgb(224,72,72)"); // solid, even red field
   mmFill(levels[2], "rgb(0,0,0)");                 // the active cell: a hole
 
-  // Black division lines over the field
+  // Black division lines over the field, down to the same cell size as
+  // the black active cell (level 3), so the hole is always one grid cell
   const mmGrid = (pa,pb,pc,depth) => {
     const ga=M(pa), gb=M(pb), gc=M(pc);
     if (depth > 0){
-      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.strokeStyle = depth === 3 ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.6)";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(ga.x,ga.y); ctx.lineTo(gb.x,gb.y); ctx.lineTo(gc.x,gc.y);
       ctx.closePath(); ctx.stroke();
     }
-    if (depth >= 2) return;
+    if (depth >= 3) return;
     const gAB={x:(pa.x+pb.x)/2, y:(pa.y+pb.y)/2};
     const gBC={x:(pb.x+pc.x)/2, y:(pb.y+pc.y)/2};
     const gCA={x:(pc.x+pa.x)/2, y:(pc.y+pa.y)/2};
     mmGrid(pa,gAB,gCA,depth+1); mmGrid(gAB,pb,gBC,depth+1); mmGrid(gCA,gBC,pc,depth+1);
   };
   mmGrid(F.A, F.B, F.C, 0);
+
+  // Thick red frame so the black hole never merges with the page
+  // background when the active cell sits against the map's edge
+  const ma=M(F.A), mb=M(F.B), mc=M(F.C);
+  ctx.strokeStyle = "rgb(224,72,72)";
+  ctx.lineWidth = 4;
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(ma.x,ma.y); ctx.lineTo(mb.x,mb.y); ctx.lineTo(mc.x,mc.y);
+  ctx.closePath(); ctx.stroke();
+  ctx.lineJoin = "miter";
 }
 
 /* --- shared layout: where the timer text sits in each view --- */
