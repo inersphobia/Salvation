@@ -691,12 +691,14 @@ function drawFractalView(t){
   const ancCell = anc || {a:F.A, b:F.B, c:F.C};
   const posK  = posIndex(k, t);
   const fracK = (t % ticks[k]) / ticks[k];
-  let holeCol;
-  if (posK === 1)      holeCol = "rgb(0,0,0)";            // nothing filled yet: black
-  else if (posK === 2) holeCol = "rgba(0,120,255,0.85)";  // first third filled
-  else                 holeCol = fracK > 0.85
-                         ? "rgba(255,70,70,0.95)"          // last filling -> pan
-                         : "rgba(255,160,0,0.85)";         // second third filled
+  // Advance the color the instant the dot ENTERS the last (deepest) cell
+  // of the current sub-region - not when the region completes. That last
+  // cell lasts ticks[deepest]; entering it is "the last dot hitting the
+  // last triangle", so the change lands exactly there for all three.
+  const lastFrac = 1 - ticks[numDials-1] / ticks[k];
+  const stage = (posK - 1) + (fracK >= lastFrac ? 1 : 0); // 0..3
+  const holeCol = ["rgb(0,0,0)", "rgba(0,120,255,0.85)",
+                   "rgba(255,160,0,0.85)", "rgba(255,70,70,0.95)"][stage];
   if (holeCol){
     const hAB=X({x:(ancCell.a.x+ancCell.b.x)/2, y:(ancCell.a.y+ancCell.b.y)/2});
     const hBC=X({x:(ancCell.b.x+ancCell.c.x)/2, y:(ancCell.b.y+ancCell.c.y)/2});
