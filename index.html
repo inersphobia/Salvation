@@ -727,31 +727,35 @@ function drawFractalView(t){
   const mmX = canvasAnim.width - mmW - 14, mmY = 16;
   const sx = mmW / (F.B.x - F.C.x);
   const M = p => ({x: mmX + (p.x - F.C.x)*sx, y: mmY + (p.y - F.topY)*sx});
-  // Red outline so the map reads over the blue geometry behind it
-  const ma=M(F.A), mb=M(F.B), mc=M(F.C);
-  ctx.strokeStyle = "rgba(255,80,80,0.9)";
-  ctx.lineWidth = 1.5;
+  // Highlight the current cells, snapped to the map's own grid:
+  // the big third tinted, the level-2 cell fully opaque
+  const L1 = levels[0], L2 = levels[1];
+  const t1=[M(L1.a),M(L1.b),M(L1.c)], t2=[M(L2.a),M(L2.b),M(L2.c)];
+  ctx.fillStyle = "rgba(255,80,80,0.35)";
   ctx.beginPath();
-  ctx.moveTo(ma.x,ma.y); ctx.lineTo(mb.x,mb.y); ctx.lineTo(mc.x,mc.y);
-  ctx.closePath(); ctx.stroke();
-  // The highlighted region IS the position indicator - no dot.
-  // Floor its size so it stays visible even when the framed cell is tiny
-  // (early session), and fill solid so it reads at a glance.
-  const va = anc || {a:F.A, b:F.B, c:F.C};
-  let fa=M(va.a), fb=M(va.b), fc=M(va.c);
-  const fcx=(fa.x+fb.x+fc.x)/3, fcy=(fa.y+fb.y+fc.y)/3;
-  const fh = Math.max(fa.y,fb.y,fc.y) - Math.min(fa.y,fb.y,fc.y);
-  const MIN_MM = 10;
-  if (fh > 0 && fh < MIN_MM){
-    const s = MIN_MM/fh;
-    fa = {x: fcx+(fa.x-fcx)*s, y: fcy+(fa.y-fcy)*s};
-    fb = {x: fcx+(fb.x-fcx)*s, y: fcy+(fb.y-fcy)*s};
-    fc = {x: fcx+(fc.x-fcx)*s, y: fcy+(fc.y-fcy)*s};
-  }
-  ctx.fillStyle = "rgba(255,80,80,0.85)";
-  ctx.beginPath();
-  ctx.moveTo(fa.x,fa.y); ctx.lineTo(fb.x,fb.y); ctx.lineTo(fc.x,fc.y);
+  ctx.moveTo(t1[0].x,t1[0].y); ctx.lineTo(t1[1].x,t1[1].y); ctx.lineTo(t1[2].x,t1[2].y);
   ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "rgb(255,80,80)";
+  ctx.beginPath();
+  ctx.moveTo(t2[0].x,t2[0].y); ctx.lineTo(t2[1].x,t2[1].y); ctx.lineTo(t2[2].x,t2[2].y);
+  ctx.closePath(); ctx.fill();
+
+  // Grid of the largest triangles (two levels, 9 cells) over the fills;
+  // red so the whole map reads over the blue primary geometry
+  const mmGrid = (pa,pb,pc,depth) => {
+    const ga=M(pa), gb=M(pb), gc=M(pc);
+    ctx.strokeStyle = depth===0 ? "rgba(255,80,80,0.9)" : "rgba(255,80,80,0.4)";
+    ctx.lineWidth = depth===0 ? 1.5 : 1;
+    ctx.beginPath();
+    ctx.moveTo(ga.x,ga.y); ctx.lineTo(gb.x,gb.y); ctx.lineTo(gc.x,gc.y);
+    ctx.closePath(); ctx.stroke();
+    if (depth >= 2) return;
+    const gAB={x:(pa.x+pb.x)/2, y:(pa.y+pb.y)/2};
+    const gBC={x:(pb.x+pc.x)/2, y:(pb.y+pc.y)/2};
+    const gCA={x:(pc.x+pa.x)/2, y:(pc.y+pa.y)/2};
+    mmGrid(pa,gAB,gCA,depth+1); mmGrid(gAB,pb,gBC,depth+1); mmGrid(gCA,gBC,pc,depth+1);
+  };
+  mmGrid(F.A, F.B, F.C, 0);
 }
 
 /* --- shared layout: where the timer text sits in each view --- */
