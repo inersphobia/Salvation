@@ -305,19 +305,30 @@ function playCompletionTone(){
 
 /* ---------- RESPONSIVE SCALING ---------- */
 let needsStaticRedraw = true;
+let viewW = window.innerWidth, viewH = window.innerHeight; // logical (CSS px)
 
 function resizeCanvas(){
   const w = window.innerWidth;
   const h = window.innerHeight;
-  
-  canvasStatic.width = canvasAnim.width = w;
-  canvasStatic.height = canvasAnim.height = h;
+  viewW = w; viewH = h;
+
+  // Render the backing buffer at device resolution so the figure stays
+  // crisp on high-DPI screens (the pixelation seen during pans); keep all
+  // drawing math in CSS pixels via a base DPR transform. Capped at 2 to
+  // bound fill cost at 30fps.
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvasStatic.width  = canvasAnim.width  = Math.round(w * dpr);
+  canvasStatic.height = canvasAnim.height = Math.round(h * dpr);
+  canvasStatic.style.width  = canvasAnim.style.width  = w + "px";
+  canvasStatic.style.height = canvasAnim.style.height = h + "px";
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctxStatic.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   scaleF = Math.min(
     (h * 0.33) / WORLD_RADIUS,
     (w * 0.45) / WORLD_RADIUS
   );
-  
+
   needsStaticRedraw = true;
 }
 window.addEventListener("resize", resizeCanvas);
@@ -334,8 +345,8 @@ function updateTables(){
 /* ---------- UTILS ---------- */
 function worldToScreen(x,y){
   return {
-    x: x*scaleF + canvasAnim.width/2,
-    y: -y*scaleF + canvasAnim.height/2 - 40
+    x: x*scaleF + viewW/2,
+    y: -y*scaleF + viewH/2 - 40
   };
 }
 
@@ -570,7 +581,7 @@ function drawRingDots(t){
 
 /* --- abacus: 7 rows of 3 cells, top row = slowest digit --- */
 function abacusLayout(){
-  const w = canvasAnim.width, h = canvasAnim.height;
+  const w = viewW, h = viewH;
   const gap = 6;
   const cell = Math.max(22, Math.min(52,
     Math.floor(Math.min((w*0.7 - 2*gap)/3, (h - 320 - 6*gap)/7))));
@@ -607,7 +618,7 @@ function drawAbacusDots(t){
 
 /* --- fractal: Sierpinski descent, each digit picks a sub-triangle --- */
 function fractalLayout(){
-  const w = canvasAnim.width, h = canvasAnim.height;
+  const w = viewW, h = viewH;
   const S = Math.min(w*0.88, (h - 300)/0.866);
   const triH = S*0.866;
   const topY = Math.max(16, (h - 230 - triH)/2);
@@ -710,7 +721,7 @@ function drawFractalView(t){
   }
 
   // Adaptive grid: subdivide only what is on-screen and big enough to see
-  const w=canvasAnim.width, h=canvasAnim.height;
+  const w=viewW, h=viewH;
   const grid = (pa,pb,pc,depth) => {
     const ta=X(pa), tb=X(pb), tc=X(pc);
     const minX=Math.min(ta.x,tb.x,tc.x), maxX=Math.max(ta.x,tb.x,tc.x);
@@ -747,8 +758,8 @@ function drawFractalView(t){
 
   // Mini-map (top right): the whole triangle, the framed region, and you.
   // This is what makes the zoom legible despite the fractal's self-similarity.
-  const mmW = Math.min(112, canvasAnim.width*0.25);
-  const mmX = canvasAnim.width - mmW - 14, mmY = 16;
+  const mmW = Math.min(112, viewW*0.25);
+  const mmX = viewW - mmW - 14, mmY = 16;
   const sx = mmW / (F.B.x - F.C.x);
   const M = p => ({x: mmX + (p.x - F.C.x)*sx, y: mmY + (p.y - F.topY)*sx});
   // Inverted key map: an opaque red field with a black hole where the
@@ -801,7 +812,7 @@ function drawFractalView(t){
 function getTextY(){
   if (viewMode===2){ const L = abacusLayout();  return L.top + L.gridH + 56; }
   if (viewMode===3){ const F = fractalLayout(); return F.topY + F.triH + 52; }
-  return canvasAnim.height/2 - 40;
+  return viewH/2 - 40;
 }
 
 function toggleView(){
@@ -814,7 +825,7 @@ function toggleView(){
 
 /* ---------- DRAW HELPERS ---------- */
 function drawStaticLayer(){
-  ctxStatic.clearRect(0, 0, canvasStatic.width, canvasStatic.height);
+  ctxStatic.clearRect(0, 0, viewW, viewH);
   
   if (viewMode===1){ drawRingsStatic();   needsStaticRedraw = false; return; }
   if (viewMode===2){ drawAbacusStatic();  needsStaticRedraw = false; return; }
@@ -896,10 +907,10 @@ function drawSubCounter(elapsed){
   const e = finished ? totalCycle : elapsed;
   const pos = Math.floor(e / (ticks[6]/3)) % 3; // always one subdivision (3x) faster than the top triangle
 
-  const cellW = canvasAnim.width < 500 ? 20 : 24;
+  const cellW = viewW < 500 ? 20 : 24;
   const cellH = cellW;
   const totalW = cellW * 3;
-  const left = canvasAnim.width / 2 - totalW / 2;
+  const left = viewW / 2 - totalW / 2;
   const top  = getTextY() + 14;
   const dotR = cellW * 0.22;
 
@@ -922,14 +933,14 @@ function drawSubCounter(elapsed){
 
 function drawTimerText(){
   const y = getTextY();
-  ctx.font = canvasAnim.width < 500 ? "32px monospace" : "40px monospace";
+  ctx.font = viewW < 500 ? "32px monospace" : "40px monospace";
 
   // Overtime and idle keep a single color
   const idle = !running && !finished && pauseMs === 0;
   if (finished || idle){
     ctx.fillStyle = finished ? "#ff9500" : "white";
     ctx.textAlign = "center";
-    ctx.fillText(timerStr, canvasAnim.width/2, y);
+    ctx.fillText(timerStr, viewW/2, y);
     return;
   }
 
@@ -937,7 +948,7 @@ function drawTimerText(){
   // view (0=blue, 1=orange, 2=red) - so text and animation visibly rhyme
   const DIGIT_COLORS = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"];
   ctx.textAlign = "left";
-  let x = canvasAnim.width/2 - ctx.measureText(timerStr).width/2;
+  let x = viewW/2 - ctx.measureText(timerStr).width/2;
   for (const ch of timerStr){
     ctx.fillStyle = (ch >= "0" && ch <= "2") ? DIGIT_COLORS[+ch] : "rgba(255,255,255,0.85)";
     ctx.fillText(ch, x, y);
@@ -951,9 +962,9 @@ function drawTapHint(){
              : pauseMs > 0 ? "tap to resume"
              : "tap to start";
   ctx.fillStyle = "rgba(255,255,255,0.45)";
-  ctx.font = canvasAnim.width < 500 ? "14px system-ui, sans-serif" : "16px system-ui, sans-serif";
+  ctx.font = viewW < 500 ? "14px system-ui, sans-serif" : "16px system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(hint, canvasAnim.width/2, getTextY() + 74);
+  ctx.fillText(hint, viewW/2, getTextY() + 74);
 }
 
 /* ---------- MAIN DRAW LOOP ---------- */
@@ -970,7 +981,7 @@ function draw(now){
     }
 
     // Clear only the animation canvas (not the static background)
-    ctx.clearRect(0, 0, canvasAnim.width, canvasAnim.height);
+    ctx.clearRect(0, 0, viewW, viewH);
 
     const elapsed = running ? (now-startMs)/1000 : pauseMs/1000;
 
