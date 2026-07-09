@@ -713,11 +713,8 @@ function drawFractalView(t){
     ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI*2); ctx.fill();
   }
 
-  // Leaf marker: bright dot with a halo ring
+  // Leaf marker: clean bright dot
   const m = X(leaf);
-  ctx.strokeStyle = "rgba(255,255,255,0.35)";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(m.x, m.y, 9, 0, Math.PI*2); ctx.stroke();
   ctx.fillStyle = "white";
   ctx.beginPath(); ctx.arc(m.x, m.y, 5, 0, Math.PI*2); ctx.fill();
 
@@ -727,9 +724,9 @@ function drawFractalView(t){
   const mmX = canvasAnim.width - mmW - 14, mmY = 16;
   const sx = mmW / (F.B.x - F.C.x);
   const M = p => ({x: mmX + (p.x - F.C.x)*sx, y: mmY + (p.y - F.topY)*sx});
-  // Highlight the current cells, snapped to the map's own grid, three
-  // levels deep: big third tinted, level-2 stronger, level-3 solid.
-  // Level-3 tracks the action the main view is visibly working through.
+  // Inverted key map: an opaque red field with a black hole where the
+  // timer currently works. Darkening steps toward the hole preserve the
+  // three-digit hierarchy (third -> level-2 -> level-3 black).
   const mmFill = (L, style) => {
     const p=[M(L.a),M(L.b),M(L.c)];
     ctx.fillStyle = style;
@@ -737,15 +734,15 @@ function drawFractalView(t){
     ctx.moveTo(p[0].x,p[0].y); ctx.lineTo(p[1].x,p[1].y); ctx.lineTo(p[2].x,p[2].y);
     ctx.closePath(); ctx.fill();
   };
-  mmFill(levels[0], "rgba(255,80,80,0.22)");
-  mmFill(levels[1], "rgba(255,80,80,0.45)");
-  mmFill(levels[2], "rgb(255,80,80)");
+  mmFill({a:F.A, b:F.B, c:F.C}, "rgb(224,72,72)"); // solid field
+  mmFill(levels[0], "rgba(0,0,0,0.22)");
+  mmFill(levels[1], "rgba(0,0,0,0.4)");
+  mmFill(levels[2], "rgb(0,0,0)");                 // the active cell: a hole
 
-  // Grid of the largest triangles (two levels, 9 cells) over the fills;
-  // red so the whole map reads over the blue primary geometry
+  // Etched grid of the largest triangles over the field
   const mmGrid = (pa,pb,pc,depth) => {
     const ga=M(pa), gb=M(pb), gc=M(pc);
-    ctx.strokeStyle = depth===0 ? "rgba(255,80,80,0.9)" : "rgba(255,80,80,0.4)";
+    ctx.strokeStyle = depth===0 ? "rgba(255,120,120,0.9)" : "rgba(0,0,0,0.35)";
     ctx.lineWidth = depth===0 ? 1.5 : 1;
     ctx.beginPath();
     ctx.moveTo(ga.x,ga.y); ctx.lineTo(gb.x,gb.y); ctx.lineTo(gc.x,gc.y);
