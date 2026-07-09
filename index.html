@@ -39,29 +39,7 @@
     background: rgba(20, 20, 20, 0.92);
     border-top: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 16px 16px 0 0;
-    padding: 4px 12px calc(10px + env(safe-area-inset-bottom, 0px));
-  }
-
-  #sheetHandle {
-    width: 64px;
-    height: 24px;
-    margin: 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-  }
-  #sheetHandle::before {
-    content: "";
-    width: 36px;
-    height: 4px;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, 0.3);
-  }
-  #sheetHandle:focus-visible {
-    outline: 2px solid #0074ff;
-    outline-offset: 2px;
-    border-radius: 6px;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
   }
 
   .ui-row {
@@ -69,22 +47,6 @@
     justify-content: center;
     gap: 8px;
     flex-wrap: wrap;
-  }
-
-  #uiSecondary {
-    max-height: 0;
-    opacity: 0;
-    overflow: hidden;
-    margin-top: 0;
-    transition: max-height 0.25s ease, opacity 0.25s ease, margin-top 0.25s ease;
-  }
-  #ui.open #uiSecondary {
-    max-height: 120px;
-    opacity: 1;
-    margin-top: 8px;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    #uiSecondary { transition: none; }
   }
 
   /* 48dp minimum touch targets (Material guidelines) */
@@ -156,13 +118,10 @@
 </div>
 
 <div id="ui">
-  <div id="sheetHandle" role="button" tabindex="0" aria-label="More controls"></div>
   <div class="ui-row" id="uiPrimary">
     <button id="btnStart">START</button>
     <button id="btnPause">PAUSE</button>
     <button id="btnReset">RESET</button>
-  </div>
-  <div class="ui-row" id="uiSecondary">
     <button id="btnMode">27-MIN</button>
   </div>
 </div>
@@ -726,22 +685,6 @@ function draw(now){
 
 /* ---------- TOUCH GESTURES ---------- */
 // Touch gestures disabled - use buttons only
-
-/* ---------- BOTTOM SHEET ---------- */
-const uiSheet = document.getElementById("ui");
-const sheetHandle = document.getElementById("sheetHandle");
-
-function toggleSheet(){
-  uiSheet.classList.toggle("open");
-  haptic('light');
-}
-sheetHandle.addEventListener("click", toggleSheet);
-sheetHandle.addEventListener("keydown", e=>{
-  if (e.key==="Enter" || e.key===" "){
-    e.preventDefault();
-    toggleSheet();
-  }
-});
 
 /* ---------- PWA INSTALL PROMPT ---------- */
 let deferredPrompt;
