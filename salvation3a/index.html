@@ -518,7 +518,7 @@ function finishClock(){
 }
 
 function toggleMode(){
-  if (running || finished) return;
+  if (running || finished || pauseMs > 0) return;  // must RESET to a clean state first
   timeMode = (timeMode + 1) % 3;
   btnMode.textContent = ["27-MIN", "54-MIN", "81-MIN"][timeMode];
   updateTables();
@@ -580,13 +580,15 @@ function drawRingDots(t){
 }
 
 /* --- abacus: 7 rows of 3 cells, top row = slowest digit --- */
+const ABACUS_ROWS = numDials + 1;   // 7 dials + a 1/81 incrementer row at the bottom
 function abacusLayout(){
   const w = viewW, h = viewH;
   const gap = 6;
-  const cell = Math.max(22, Math.min(52,
-    Math.floor(Math.min((w*0.7 - 2*gap)/3, (h - 320 - 6*gap)/7))));
-  const gridW = 3*cell + 2*gap, gridH = 7*cell + 6*gap;
-  return { cell, gap, gridW, gridH,
+  const R = ABACUS_ROWS;
+  const cell = Math.max(20, Math.min(48,
+    Math.floor(Math.min((w*0.7 - 2*gap)/3, (h - 320 - (R-1)*gap)/R))));
+  const gridW = 3*cell + 2*gap, gridH = R*cell + (R-1)*gap;
+  return { cell, gap, gridW, gridH, rows: R,
            left: (w - gridW)/2,
            top: Math.max(16, (h - 230 - gridH)/2) };
 }
@@ -595,7 +597,7 @@ function drawAbacusStatic(){
   const L = abacusLayout();
   ctxStatic.lineWidth = 2;
   ctxStatic.strokeStyle = "rgba(0,191,255,0.85)";
-  for (let i=0;i<numDials;i++){
+  for (let i=0;i<L.rows;i++){
     const y = L.top + i*(L.cell + L.gap);
     for (let k=0;k<3;k++){
       ctxStatic.strokeRect(L.left + k*(L.cell + L.gap), y, L.cell, L.cell);
@@ -605,15 +607,22 @@ function drawAbacusStatic(){
 
 function drawAbacusDots(t){
   const L = abacusLayout();
-  for (let i=0;i<numDials;i++){
-    const pos = posIndex(i,t);
+  const dot = (col, row, pos) => {
     ctx.fillStyle = digitColor(pos);
     ctx.beginPath();
-    ctx.arc(L.left + (pos-1)*(L.cell + L.gap) + L.cell/2,
-            L.top + i*(L.cell + L.gap) + L.cell/2,
+    ctx.arc(L.left + col*(L.cell + L.gap) + L.cell/2,
+            L.top + row*(L.cell + L.gap) + L.cell/2,
             L.cell*0.28, 0, Math.PI*2);
     ctx.fill();
+  };
+  for (let i=0;i<numDials;i++){
+    const pos = posIndex(i,t);
+    dot(pos-1, i, pos);
   }
+  // bottom row: the 1/81 incrementer (one subdivision faster than the top dial)
+  const e = finished ? totalCycle : t;
+  const incVal = Math.floor(e / (ticks[6]/3)) % 3;   // 0/1/2
+  dot(incVal, numDials, incVal + 1);
 }
 
 /* --- fractal: Sierpinski descent, each digit picks a sub-triangle --- */
@@ -1022,8 +1031,11 @@ function drawLEDs(){
 }
 
 function drawSubCounter(elapsed){
-  // Hidden in 27-min mode: at 1/243 min per box it reads as shimmer, and
-  // the deepest dial already pulses at the sweep rate (20/27s)
+  // Only on STAR and FRACTAL views - the ones where a wait can feel long.
+  // (The abacus shows it as its bottom row instead; other views move
+  // continuously and don't need it.) Also hidden in 27-min mode, where it
+  // ticks too fast to read.
+  if (viewMode !== 0 && viewMode !== 3) return;
   if (timeMode === 0) return;
   const e = finished ? totalCycle : elapsed;
   const pos = Math.floor(e / (ticks[6]/3)) % 3; // always one subdivision (3x) faster than the top triangle
@@ -1078,14 +1090,27 @@ function drawTimerText(){
 }
 
 function drawTapHint(){
-  if (running) return;
-  const hint = finished ? "tap to restart"
-             : pauseMs > 0 ? "tap to resume"
-             : "tap to start";
-  ctx.fillStyle = "rgba(255,255,255,0.45)";
-  ctx.font = viewW < 500 ? "14px system-ui, sans-serif" : "16px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(hint, viewW/2, getTextY() + 74);
+  const cx = viewW/2, y = getTextY() + 74;
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  if (running){
+    // pause icon (two bars) - a tap will pause
+    const bw=4.5, bh=16, gap=4;
+    ctx.fillRect(cx - gap - bw, y - bh/2, bw, bh);
+    ctx.fillRect(cx + gap,      y - bh/2, bw, bh);
+  } else if (finished || pauseMs > 0){
+    // play icon (right triangle) - a tap will resume / restart
+    const s=9;
+    ctx.beginPath();
+    ctx.moveTo(cx - s*0.6, y - s);
+    ctx.lineTo(cx - s*0.6, y + s);
+    ctx.lineTo(cx + s,     y);
+    ctx.closePath(); ctx.fill();
+  } else {
+    // not started yet
+    ctx.font = viewW < 500 ? "14px system-ui, sans-serif" : "16px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("tap to start", cx, y);
+  }
 }
 
 /* ---------- MAIN DRAW LOOP ---------- */
@@ -1164,7 +1189,14 @@ function toggleClock(){
   else startClock(); // startClock() itself restarts fresh after a finished cycle
   haptic('medium');
 }
-canvasAnim.addEventListener("click", toggleClock);
+// Only taps near the middle of the screen start/pause/resume - edge taps ignored
+canvasAnim.addEventListener("click", (e) => {
+  const rect = canvasAnim.getBoundingClientRect();
+  const dx = e.clientX - rect.left - rect.width/2;
+  const dy = e.clientY - rect.top  - rect.height/2;
+  const r = Math.min(rect.width, rect.height) * 0.30;
+  if (dx*dx + dy*dy <= r*r) toggleClock();
+});
 
 /* ---------- PWA INSTALL PROMPT ---------- */
 let deferredPrompt;
