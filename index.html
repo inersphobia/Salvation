@@ -834,6 +834,9 @@ function drawLEDs(){
 }
 
 function drawSubCounter(elapsed){
+  // Hidden in 27-min mode: at 1/243 min per box it reads as shimmer, and
+  // the deepest dial already pulses at the sweep rate (20/27s)
+  if (timeMode === 0) return;
   const e = finished ? totalCycle : elapsed;
   const pos = Math.floor(e / (ticks[6]/3)) % 3; // always one subdivision (3x) faster than the top triangle
 
