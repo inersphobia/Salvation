@@ -650,9 +650,12 @@ function drawFractalView(t){
   const leaf = {x:(a.x+b.x+c.x)/3, y:(a.y+b.y+c.y)/3};
   const cen  = {x:(F.A.x+F.B.x+F.C.x)/3, y:(F.A.y+F.B.y+F.C.y)/3};
 
-  // Zoom out at a constant rate in levels; reaches 1x exactly at cycle end
+  // Zoom out over the session, but linger deep through the middle and
+  // late regions (the bottom thirds arrive late and deserve the same
+  // close framing the top got); the full pull-back to 1x happens in the
+  // final stretch, landing exactly at cycle end
   const f = Math.min(1, Math.max(0, t/totalCycle));
-  const Z = Math.pow(FRACTAL_Z0, 1-f);
+  const Z = Math.pow(FRACTAL_Z0, Math.pow(1-f, 0.55));
 
   // Anchor the camera to the ancestor cell that fills the view, NOT the
   // leaf: it holds still while the dot wanders inside the frame, and
