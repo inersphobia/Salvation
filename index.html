@@ -619,23 +619,6 @@ function fractalLayout(){
   };
 }
 
-function drawFractalStatic(){
-  const F = fractalLayout();
-  const sub = (a,b,c,depth) => {
-    ctxStatic.lineWidth = depth === 2 ? 2 : 1;
-    ctxStatic.strokeStyle = `rgba(0,191,255,${0.18 + depth*0.3})`;
-    ctxStatic.beginPath();
-    ctxStatic.moveTo(a.x,a.y); ctxStatic.lineTo(b.x,b.y); ctxStatic.lineTo(c.x,c.y);
-    ctxStatic.closePath(); ctxStatic.stroke();
-    if (depth === 0) return;
-    const mAB={x:(a.x+b.x)/2, y:(a.y+b.y)/2};
-    const mBC={x:(b.x+c.x)/2, y:(b.y+c.y)/2};
-    const mCA={x:(c.x+a.x)/2, y:(c.y+a.y)/2};
-    sub(a,mAB,mCA,depth-1); sub(mAB,b,mBC,depth-1); sub(mCA,mBC,c,depth-1);
-  };
-  sub(F.A, F.B, F.C, 2); // two levels only: calm grid of 9
-}
-
 function fractalFillColor(pos){
   if (!running && !finished && pauseMs === 0) return "rgba(255,255,255,0.08)";
   return pos===1 ? "rgba(0,120,255,0.16)" :
@@ -643,8 +626,15 @@ function fractalFillColor(pos){
                    "rgba(255,70,70,0.16)";
 }
 
-function drawFractalMarker(t){
+/* Camera: starts zoomed in on the action, zooms out over the session */
+const FRACTAL_Z0 = 16; // starting zoom (frames roughly a level-4 cell)
+let fracCam = {x:0, y:0, init:false};
+
+function drawFractalView(t){
   const F = fractalLayout();
+
+  // Descend the address, keeping every level
+  const levels = [];
   let a=F.A, b=F.B, c=F.C;
   for (let i=0;i<numDials;i++){
     const pos = posIndex(i,t);
@@ -654,19 +644,57 @@ function drawFractalMarker(t){
     if (pos===1)      { b=mAB; c=mCA; }   // apex sub-triangle
     else if (pos===2) { a=mAB; c=mBC; }   // right sub-triangle
     else              { a=mCA; b=mBC; }   // left sub-triangle
-    // translucent fill in the digit's color; overlaps brighten toward "now"
-    ctx.fillStyle = fractalFillColor(pos);
+    levels.push({a,b,c,pos});
+  }
+  const leaf = {x:(a.x+b.x+c.x)/3, y:(a.y+b.y+c.y)/3};
+  const cen  = {x:(F.A.x+F.B.x+F.C.x)/3, y:(F.A.y+F.B.y+F.C.y)/3};
+
+  // Zoom out with session progress; camera glides after the dot,
+  // easing toward the triangle center so the end state sits in place
+  const f = Math.min(1, Math.max(0, t/totalCycle));
+  const Z = Math.pow(FRACTAL_Z0, 1-f);
+  const target = {x: leaf.x + (cen.x-leaf.x)*f, y: leaf.y + (cen.y-leaf.y)*f};
+  if (!fracCam.init){ fracCam.x=target.x; fracCam.y=target.y; fracCam.init=true; }
+  fracCam.x += (target.x - fracCam.x)*0.08;
+  fracCam.y += (target.y - fracCam.y)*0.08;
+  const X = p => ({x:(p.x-fracCam.x)*Z + cen.x, y:(p.y-fracCam.y)*Z + cen.y});
+
+  // Address fills, big -> small, so tints stack toward "now"
+  for (const L of levels){
+    const ta=X(L.a), tb=X(L.b), tc=X(L.c);
+    ctx.fillStyle = fractalFillColor(L.pos);
     ctx.beginPath();
-    ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.lineTo(c.x,c.y);
+    ctx.moveTo(ta.x,ta.y); ctx.lineTo(tb.x,tb.y); ctx.lineTo(tc.x,tc.y);
     ctx.closePath(); ctx.fill();
   }
-  // leaf marker: bright dot with a halo ring so it reads at any size
-  const cx=(a.x+b.x+c.x)/3, cy=(a.y+b.y+c.y)/3;
+
+  // Adaptive grid: subdivide only what is on-screen and big enough to see
+  const w=canvasAnim.width, h=canvasAnim.height;
+  const grid = (pa,pb,pc,depth) => {
+    const ta=X(pa), tb=X(pb), tc=X(pc);
+    const minX=Math.min(ta.x,tb.x,tc.x), maxX=Math.max(ta.x,tb.x,tc.x);
+    const minY=Math.min(ta.y,tb.y,tc.y), maxY=Math.max(ta.y,tb.y,tc.y);
+    if (maxX<0 || minX>w || maxY<0 || minY>h) return;
+    ctx.lineWidth = depth===0 ? 2 : 1;
+    ctx.strokeStyle = `rgba(0,191,255,${Math.max(0.12, 0.4 - depth*0.05)})`;
+    ctx.beginPath();
+    ctx.moveTo(ta.x,ta.y); ctx.lineTo(tb.x,tb.y); ctx.lineTo(tc.x,tc.y);
+    ctx.closePath(); ctx.stroke();
+    if (depth>=numDials || (maxX-minX) < 80) return;
+    const mAB={x:(pa.x+pb.x)/2, y:(pa.y+pb.y)/2};
+    const mBC={x:(pb.x+pc.x)/2, y:(pb.y+pc.y)/2};
+    const mCA={x:(pc.x+pa.x)/2, y:(pc.y+pa.y)/2};
+    grid(pa,mAB,mCA,depth+1); grid(mAB,pb,mBC,depth+1); grid(mCA,mBC,pc,depth+1);
+  };
+  grid(F.A, F.B, F.C, 0);
+
+  // Leaf marker: bright dot with a halo ring
+  const m = X(leaf);
   ctx.strokeStyle = "rgba(255,255,255,0.35)";
   ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(m.x, m.y, 9, 0, Math.PI*2); ctx.stroke();
   ctx.fillStyle = "white";
-  ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(m.x, m.y, 5, 0, Math.PI*2); ctx.fill();
 }
 
 /* --- shared layout: where the timer text sits in each view --- */
@@ -679,6 +707,7 @@ function getTextY(){
 function toggleView(){
   viewMode = (viewMode + 1) % 4;
   btnView.textContent = VIEW_NAMES[viewMode];
+  if (viewMode === 3) fracCam.init = false; // snap camera on entry
   needsStaticRedraw = true;
   try { localStorage.setItem('salvationView', viewMode); } catch(e) {}
 }
@@ -689,7 +718,7 @@ function drawStaticLayer(){
   
   if (viewMode===1){ drawRingsStatic();   needsStaticRedraw = false; return; }
   if (viewMode===2){ drawAbacusStatic();  needsStaticRedraw = false; return; }
-  if (viewMode===3){ drawFractalStatic(); needsStaticRedraw = false; return; }
+  if (viewMode===3){ needsStaticRedraw = false; return; } // fractal renders on the anim layer (moving camera)
 
   // Draw star lines on static canvas
   ctxStatic.lineWidth = 3;
@@ -860,7 +889,7 @@ function draw(now){
   } else if (viewMode===2){
     drawAbacusDots(vizT);
   } else {
-    drawFractalMarker(vizT);
+    drawFractalView(vizT);
   }
   drawTimerText();
   drawSubCounter(elapsed);
