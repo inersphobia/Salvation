@@ -651,6 +651,20 @@ const FRACTAL_Z0 = 16; // starting zoom (frames roughly a level-4 cell)
 let fracCam = {x:0, y:0, init:false};
 let fracTrail = []; // recent leaf positions (world coords) for the motion trail
 
+// Leaf centroid (pre-camera coords) at an arbitrary time - used to glide
+// the dot smoothly toward where it will be at the next deepest tick.
+function fractalLeaf(F, tt){
+  let a=F.A, b=F.B, c=F.C;
+  for (let i=0;i<numDials;i++){
+    const pos=posIndex(i,tt);
+    const mAB={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+    const mBC={x:(b.x+c.x)/2,y:(b.y+c.y)/2};
+    const mCA={x:(c.x+a.x)/2,y:(c.y+a.y)/2};
+    if(pos===1){b=mAB;c=mCA;} else if(pos===2){a=mAB;c=mBC;} else {a=mCA;b=mBC;}
+  }
+  return {x:(a.x+b.x+c.x)/3, y:(a.y+b.y+c.y)/3};
+}
+
 function drawFractalView(t){
   const F = fractalLayout();
 
@@ -667,7 +681,14 @@ function drawFractalView(t){
     else              { a=mCA; b=mBC; }   // left sub-triangle
     levels.push({a,b,c,pos});
   }
-  const leaf = {x:(a.x+b.x+c.x)/3, y:(a.y+b.y+c.y)/3};
+  // Glide the dot toward its next cell over each deepest tick instead of
+  // teleporting - continuous motion, so there's no frozen wait to fill.
+  const beat6 = ticks[numDials-1];
+  const frac6 = (t % beat6) / beat6;
+  const leafNow = {x:(a.x+b.x+c.x)/3, y:(a.y+b.y+c.y)/3};
+  const leafNxt = fractalLeaf(F, t + beat6);
+  const leaf = { x: leafNow.x + (leafNxt.x-leafNow.x)*frac6,
+                 y: leafNow.y + (leafNxt.y-leafNow.y)*frac6 };
   const cen  = {x:(F.A.x+F.B.x+F.C.x)/3, y:(F.A.y+F.B.y+F.C.y)/3};
 
   // Zoom out over the session, but linger deep through the middle and
@@ -760,10 +781,14 @@ function drawFractalView(t){
     ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI*2); ctx.fill();
   }
 
-  // Leaf marker: clean bright dot
+  // Leaf marker: colored by posIndex(6) - in 54/81 that IS the 1/27
+  // counter, the same rate the dot moves - with a white edge for contrast.
   const m = X(leaf);
-  ctx.fillStyle = "white";
-  ctx.beginPath(); ctx.arc(m.x, m.y, 5, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = WEAVE_COL[posIndex(numDials-1, t) - 1];
+  ctx.beginPath(); ctx.arc(m.x, m.y, 5.5, 0, Math.PI*2); ctx.fill();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "rgba(255,255,255,0.85)";
+  ctx.stroke();
 
   // Mini-map (top right): the whole triangle, the framed region, and you.
   // This is what makes the zoom legible despite the fractal's self-similarity.
@@ -1031,11 +1056,10 @@ function drawLEDs(){
 }
 
 function drawSubCounter(elapsed){
-  // Only on STAR and FRACTAL views - the ones where a wait can feel long.
-  // (The abacus shows it as its bottom row instead; other views move
-  // continuously and don't need it.) Also hidden in 27-min mode, where it
-  // ticks too fast to read.
-  if (viewMode !== 0 && viewMode !== 3) return;
+  // Only on STAR view now. The abacus shows it as its bottom row; the
+  // fractal's dot glides + recolors to convey the same sub-progress; other
+  // views move continuously. Also hidden in 27-min mode (too fast to read).
+  if (viewMode !== 0) return;
   if (timeMode === 0) return;
   const e = finished ? totalCycle : elapsed;
   const pos = Math.floor(e / (ticks[6]/3)) % 3; // always one subdivision (3x) faster than the top triangle
