@@ -723,7 +723,7 @@ function drawFractalView(t){
 
   // Mini-map (top right): the whole triangle, the framed region, and you.
   // This is what makes the zoom legible despite the fractal's self-similarity.
-  const mmW = Math.min(96, canvasAnim.width*0.22);
+  const mmW = Math.min(112, canvasAnim.width*0.25);
   const mmX = canvasAnim.width - mmW - 14, mmY = 16;
   const sx = mmW / (F.B.x - F.C.x);
   const M = p => ({x: mmX + (p.x - F.C.x)*sx, y: mmY + (p.y - F.topY)*sx});
@@ -734,10 +734,21 @@ function drawFractalView(t){
   ctx.beginPath();
   ctx.moveTo(ma.x,ma.y); ctx.lineTo(mb.x,mb.y); ctx.lineTo(mc.x,mc.y);
   ctx.closePath(); ctx.stroke();
-  // The highlighted region IS the position indicator - no dot
+  // The highlighted region IS the position indicator - no dot.
+  // Floor its size so it stays visible even when the framed cell is tiny
+  // (early session), and fill solid so it reads at a glance.
   const va = anc || {a:F.A, b:F.B, c:F.C};
-  const fa=M(va.a), fb=M(va.b), fc=M(va.c);
-  ctx.fillStyle = "rgba(255,80,80,0.45)";
+  let fa=M(va.a), fb=M(va.b), fc=M(va.c);
+  const fcx=(fa.x+fb.x+fc.x)/3, fcy=(fa.y+fb.y+fc.y)/3;
+  const fh = Math.max(fa.y,fb.y,fc.y) - Math.min(fa.y,fb.y,fc.y);
+  const MIN_MM = 10;
+  if (fh > 0 && fh < MIN_MM){
+    const s = MIN_MM/fh;
+    fa = {x: fcx+(fa.x-fcx)*s, y: fcy+(fa.y-fcy)*s};
+    fb = {x: fcx+(fb.x-fcx)*s, y: fcy+(fb.y-fcy)*s};
+    fc = {x: fcx+(fc.x-fcx)*s, y: fcy+(fc.y-fcy)*s};
+  }
+  ctx.fillStyle = "rgba(255,80,80,0.85)";
   ctx.beginPath();
   ctx.moveTo(fa.x,fa.y); ctx.lineTo(fb.x,fb.y); ctx.lineTo(fc.x,fc.y);
   ctx.closePath(); ctx.fill();
