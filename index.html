@@ -129,7 +129,7 @@
 const numDials = 7;
 let timeMode = 0; // 0=27-min, 1=54-min, 2=81-min
 let viewMode = 0; // 0=septagram, 1=rings, 2=abacus, 3=fractal
-const VIEW_NAMES = ["STAR", "RINGS", "ABACUS", "FRACTAL", "WHEELS", "WEAVE"];
+const VIEW_NAMES = ["STAR", "RINGS", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "SEP"];
 
 const dotsPerEdge = [1,2];
 const baseIntervals = [4860,1620,540,180,60,20,20/3];
@@ -976,7 +976,7 @@ function getTextY(){
 }
 
 function toggleView(){
-  viewMode = (viewMode + 1) % 6;
+  viewMode = (viewMode + 1) % 7;
   btnView.textContent = VIEW_NAMES[viewMode];
   if (viewMode === 3){ fracCam.init = false; fracTrail.length = 0; } // snap camera on entry
   needsStaticRedraw = true;
@@ -992,6 +992,7 @@ function drawStaticLayer(){
   if (viewMode===3){ needsStaticRedraw = false; return; } // fractal renders on the anim layer (moving camera)
   if (viewMode===4){ needsStaticRedraw = false; return; } // wheels render on the anim layer (spinning)
   if (viewMode===5){ needsStaticRedraw = false; return; } // weave renders on the anim layer (traveler)
+  if (viewMode===6){ drawSepStatic(); needsStaticRedraw = false; return; } // sep: bolder frame
 
   // Star lines - matched to the WEAVE track (thin, faint)
   ctxStatic.lineWidth = 1.5;
@@ -1078,6 +1079,56 @@ function drawLEDs(t){
       ctx.beginPath(); ctx.arc(s.x,s.y, 3, 0, Math.PI*2); ctx.fill();
     }
   }
+}
+
+/* --- SEP: like STAR, but each triangle has a watch-style hand that pivots
+   from its center to point at the current corner, flashing blue -> orange
+   -> red (three times) before pivoting to the next corner. --- */
+function drawSepStatic(){
+  ctxStatic.lineWidth = 2.5;                    // slightly bolder than STAR's 1.5
+  ctxStatic.strokeStyle = "rgba(0,191,255,0.4)";
+  for (let s of starLines){
+    const a = worldToScreen(s.x1, s.y1);
+    const b = worldToScreen(s.x2, s.y2);
+    ctxStatic.beginPath();
+    ctxStatic.moveTo(a.x, a.y); ctxStatic.lineTo(b.x, b.y);
+    ctxStatic.stroke();
+  }
+}
+
+function drawSep(t){
+  ctx.lineCap = "round";
+  for (let i=0;i<numDials;i++){
+    const C = worldToScreen(dialPos[i].x, dialPos[i].y);   // pivot = triangle center
+    const P = ledPath[i][activeIdx[i]];                    // current corner
+    const tip = worldToScreen(P.x, P.y);
+    const T = ticks[i], subT = T/3;
+    const sub = Math.floor((t % T)/subT) % 3;              // 0/1/2 -> blue/orange/red
+    const subFrac = (t % subT)/subT;
+    const pulse = running ? Math.max(0, 1 - subFrac/0.4) : 0;
+    const col = digitColor(sub+1);
+    const gc = WEAVE_COL[sub];
+    // the hand
+    ctx.strokeStyle = running ? withA(gc, (0.55 + 0.45*pulse).toFixed(3)) : col;
+    ctx.lineWidth = 3 + 2*pulse;
+    ctx.beginPath(); ctx.moveTo(C.x, C.y); ctx.lineTo(tip.x, tip.y); ctx.stroke();
+    // tip flash
+    if (pulse > 0.01){
+      const R = 6 + 16*pulse;
+      const g = ctx.createRadialGradient(tip.x,tip.y,0, tip.x,tip.y, R);
+      g.addColorStop(0,   `rgba(255,255,255,${(0.9*pulse).toFixed(3)})`);
+      g.addColorStop(0.4, withA(gc, (0.5*pulse).toFixed(3)));
+      g.addColorStop(1,   withA(gc, "0"));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(tip.x,tip.y, R, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(tip.x, tip.y, 5, 0, Math.PI*2); ctx.fill();
+    // pivot hub
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.beginPath(); ctx.arc(C.x, C.y, 3.5, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.lineCap = "butt";
 }
 
 function drawSubCounter(elapsed){
@@ -1219,8 +1270,10 @@ function draw(now){
     drawFractalView(vizT);
   } else if (viewMode===4){
     drawSevenRings(vizT);
-  } else {
+  } else if (viewMode===5){
     drawWeave(vizT);
+  } else {
+    drawSep(vizT);
   }
   drawTimerText();
   drawTapHint();
@@ -1313,7 +1366,7 @@ if (modeIdx !== undefined) {
 // Restore last-used view
 try {
   const savedView = parseInt(localStorage.getItem('salvationView'), 10);
-  if (savedView >= 0 && savedView <= 5){
+  if (savedView >= 0 && savedView <= 6){
     viewMode = savedView;
     btnView.textContent = VIEW_NAMES[viewMode];
   }
