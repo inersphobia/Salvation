@@ -734,15 +734,17 @@ function drawFractalView(t){
     ctx.moveTo(p[0].x,p[0].y); ctx.lineTo(p[1].x,p[1].y); ctx.lineTo(p[2].x,p[2].y);
     ctx.closePath(); ctx.fill();
   };
-  mmFill({a:F.A, b:F.B, c:F.C}, "rgb(224,72,72)"); // solid, even red field
-  mmFill(levels[2], "rgb(0,0,0)");                 // the active cell: a hole
+  mmFill({a:F.A, b:F.B, c:F.C}, "rgb(0,0,0)"); // opaque black field
+  // The active cell is a live digit: while the timer works inside it,
+  // it steps blue -> orange -> red (the next level's three sub-steps),
+  // then the cell moves on
+  mmFill(levels[2], digitColor(posIndex(3, t)));
 
-  // Black division lines over the field, down to the same cell size as
-  // the black active cell (level 3), so the hole is always one grid cell
+  // Dim red division lines over the field, down to active-cell size
   const mmGrid = (pa,pb,pc,depth) => {
     const ga=M(pa), gb=M(pb), gc=M(pc);
     if (depth > 0){
-      ctx.strokeStyle = depth === 3 ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.6)";
+      ctx.strokeStyle = depth === 3 ? "rgba(224,72,72,0.3)" : "rgba(224,72,72,0.55)";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(ga.x,ga.y); ctx.lineTo(gb.x,gb.y); ctx.lineTo(gc.x,gc.y);
