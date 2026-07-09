@@ -619,25 +619,23 @@ function fractalLayout(){
   };
 }
 
-function drawFractalStatic(){
-  const F = fractalLayout();
-  const sub = (a,b,c,depth) => {
-    ctxStatic.lineWidth = depth === 3 ? 2 : 1;
-    ctxStatic.strokeStyle = `rgba(0,191,255,${0.15 + depth*0.18})`;
-    ctxStatic.beginPath();
-    ctxStatic.moveTo(a.x,a.y); ctxStatic.lineTo(b.x,b.y); ctxStatic.lineTo(c.x,c.y);
-    ctxStatic.closePath(); ctxStatic.stroke();
-    if (depth === 0) return;
-    const mAB={x:(a.x+b.x)/2, y:(a.y+b.y)/2};
-    const mBC={x:(b.x+c.x)/2, y:(b.y+c.y)/2};
-    const mCA={x:(c.x+a.x)/2, y:(c.y+a.y)/2};
-    sub(a,mAB,mCA,depth-1); sub(mAB,b,mBC,depth-1); sub(mCA,mBC,c,depth-1);
-  };
-  sub(F.A, F.B, F.C, 3);
+function fractalFillColor(pos){
+  if (!running && !finished && pauseMs === 0) return "rgba(255,255,255,0.08)";
+  return pos===1 ? "rgba(0,120,255,0.16)" :
+         pos===2 ? "rgba(255,160,0,0.16)" :
+                   "rgba(255,70,70,0.16)";
 }
 
-function drawFractalMarker(t){
+/* Camera: starts zoomed in on the action, zooms out over the session */
+const FRACTAL_Z0 = 16; // starting zoom (frames roughly a level-4 cell)
+let fracCam = {x:0, y:0, init:false};
+let fracTrail = []; // recent leaf positions (world coords) for the motion trail
+
+function drawFractalView(t){
   const F = fractalLayout();
+
+  // Descend the address, keeping every level
+  const levels = [];
   let a=F.A, b=F.B, c=F.C;
   for (let i=0;i<numDials;i++){
     const pos = posIndex(i,t);
@@ -647,16 +645,127 @@ function drawFractalMarker(t){
     if (pos===1)      { b=mAB; c=mCA; }   // apex sub-triangle
     else if (pos===2) { a=mAB; c=mBC; }   // right sub-triangle
     else              { a=mCA; b=mBC; }   // left sub-triangle
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = `rgba(255,255,255,${0.10 + i*0.09})`;
-    ctx.beginPath();
-    ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.lineTo(c.x,c.y);
-    ctx.closePath(); ctx.stroke();
+    levels.push({a,b,c,pos});
   }
-  ctx.fillStyle = digitColor(posIndex(numDials-1, t));
+  const leaf = {x:(a.x+b.x+c.x)/3, y:(a.y+b.y+c.y)/3};
+  const cen  = {x:(F.A.x+F.B.x+F.C.x)/3, y:(F.A.y+F.B.y+F.C.y)/3};
+
+  // Zoom out over the session, but linger deep through the middle and
+  // late regions (the bottom thirds arrive late and deserve the same
+  // close framing the top got); the full pull-back to 1x happens in the
+  // final stretch, landing exactly at cycle end
+  const f = Math.min(1, Math.max(0, t/totalCycle));
+  const Z = Math.pow(FRACTAL_Z0, Math.pow(1-f, 0.55));
+
+  // Anchor the camera to the ancestor cell that fills the view, NOT the
+  // leaf: it holds still while the dot wanders inside the frame, and
+  // glides only when that cell's digit prefix changes (a rare,
+  // deliberate scene change instead of constant leaf-chasing)
+  // ceil, not floor: the framed cell must be AT MOST screen-sized, or its
+  // apex (where the dot lives early in a cycle) gets pushed off the top
+  const k = Math.max(0, Math.min(numDials, Math.ceil(Math.log2(Z))));
+  const anc = k === 0 ? null : levels[k-1];
+  const target = anc
+    ? {x:(anc.a.x+anc.b.x+anc.c.x)/3, y:(anc.a.y+anc.b.y+anc.c.y)/3}
+    : cen;
+  if (!fracCam.init){ fracCam.x=target.x; fracCam.y=target.y; fracCam.init=true; }
+  fracCam.x += (target.x - fracCam.x)*0.05;
+  fracCam.y += (target.y - fracCam.y)*0.05;
+  const X = p => ({x:(p.x-fracCam.x)*Z + cen.x, y:(p.y-fracCam.y)*Z + cen.y});
+
+  // Address fills, big -> small, so tints stack toward "now"
+  for (const L of levels){
+    const ta=X(L.a), tb=X(L.b), tc=X(L.c);
+    ctx.fillStyle = fractalFillColor(L.pos);
+    ctx.beginPath();
+    ctx.moveTo(ta.x,ta.y); ctx.lineTo(tb.x,tb.y); ctx.lineTo(tc.x,tc.y);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // Adaptive grid: subdivide only what is on-screen and big enough to see
+  const w=canvasAnim.width, h=canvasAnim.height;
+  const grid = (pa,pb,pc,depth) => {
+    const ta=X(pa), tb=X(pb), tc=X(pc);
+    const minX=Math.min(ta.x,tb.x,tc.x), maxX=Math.max(ta.x,tb.x,tc.x);
+    const minY=Math.min(ta.y,tb.y,tc.y), maxY=Math.max(ta.y,tb.y,tc.y);
+    if (maxX<0 || minX>w || maxY<0 || minY>h) return;
+    ctx.lineWidth = depth===0 ? 2 : 1;
+    ctx.strokeStyle = `rgba(0,191,255,${Math.max(0.12, 0.4 - depth*0.05)})`;
+    ctx.beginPath();
+    ctx.moveTo(ta.x,ta.y); ctx.lineTo(tb.x,tb.y); ctx.lineTo(tc.x,tc.y);
+    ctx.closePath(); ctx.stroke();
+    if (depth>=numDials || (maxX-minX) < 80) return;
+    const mAB={x:(pa.x+pb.x)/2, y:(pa.y+pb.y)/2};
+    const mBC={x:(pb.x+pc.x)/2, y:(pb.y+pc.y)/2};
+    const mCA={x:(pc.x+pa.x)/2, y:(pc.y+pa.y)/2};
+    grid(pa,mAB,mCA,depth+1); grid(mAB,pb,mBC,depth+1); grid(mCA,mBC,pc,depth+1);
+  };
+  grid(F.A, F.B, F.C, 0);
+
+  // Motion trail: ~2.5s of fading breadcrumbs so the dance always reads
+  if (running) {
+    fracTrail.push({x: leaf.x, y: leaf.y});
+    if (fracTrail.length > 75) fracTrail.shift();
+  }
+  for (let i=0;i<fracTrail.length;i++){
+    const p = X(fracTrail[i]);
+    ctx.fillStyle = `rgba(255,255,255,${(i+1)/fracTrail.length * 0.45})`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI*2); ctx.fill();
+  }
+
+  // Leaf marker: clean bright dot
+  const m = X(leaf);
+  ctx.fillStyle = "white";
+  ctx.beginPath(); ctx.arc(m.x, m.y, 5, 0, Math.PI*2); ctx.fill();
+
+  // Mini-map (top right): the whole triangle, the framed region, and you.
+  // This is what makes the zoom legible despite the fractal's self-similarity.
+  const mmW = Math.min(112, canvasAnim.width*0.25);
+  const mmX = canvasAnim.width - mmW - 14, mmY = 16;
+  const sx = mmW / (F.B.x - F.C.x);
+  const M = p => ({x: mmX + (p.x - F.C.x)*sx, y: mmY + (p.y - F.topY)*sx});
+  // Inverted key map: an opaque red field with a black hole where the
+  // timer currently works. Darkening steps toward the hole preserve the
+  // three-digit hierarchy (third -> level-2 -> level-3 black).
+  const mmFill = (L, style) => {
+    const p=[M(L.a),M(L.b),M(L.c)];
+    ctx.fillStyle = style;
+    ctx.beginPath();
+    ctx.moveTo(p[0].x,p[0].y); ctx.lineTo(p[1].x,p[1].y); ctx.lineTo(p[2].x,p[2].y);
+    ctx.closePath(); ctx.fill();
+  };
+  mmFill({a:F.A, b:F.B, c:F.C}, "rgb(224,72,72)"); // solid, even red field
+  mmFill(levels[2], "rgb(0,0,0)");                 // the active cell: a hole
+
+  // Black division lines over the field, down to the same cell size as
+  // the black active cell (level 3), so the hole is always one grid cell
+  const mmGrid = (pa,pb,pc,depth) => {
+    const ga=M(pa), gb=M(pb), gc=M(pc);
+    if (depth > 0){
+      ctx.strokeStyle = depth === 3 ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.6)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(ga.x,ga.y); ctx.lineTo(gb.x,gb.y); ctx.lineTo(gc.x,gc.y);
+      ctx.closePath(); ctx.stroke();
+    }
+    if (depth >= 3) return;
+    const gAB={x:(pa.x+pb.x)/2, y:(pa.y+pb.y)/2};
+    const gBC={x:(pb.x+pc.x)/2, y:(pb.y+pc.y)/2};
+    const gCA={x:(pc.x+pa.x)/2, y:(pc.y+pa.y)/2};
+    mmGrid(pa,gAB,gCA,depth+1); mmGrid(gAB,pb,gBC,depth+1); mmGrid(gCA,gBC,pc,depth+1);
+  };
+  mmGrid(F.A, F.B, F.C, 0);
+
+  // Thick red frame so the black hole never merges with the page
+  // background when the active cell sits against the map's edge
+  const ma=M(F.A), mb=M(F.B), mc=M(F.C);
+  ctx.strokeStyle = "rgb(224,72,72)";
+  ctx.lineWidth = 4;
+  ctx.lineJoin = "round";
   ctx.beginPath();
-  ctx.arc((a.x+b.x+c.x)/3, (a.y+b.y+c.y)/3, 5, 0, Math.PI*2);
-  ctx.fill();
+  ctx.moveTo(ma.x,ma.y); ctx.lineTo(mb.x,mb.y); ctx.lineTo(mc.x,mc.y);
+  ctx.closePath(); ctx.stroke();
+  ctx.lineJoin = "miter";
 }
 
 /* --- shared layout: where the timer text sits in each view --- */
@@ -669,6 +778,7 @@ function getTextY(){
 function toggleView(){
   viewMode = (viewMode + 1) % 4;
   btnView.textContent = VIEW_NAMES[viewMode];
+  if (viewMode === 3){ fracCam.init = false; fracTrail.length = 0; } // snap camera on entry
   needsStaticRedraw = true;
   try { localStorage.setItem('salvationView', viewMode); } catch(e) {}
 }
@@ -679,7 +789,7 @@ function drawStaticLayer(){
   
   if (viewMode===1){ drawRingsStatic();   needsStaticRedraw = false; return; }
   if (viewMode===2){ drawAbacusStatic();  needsStaticRedraw = false; return; }
-  if (viewMode===3){ drawFractalStatic(); needsStaticRedraw = false; return; }
+  if (viewMode===3){ needsStaticRedraw = false; return; } // fractal renders on the anim layer (moving camera)
 
   // Draw star lines on static canvas
   ctxStatic.lineWidth = 3;
@@ -751,6 +861,9 @@ function drawLEDs(){
 }
 
 function drawSubCounter(elapsed){
+  // Hidden in 27-min mode: at 1/243 min per box it reads as shimmer, and
+  // the deepest dial already pulses at the sweep rate (20/27s)
+  if (timeMode === 0) return;
   const e = finished ? totalCycle : elapsed;
   const pos = Math.floor(e / (ticks[6]/3)) % 3; // always one subdivision (3x) faster than the top triangle
 
@@ -779,10 +892,28 @@ function drawSubCounter(elapsed){
 }
 
 function drawTimerText(){
-  ctx.fillStyle = finished ? "#ff9500" : "white";
+  const y = getTextY();
   ctx.font = canvasAnim.width < 500 ? "32px monospace" : "40px monospace";
-  ctx.textAlign="center";
-  ctx.fillText(timerStr, canvasAnim.width/2, getTextY());
+
+  // Overtime and idle keep a single color
+  const idle = !running && !finished && pauseMs === 0;
+  if (finished || idle){
+    ctx.fillStyle = finished ? "#ff9500" : "white";
+    ctx.textAlign = "center";
+    ctx.fillText(timerStr, canvasAnim.width/2, y);
+    return;
+  }
+
+  // Each digit tinted by its value - same code as the dials in every
+  // view (0=blue, 1=orange, 2=red) - so text and animation visibly rhyme
+  const DIGIT_COLORS = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"];
+  ctx.textAlign = "left";
+  let x = canvasAnim.width/2 - ctx.measureText(timerStr).width/2;
+  for (const ch of timerStr){
+    ctx.fillStyle = (ch >= "0" && ch <= "2") ? DIGIT_COLORS[+ch] : "rgba(255,255,255,0.85)";
+    ctx.fillText(ch, x, y);
+    x += ctx.measureText(ch).width;
+  }
 }
 
 function drawTapHint(){
@@ -850,7 +981,7 @@ function draw(now){
   } else if (viewMode===2){
     drawAbacusDots(vizT);
   } else {
-    drawFractalMarker(vizT);
+    drawFractalView(vizT);
   }
   drawTimerText();
   drawSubCounter(elapsed);
@@ -909,6 +1040,12 @@ if ('serviceWorker' in navigator) {
     if (e.data === 'pause') pauseClock();
     else if (e.data === 'reset') resetClock();
   });
+}
+
+/* ---------- ORIENTATION LOCK ---------- */
+// Honored in the installed app; plain browser tabs reject it (harmless)
+if (screen.orientation && screen.orientation.lock) {
+  screen.orientation.lock('portrait').catch(() => {});
 }
 
 /* ---------- WAKE LOCK RE-ACQUIRE ON VISIBILITY CHANGE ---------- */
