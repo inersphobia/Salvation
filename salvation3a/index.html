@@ -877,7 +877,9 @@ function drawWeave(t){
     if (eg < 0) continue;
     const k = ((eg%7)+7)%7;
     const a=S[vtx(k)], b=S[vtx(k+1)];
-    const col = WEAVE_COL[posIndex(vtx(k), Math.max(0, eg*beat)) - 1];
+    // tint by the LIVE state of the site this leg travels TO, so the line
+    // matches that counter's current color (blue/orange/red)
+    const col = WEAVE_COL[posIndex(vtx(k+1), t) - 1];
     const fade = 1 - kk/(TRAIL+1);
     ctx.lineWidth = 2.5;
     ctx.strokeStyle = withA(col, (0.55*fade).toFixed(3));
@@ -895,7 +897,7 @@ function drawWeave(t){
     const age = t - arrivalT;
     const bright = 0.32 + 0.68*Math.max(0, 1 - age/(7*beat));
     const pulse  = Math.max(0, 1 - age/(beat*0.7));
-    const col = WEAVE_COL[posIndex(v, arrivalT) - 1];
+    const col = WEAVE_COL[posIndex(v, t) - 1];   // LIVE: matches this dial's timer digit
     const rr = (0.13 + 0.07*pulse) * scaleF;
     const g = ctx.createRadialGradient(S[v].x,S[v].y,0, S[v].x,S[v].y, rr*2.4);
     g.addColorStop(0, withA(col, (0.4*bright).toFixed(3)));
@@ -908,12 +910,14 @@ function drawWeave(t){
     ctx.globalAlpha = 1;
   }
 
-  // 4. The traveler
+  // 4. The traveler - white core, halo tinted by the counter it heads to
   const A=S[vtx(Eg)], B=S[vtx(Eg+1)];
   const tx=A.x+(B.x-A.x)*p, ty=A.y+(B.y-A.y)*p;
+  const destCol = WEAVE_COL[posIndex(vtx(Eg+1), t) - 1];
   const gr = ctx.createRadialGradient(tx,ty,0, tx,ty, 0.35*scaleF);
-  gr.addColorStop(0, "rgba(255,255,255,0.9)");
-  gr.addColorStop(1, "rgba(255,255,255,0)");
+  gr.addColorStop(0, "rgba(255,255,255,0.95)");
+  gr.addColorStop(0.5, withA(destCol, "0.5"));
+  gr.addColorStop(1, withA(destCol, "0"));
   ctx.fillStyle = gr;
   ctx.beginPath(); ctx.arc(tx,ty, 0.35*scaleF, 0,Math.PI*2); ctx.fill();
   ctx.fillStyle = "white";
