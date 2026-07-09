@@ -734,19 +734,19 @@ function drawFractalView(t){
     ctx.moveTo(p[0].x,p[0].y); ctx.lineTo(p[1].x,p[1].y); ctx.lineTo(p[2].x,p[2].y);
     ctx.closePath(); ctx.fill();
   };
-  mmFill({a:F.A, b:F.B, c:F.C}, "rgb(224,72,72)"); // solid field
-  mmFill(levels[0], "rgba(0,0,0,0.22)");
-  mmFill(levels[1], "rgba(0,0,0,0.4)");
+  mmFill({a:F.A, b:F.B, c:F.C}, "rgb(224,72,72)"); // solid, even red field
   mmFill(levels[2], "rgb(0,0,0)");                 // the active cell: a hole
 
-  // Etched grid of the largest triangles over the field
+  // Black division lines over the field
   const mmGrid = (pa,pb,pc,depth) => {
     const ga=M(pa), gb=M(pb), gc=M(pc);
-    ctx.strokeStyle = depth===0 ? "rgba(255,120,120,0.9)" : "rgba(0,0,0,0.35)";
-    ctx.lineWidth = depth===0 ? 1.5 : 1;
-    ctx.beginPath();
-    ctx.moveTo(ga.x,ga.y); ctx.lineTo(gb.x,gb.y); ctx.lineTo(gc.x,gc.y);
-    ctx.closePath(); ctx.stroke();
+    if (depth > 0){
+      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(ga.x,ga.y); ctx.lineTo(gb.x,gb.y); ctx.lineTo(gc.x,gc.y);
+      ctx.closePath(); ctx.stroke();
+    }
     if (depth >= 2) return;
     const gAB={x:(pa.x+pb.x)/2, y:(pa.y+pb.y)/2};
     const gBC={x:(pb.x+pc.x)/2, y:(pb.y+pc.y)/2};
