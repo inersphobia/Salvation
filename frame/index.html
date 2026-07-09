@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Salvation - Frame</title>
+<style>
+  body { margin:0; background:black; }
+  svg { display:block; width:100%; height:auto; max-width:1440px; margin:0 auto; }
+  svg text { font-family: monospace; }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 1440 1180">
+  <defs>
+    <marker id="aw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="rgba(255,255,255,0.75)"/>
+    </marker>
+    <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="rgb(0,120,255)"/>
+    </marker>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="rgb(255,70,70)"/>
+    </marker>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- signature heptagram (replaces the corner logo) -->
+  <path d="M95,605 L65.8,641.7 L108,662 L118.5,616.3 L71.5,616.3 L82,662 L124.3,641.7 Z"
+        fill="none" stroke="rgba(0,191,255,0.5)" stroke-width="1.5"/>
+
+  <!-- ============ boxes ============ -->
+  <g fill="rgba(0,191,255,0.06)" stroke="rgba(0,191,255,0.55)" stroke-width="1.5">
+    <rect x="255" y="605" width="170" height="110" rx="10"/>
+    <rect x="600" y="745" width="170" height="110" rx="10"/>
+    <rect x="872" y="880" width="170" height="110" rx="10"/>
+    <rect x="1168" y="1005" width="195" height="115" rx="10"/>
+    <rect x="868" y="578" width="160" height="115" rx="10" stroke-dasharray="5 5" stroke="rgba(0,191,255,0.3)"/>
+    <rect x="1165" y="712" width="160" height="115" rx="10" stroke-dasharray="5 5" stroke="rgba(0,191,255,0.3)"/>
+    <rect x="612" y="372" width="160" height="92" rx="10"/>
+    <rect x="612" y="222" width="160" height="92" rx="10"/>
+    <rect x="612" y="72"  width="160" height="92" rx="10"/>
+    <rect x="818" y="72"  width="160" height="92" rx="10"/>
+  </g>
+
+  <!-- box labels -->
+  <g fill="#c7d3da" font-size="15">
+    <text x="270" y="652">Hold a mental</text><text x="270" y="674">image of the goal</text>
+    <text x="615" y="785">Hold a mental</text><text x="615" y="807">image of the</text><text x="615" y="829">process</text>
+    <text x="887" y="922">Hold a mental</text><text x="887" y="944">image of the</text><text x="887" y="966">next step</text>
+    <text x="1180" y="1042">Hold a mental model</text><text x="1180" y="1064">of the structure of</text><text x="1180" y="1086">the process</text>
+    <text x="627" y="410">Struggle to</text><text x="627" y="432">hold it.</text>
+    <text x="627" y="273">Write notes</text>
+    <text x="627" y="123">Take a walk</text>
+    <text x="833" y="110">Reset the</text><text x="833" y="132">counter to (0,3]</text>
+  </g>
+
+  <!-- ============ decision + counter circles ============ -->
+  <g fill="black" stroke="rgba(0,191,255,0.7)" stroke-width="1.5">
+    <circle cx="505" cy="660" r="22"/>
+    <circle cx="830" cy="800" r="22"/>
+    <circle cx="1122" cy="935" r="22"/>
+    <circle cx="505" cy="418" r="27"/>
+    <circle cx="505" cy="267" r="27"/>
+    <circle cx="505" cy="117" r="27"/>
+  </g>
+  <g fill="#9fd8ea" font-size="14" text-anchor="middle">
+    <text x="505" y="665">&lt;n&gt;</text>
+    <text x="830" y="805">&lt;n&gt;</text>
+    <text x="1122" y="940">&lt;n&gt;</text>
+    <text x="505" y="423">(0,3]</text>
+    <text x="505" y="272">[4,6]</text>
+    <text x="505" y="122">[7]</text>
+  </g>
+
+  <!-- ============ glowing LED junction dots ============ -->
+  <g filter="url(#glow)">
+    <circle cx="218" cy="660" r="13" fill="white"/>
+    <circle cx="505" cy="538" r="13" fill="white"/>
+    <circle cx="1032" cy="267" r="13" fill="white"/>
+  </g>
+  <g fill="black" font-size="14" font-weight="bold" text-anchor="middle">
+    <text x="218" y="665">0</text>
+    <text x="505" y="543">1</text>
+    <text x="1032" y="272">0</text>
+  </g>
+
+  <!-- ============ neutral connectors ============ -->
+  <g stroke="rgba(255,255,255,0.55)" stroke-width="1.6" fill="none" marker-end="url(#aw)">
+    <line x1="231" y1="660" x2="249" y2="660"/>
+    <line x1="425" y1="660" x2="478" y2="660"/>
+    <line x1="505" y1="525" x2="505" y2="452"/>
+    <line x1="425" y1="660" x2="478" y2="660"/>
+    <line x1="770" y1="800" x2="803" y2="800"/>
+    <line x1="1042" y1="935" x2="1095" y2="935"/>
+    <line x1="772" y1="267" x2="1013" y2="267"/>
+    <line x1="772" y1="117" x2="812" y2="117"/>
+    <path d="M772,418 L1032,418 L1032,286"/>
+    <path d="M978,117 L1032,117 L1032,248"/>
+  </g>
+
+  <!-- ============ Y branches (blue) ============ -->
+  <g stroke="rgb(0,120,255)" stroke-width="1.8" fill="none" marker-end="url(#ab)">
+    <line x1="532" y1="418" x2="606" y2="418"/>
+    <line x1="532" y1="267" x2="606" y2="267"/>
+    <line x1="532" y1="117" x2="606" y2="117"/>
+    <path d="M505,682 L505,800 L594,800"/>
+    <path d="M830,822 L830,935 L866,935"/>
+    <path d="M1122,957 L1122,1062 L1162,1062"/>
+  </g>
+  <g fill="rgb(0,120,255)" font-size="14" font-weight="bold">
+    <text x="556" y="407">Y</text>
+    <text x="556" y="256">Y</text>
+    <text x="514" y="735">Y</text>
+    <text x="839" y="878">Y</text>
+    <text x="1131" y="1010">Y</text>
+  </g>
+
+  <!-- ============ N branches (red) ============ -->
+  <g stroke="rgb(255,70,70)" stroke-width="1.8" fill="none" marker-end="url(#ar)">
+    <line x1="505" y1="638" x2="505" y2="556"/>
+    <line x1="505" y1="391" x2="505" y2="299"/>
+    <line x1="505" y1="240" x2="505" y2="149"/>
+    <path d="M830,778 L830,636 L862,636"/>
+    <path d="M1122,913 L1122,770 L1159,770"/>
+  </g>
+  <g fill="rgb(255,70,70)" font-size="14" font-weight="bold">
+    <text x="514" y="600">N</text>
+    <text x="514" y="349">N</text>
+    <text x="514" y="198">N</text>
+    <text x="839" y="715">N</text>
+    <text x="1131" y="848">N</text>
+  </g>
+</svg>
+</body>
+</html>
