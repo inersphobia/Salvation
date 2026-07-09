@@ -862,6 +862,8 @@ function drawWeave(t){
   const Eg = Math.floor(t / beat);             // global edge (leg) index
   const p  = (t / beat) - Eg;                  // 0..1 along the current leg
   const vtx = k => (2*(((k%7)+7)%7)) % 7;      // loop position -> vertex index
+  // the carried color advances one step per leg = the 1/27 counter counting
+  const legColor = eg => WEAVE_COL[(((eg%3)+3)%3)];
   const S = [];
   for (let v=0; v<7; v++) S[v] = weaveSite(v);
 
@@ -880,9 +882,8 @@ function drawWeave(t){
     if (eg < 0) continue;
     const k = ((eg%7)+7)%7;
     const a=S[vtx(k)], b=S[vtx(k+1)];
-    // tint by the LIVE state of the site this leg travels TO, so the line
-    // matches that counter's current color (blue/orange/red)
-    const col = WEAVE_COL[posIndex(vtx(k+1), t) - 1];
+    // each leg keeps the color the traveler carried across it
+    const col = legColor(eg);
     const fade = 1 - kk/(TRAIL+1);
     ctx.lineWidth = 2.5;
     ctx.strokeStyle = withA(col, (0.55*fade).toFixed(3));
@@ -900,7 +901,7 @@ function drawWeave(t){
     const age = t - arrivalT;
     const bright = 0.32 + 0.68*Math.max(0, 1 - age/(7*beat));
     const pulse  = Math.max(0, 1 - age/(beat*0.7));
-    const col = WEAVE_COL[posIndex(v, t) - 1];   // LIVE: matches this dial's timer digit
+    const col = legColor(Eprime);   // color the traveler deposited when it last struck this corner
     const rr = (0.13 + 0.07*pulse) * scaleF;
     const g = ctx.createRadialGradient(S[v].x,S[v].y,0, S[v].x,S[v].y, rr*2.4);
     g.addColorStop(0, withA(col, (0.4*bright).toFixed(3)));
@@ -913,14 +914,14 @@ function drawWeave(t){
     ctx.globalAlpha = 1;
   }
 
-  // 4. The traveler - white core, halo tinted by the counter it heads to
+  // 4. The traveler - white core, halo in the color it currently carries
   const A=S[vtx(Eg)], B=S[vtx(Eg+1)];
   const tx=A.x+(B.x-A.x)*p, ty=A.y+(B.y-A.y)*p;
-  const destCol = WEAVE_COL[posIndex(vtx(Eg+1), t) - 1];
+  const legCol = legColor(Eg);
   const gr = ctx.createRadialGradient(tx,ty,0, tx,ty, 0.35*scaleF);
   gr.addColorStop(0, "rgba(255,255,255,0.95)");
-  gr.addColorStop(0.5, withA(destCol, "0.5"));
-  gr.addColorStop(1, withA(destCol, "0"));
+  gr.addColorStop(0.5, withA(legCol, "0.5"));
+  gr.addColorStop(1, withA(legCol, "0"));
   ctx.fillStyle = gr;
   ctx.beginPath(); ctx.arc(tx,ty, 0.35*scaleF, 0,Math.PI*2); ctx.fill();
   ctx.fillStyle = "white";
