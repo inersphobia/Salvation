@@ -18,10 +18,9 @@ For MacOS (using Safari):
 3. Launch the application.
 
 How to use:
-1. Change the number of hops on the path by clicking the green button at the bottom right. You can choose to only show only corners, or should halfway betwen corners.
-2. Choose 81 minute mode or 27 minute mode.
-3. Start
-4. Pause
-5. Reset
-6. Finish early
+1. Tap the clock to start. Tap again to pause, and again to resume.
+2. MODE cycles between 27, 54, and 81 minute sessions.
+3. RESET clears the current session.
+4. The digits show minutes and thirds (1/3, 1/9, 1/27 of a minute) in base 3; the three-box incrementer below the clock steps every 1/27 of a minute.
+5. After a cycle completes, overtime counts up until you tap to restart or press RESET.
 

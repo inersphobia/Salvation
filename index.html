@@ -39,29 +39,7 @@
     background: rgba(20, 20, 20, 0.92);
     border-top: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 16px 16px 0 0;
-    padding: 4px 12px calc(10px + env(safe-area-inset-bottom, 0px));
-  }
-
-  #sheetHandle {
-    width: 64px;
-    height: 24px;
-    margin: 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-  }
-  #sheetHandle::before {
-    content: "";
-    width: 36px;
-    height: 4px;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, 0.3);
-  }
-  #sheetHandle:focus-visible {
-    outline: 2px solid #0074ff;
-    outline-offset: 2px;
-    border-radius: 6px;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
   }
 
   .ui-row {
@@ -69,22 +47,6 @@
     justify-content: center;
     gap: 8px;
     flex-wrap: wrap;
-  }
-
-  #uiSecondary {
-    max-height: 0;
-    opacity: 0;
-    overflow: hidden;
-    margin-top: 0;
-    transition: max-height 0.25s ease, opacity 0.25s ease, margin-top 0.25s ease;
-  }
-  #ui.open #uiSecondary {
-    max-height: 120px;
-    opacity: 1;
-    margin-top: 8px;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    #uiSecondary { transition: none; }
   }
 
   /* 48dp minimum touch targets (Material guidelines) */
@@ -107,8 +69,6 @@
   }
 
   /* BUTTON COLORS */
-  #btnStart  { background:#0074ff; }
-  #btnPause  { background:#f28b02; }
   #btnReset  { background:#e03131; }
   #btnMode   { background:#5b3fd6; }
 
@@ -156,13 +116,8 @@
 </div>
 
 <div id="ui">
-  <div id="sheetHandle" role="button" tabindex="0" aria-label="More controls"></div>
   <div class="ui-row" id="uiPrimary">
-    <button id="btnStart">START</button>
-    <button id="btnPause">PAUSE</button>
     <button id="btnReset">RESET</button>
-  </div>
-  <div class="ui-row" id="uiSecondary">
     <button id="btnMode">27-MIN</button>
   </div>
 </div>
@@ -207,8 +162,6 @@ let frameInterval=1000/targetFPS;
 let lastFrameTime=0;
 
 /* BUTTONS */
-const btnStart=document.getElementById("btnStart");
-const btnPause=document.getElementById("btnPause");
 const btnReset=document.getElementById("btnReset");
 const btnMode=document.getElementById("btnMode");
 
@@ -478,7 +431,7 @@ function updateTimerText(el){
 
   if (timeMode === 0){
     minsIdx=[0,1,2];
-    fracIdx=[3,4,5,6];
+    fracIdx=[3,4,5];
   } else {
     minsIdx=[0,1,2,3];
     fracIdx=[4,5,6];
@@ -632,10 +585,8 @@ function drawLEDs(){
 }
 
 function drawSubCounter(elapsed){
-  if (timeMode === 0) return;
-
   const e = finished ? totalCycle : elapsed;
-  const pos = Math.floor(e / (20/27)) % 3; // 1/81 min per step, same as fastest dial in 27-min mode
+  const pos = Math.floor(e / (20/9)) % 3; // 1/27 min per step, same real-time rate in every mode
 
   const cellW = canvasAnim.width < 500 ? 20 : 24;
   const cellH = cellW;
@@ -666,6 +617,17 @@ function drawTimerText(){
   ctx.font = canvasAnim.width < 500 ? "32px monospace" : "40px monospace";
   ctx.textAlign="center";
   ctx.fillText(timerStr, canvasAnim.width/2, canvasAnim.height/2 - 40);
+}
+
+function drawTapHint(){
+  if (running) return;
+  const hint = finished ? "tap to restart"
+             : pauseMs > 0 ? "tap to resume"
+             : "tap to start";
+  ctx.fillStyle = "rgba(255,255,255,0.45)";
+  ctx.font = canvasAnim.width < 500 ? "14px system-ui, sans-serif" : "16px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(hint, canvasAnim.width/2, canvasAnim.height/2 + 34);
 }
 
 /* ---------- MAIN DRAW LOOP ---------- */
@@ -717,6 +679,7 @@ function draw(now){
   drawLEDs();
   drawTimerText();
   drawSubCounter(elapsed);
+  drawTapHint();
 
   } catch (err) {
     console.error('Draw loop error:', err);
@@ -724,24 +687,13 @@ function draw(now){
   requestAnimationFrame(draw);
 }
 
-/* ---------- TOUCH GESTURES ---------- */
-// Touch gestures disabled - use buttons only
-
-/* ---------- BOTTOM SHEET ---------- */
-const uiSheet = document.getElementById("ui");
-const sheetHandle = document.getElementById("sheetHandle");
-
-function toggleSheet(){
-  uiSheet.classList.toggle("open");
-  haptic('light');
+/* ---------- TAP THE CLOCK: start -> pause -> resume ---------- */
+function toggleClock(){
+  if (running) pauseClock();
+  else startClock(); // startClock() itself restarts fresh after a finished cycle
+  haptic('medium');
 }
-sheetHandle.addEventListener("click", toggleSheet);
-sheetHandle.addEventListener("keydown", e=>{
-  if (e.key==="Enter" || e.key===" "){
-    e.preventDefault();
-    toggleSheet();
-  }
-});
+canvasAnim.addEventListener("click", toggleClock);
 
 /* ---------- PWA INSTALL PROMPT ---------- */
 let deferredPrompt;
@@ -814,8 +766,6 @@ updateTimerText(0);
 drawStaticLayer();
 
 /* ---------- BUTTON HOOKS ---------- */
-btnStart.onclick = ()=>{ pulseButton(btnStart); startClock(); };
-btnPause.onclick = ()=>{ pulseButton(btnPause); pauseClock(); };
 btnReset.onclick = ()=>{ pulseButton(btnReset); resetClock(); };
 btnMode.onclick  = ()=>{ pulseButton(btnMode, 'light'); toggleMode(); };
 
