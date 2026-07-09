@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TriTime">
@@ -27,26 +27,83 @@
   #canvasStatic { z-index: 1; }
   #canvasAnim { z-index: 2; }
 
-  /* --- BASE UI (Desktop/Laptop default) --- */
+  /* --- BOTTOM SHEET UI (edge-to-edge safe) --- */
   #ui {
     position: fixed;
-    bottom: 12px;
-    width: 100%;
+    bottom: 0;
+    left: 0;
+    right: 0;
     text-align: center;
     font-family: system-ui, sans-serif;
     z-index: 20;
+    background: rgba(20, 20, 20, 0.92);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px 16px 0 0;
+    padding: 4px 12px calc(10px + env(safe-area-inset-bottom, 0px));
   }
 
+  #sheetHandle {
+    width: 64px;
+    height: 24px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  #sheetHandle::before {
+    content: "";
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.3);
+  }
+  #sheetHandle:focus-visible {
+    outline: 2px solid #0074ff;
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  .ui-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  #uiSecondary {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    margin-top: 0;
+    transition: max-height 0.25s ease, opacity 0.25s ease, margin-top 0.25s ease;
+  }
+  #ui.open #uiSecondary {
+    max-height: 120px;
+    opacity: 1;
+    margin-top: 8px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #uiSecondary { transition: none; }
+  }
+
+  /* 48dp minimum touch targets (Material guidelines) */
   #ui button {
-    margin: 4px;
-    padding: 10px 18px;
-    font-size: 15px;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: 600;
     border-radius: 8px;
     border: none;
     cursor: pointer;
     color: white;
     touch-action: manipulation;
     transition: box-shadow 0.15s;
+  }
+  #ui button:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
   }
 
   /* BUTTON COLORS */
@@ -55,26 +112,6 @@
   #btnReset  { background:#e03131; }
   #btnMode   { background:#5b3fd6; }
 
-  /* --- TRUE MOBILE BIG BUTTONS --- */
-  /* This is the reliable fix: phones only, never laptops */
-  @media screen and (max-device-width: 600px) {
-    #ui {
-      bottom: 12px;
-    }
-
-    #ui button {
-      padding: 12px 20px;
-      font-size: 16px;
-      margin: 6px;
-      border-radius: 8px;
-    }
-
-    #ui button.pulse {
-      box-shadow: 0 0 20px rgba(255,255,255,0.8);
-    }
-  }
-
-  /* Desktop/laptop pulse (light) */
   #ui button.pulse {
     box-shadow: 0 0 16px rgba(255,255,255,0.6);
   }
@@ -119,10 +156,15 @@
 </div>
 
 <div id="ui">
-  <button id="btnStart">START</button>
-  <button id="btnPause">PAUSE</button>
-  <button id="btnReset">RESET</button>
-  <button id="btnMode">27-MIN</button>
+  <div id="sheetHandle" role="button" tabindex="0" aria-label="More controls"></div>
+  <div class="ui-row" id="uiPrimary">
+    <button id="btnStart">START</button>
+    <button id="btnPause">PAUSE</button>
+    <button id="btnReset">RESET</button>
+  </div>
+  <div class="ui-row" id="uiSecondary">
+    <button id="btnMode">27-MIN</button>
+  </div>
 </div>
 
 <script>
@@ -170,18 +212,23 @@ const btnPause=document.getElementById("btnPause");
 const btnReset=document.getElementById("btnReset");
 const btnMode=document.getElementById("btnMode");
 
-/* ---------- HAPTICS ---------- */
-function haptic(duration=35){
+/* ---------- HAPTICS (Material-style patterns) ---------- */
+const HAPTIC_PATTERNS = {
+  light:  10,                  // mode toggle, sheet handle
+  medium: 35,                  // start / pause / reset
+  heavy:  [60,40,60,40,120]    // cycle completion
+};
+function haptic(pattern="medium"){
   if (navigator.vibrate){
-    navigator.vibrate(duration);
+    navigator.vibrate(HAPTIC_PATTERNS[pattern] ?? pattern);
   }
 }
 
 /* ---------- BUTTON PULSE ---------- */
-function pulseButton(btn){
+function pulseButton(btn, pattern="medium"){
   btn.classList.add("pulse");
   setTimeout(()=>btn.classList.remove("pulse"), 150);
-  haptic(35);
+  haptic(pattern);
 }
 
 /* ---------- WAKE LOCK ---------- */
@@ -204,6 +251,45 @@ function releaseWakeLock(){
         console.log('Wake Lock released');
       });
   }
+}
+
+/* ---------- MEDIA-STYLE TIMER NOTIFICATION ---------- */
+// Serialized so a clear() queued before a show() can never close the newer notification
+let notifyQueue = Promise.resolve();
+function queueNotify(fn){
+  notifyQueue = notifyQueue.then(fn).catch(()=>{});
+  return notifyQueue;
+}
+
+async function ensureNotifyPermission(){
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) return false;
+  if (Notification.permission === 'default'){
+    try { await Notification.requestPermission(); } catch (err) {}
+  }
+  return Notification.permission === 'granted';
+}
+
+function showTimerNotification(title, body, actions){
+  queueNotify(async () => {
+    if (!(await ensureNotifyPermission())) return;
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification(title, {
+      tag: 'salvation-timer',
+      silent: true,
+      body,
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      actions
+    });
+  });
+}
+
+function clearTimerNotification(){
+  queueNotify(async () => {
+    if (!('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.ready;
+    (await reg.getNotifications({tag: 'salvation-timer'})).forEach(n => n.close());
+  });
 }
 
 /* ---------- BEEP ---------- */
@@ -417,12 +503,22 @@ function startClock(){
   startMs = pauseMs>0 ? performance.now()-pauseMs : performance.now();
   running=true;
   requestWakeLock();
+  showTimerNotification(
+    'Salvation timer running',
+    ["27", "54", "81"][timeMode] + '-minute cycle in progress',
+    [{action:'pause', title:'Pause'}, {action:'reset', title:'Reset'}]
+  );
 }
 function pauseClock(){
   if (!running||finished) return;
   running=false;
   pauseMs=performance.now()-startMs;
   releaseWakeLock();
+  showTimerNotification(
+    'Salvation timer paused',
+    'Tap to return to the timer',
+    [{action:'reset', title:'Reset'}]
+  );
 }
 function resetClock(){
   running=false; finished=false;
@@ -435,6 +531,7 @@ function resetClock(){
   updateTimerText(0);
   needsStaticRedraw = true;
   releaseWakeLock();
+  clearTimerNotification();
 }
 function finishClock(){
   finished=true;
@@ -442,7 +539,13 @@ function finishClock(){
   overtimeStart = startMs + totalCycle * 1000;
   updateTimerText(totalCycle);
   playCompletionTone();
+  haptic('heavy');
   releaseWakeLock();
+  showTimerNotification(
+    'Cycle complete',
+    'Overtime is counting',
+    [{action:'reset', title:'Reset'}]
+  );
 }
 
 function toggleMode(){
@@ -624,6 +727,22 @@ function draw(now){
 /* ---------- TOUCH GESTURES ---------- */
 // Touch gestures disabled - use buttons only
 
+/* ---------- BOTTOM SHEET ---------- */
+const uiSheet = document.getElementById("ui");
+const sheetHandle = document.getElementById("sheetHandle");
+
+function toggleSheet(){
+  uiSheet.classList.toggle("open");
+  haptic('light');
+}
+sheetHandle.addEventListener("click", toggleSheet);
+sheetHandle.addEventListener("keydown", e=>{
+  if (e.key==="Enter" || e.key===" "){
+    e.preventDefault();
+    toggleSheet();
+  }
+});
+
 /* ---------- PWA INSTALL PROMPT ---------- */
 let deferredPrompt;
 const installPrompt = document.getElementById('installPrompt');
@@ -657,6 +776,12 @@ if ('serviceWorker' in navigator) {
       .then(reg => console.log('Service Worker registered'))
       .catch(err => console.log('Service Worker registration failed:', err));
   });
+
+  // Notification action buttons (Pause/Reset) arrive as messages from the SW
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if (e.data === 'pause') pauseClock();
+    else if (e.data === 'reset') resetClock();
+  });
 }
 
 /* ---------- WAKE LOCK RE-ACQUIRE ON VISIBILITY CHANGE ---------- */
@@ -667,6 +792,14 @@ document.addEventListener('visibilitychange', async () => {
 });
 
 /* ---------- INIT ---------- */
+// Launcher shortcut deep links (?mode=27|54|81)
+const modeParam = new URLSearchParams(location.search).get('mode');
+const modeIdx = {"27": 0, "54": 1, "81": 2}[modeParam];
+if (modeIdx !== undefined) {
+  timeMode = modeIdx;
+  btnMode.textContent = ["27-MIN", "54-MIN", "81-MIN"][timeMode];
+}
+
 updateTables();
 setupGeometry();
 setupTriangles();
@@ -684,7 +817,7 @@ drawStaticLayer();
 btnStart.onclick = ()=>{ pulseButton(btnStart); startClock(); };
 btnPause.onclick = ()=>{ pulseButton(btnPause); pauseClock(); };
 btnReset.onclick = ()=>{ pulseButton(btnReset); resetClock(); };
-btnMode.onclick  = ()=>{ pulseButton(btnMode); toggleMode(); };
+btnMode.onclick  = ()=>{ pulseButton(btnMode, 'light'); toggleMode(); };
 
 requestAnimationFrame(draw);
 </script>
