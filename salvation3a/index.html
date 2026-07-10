@@ -166,7 +166,7 @@
     <button id="btnReset">RESET</button>
     <button id="btnMode">27-MIN</button>
     <button id="btnPrev">&#9664;</button>
-    <button id="btnView">STAR</button>
+    <button id="btnView">RINGS</button>
   </div>
 </div>
 
@@ -174,8 +174,8 @@
 /* ---------- CONFIG ---------- */
 const numDials = 7;
 let timeMode = 0; // 0=27-min, 1=54-min, 2=81-min
-let viewMode = 0; // 0=septagram, 1=rings, 2=abacus, 3=fractal
-const VIEW_NAMES = ["STAR", "RINGS", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "SEPT", "FRAME", "GOAL"];
+let viewMode = 0; // 0=rings, 1=septagram, 2=abacus, 3=fractal
+const VIEW_NAMES = ["RINGS", "STAR", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "SEPT", "FRAME", "GOAL"];
 
 const dotsPerEdge = [1,2];
 const baseIntervals = [4860,1620,540,180,60,20,20/3];
@@ -1495,7 +1495,7 @@ function toggleView(){
 function drawStaticLayer(){
   ctxStatic.clearRect(0, 0, viewW, viewH);
   
-  if (viewMode===1){ drawRingsStatic();   needsStaticRedraw = false; return; }
+  if (viewMode===0){ drawRingsStatic();   needsStaticRedraw = false; return; }
   if (viewMode===2){ drawAbacusStatic();  needsStaticRedraw = false; return; }
   if (viewMode===3){ needsStaticRedraw = false; return; } // fractal renders on the anim layer (moving camera)
   if (viewMode===4){ needsStaticRedraw = false; return; } // wheels render on the anim layer (spinning)
@@ -1591,10 +1591,9 @@ function drawLEDs(t){
 }
 
 function drawSubCounter(elapsed){
-  // Only on STAR view now. The abacus shows it as its bottom row; the
-  // fractal's dot glides + recolors to convey the same sub-progress; other
-  // views move continuously. Also hidden in 27-min mode (too fast to read).
-  if (viewMode !== 0) return;
+  // Only on STAR view. The abacus shows it as its bottom row; other views
+  // move continuously. Also hidden in 27-min mode (too fast to read).
+  if (viewMode !== 1) return;
   if (timeMode === 0) return;
   const e = finished ? totalCycle : elapsed;
   const pos = Math.floor(e / (ticks[6]/3)) % 3; // always one subdivision (3x) faster than the top triangle
@@ -1645,7 +1644,7 @@ function drawTimerText(t){
   let di = 0; // digits appear in dial order (minutes then fractions)
   for (const ch of timerStr){
     if (ch >= "0" && ch <= "2"){
-      if (viewMode === 1){
+      if (viewMode === 0){
         const T = ticks[di];
         ctx.fillStyle = ringLerp(posIndex(di, t), (t % T)/T);
       } else {
@@ -1733,10 +1732,10 @@ function draw(now){
   // Draw only animated elements
   const vizT = finished ? totalCycle : elapsed;
   if (viewMode===0){
+    drawRingDots(vizT);
+  } else if (viewMode===1){
     drawCenterDots(now);
     drawLEDs(vizT);
-  } else if (viewMode===1){
-    drawRingDots(vizT);
   } else if (viewMode===2){
     drawAbacusDots(vizT);
   } else if (viewMode===3){
