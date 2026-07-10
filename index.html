@@ -173,7 +173,7 @@
 const numDials = 7;
 let timeMode = 0; // 0=27-min, 1=54-min, 2=81-min
 let viewMode = 0; // 0=septagram, 1=rings, 2=abacus, 3=fractal
-const VIEW_NAMES = ["STAR", "RINGS", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "SEPT", "FRAME"];
+const VIEW_NAMES = ["STAR", "RINGS", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "SEPT", "FRAME", "GOAL"];
 
 const dotsPerEdge = [1,2];
 const baseIntervals = [4860,1620,540,180,60,20,20/3];
@@ -1161,21 +1161,112 @@ const FRAME_EDGES = [
   {c:"r", p:[[1122,913],[1122,770],[1159,770]], l:"N", lx:1131, ly:848},
 ];
 const FRAME_EDGE_COL = { w:"rgba(255,255,255,0.55)", b:"rgb(0,120,255)", r:"rgb(255,70,70)" };
-let frameCam = {x:-60, y:-15};
+/* Second diagram: "Session: Selecting a Goal" (from Seth_3.pdf) */
+const GOAL_BOXES = [
+  {x:80,   y:415, w:150, h:110, lines:["Think about","motivation"]},
+  {x:283,  y:415, w:150, h:110, lines:["Identify","motivation"]},
+  {x:568,  y:415, w:150, h:110, lines:["Start a","session"]},
+  {x:771,  y:415, w:150, h:110, lines:["Write down","a goal"]},
+  {x:1043, y:170, w:160, h:95,  lines:["Focus on","the goal"]},
+  {x:1384, y:45,  w:150, h:85,  lines:["Goal","attained"]},
+  {x:1384, y:155, w:150, h:85,  lines:["End of","session"]},
+  {x:1043, y:530, w:170, h:110, lines:["Write notes","[to understand","the obstacle]"]},
+  {x:1335, y:455, w:160, h:90,  lines:["Abandon the","session"]},
+  {x:1335, y:635, w:160, h:95,  lines:["Understand","the obstacle"]},
+  {x:1600, y:632, w:160, h:95,  lines:["Deploy","counter-","measures"]},
+  {x:1852, y:515, w:160, h:90,  lines:["Disable the","obstacles"]},
+  {x:1880, y:815, w:120, h:90,  lines:["Reason"]},
+  {x:2056, y:715, w:190, h:95,  lines:["Low confidence","in the","counter-measure"]},
+  {x:2056, y:915, w:160, h:80,  lines:["Low","motivation"]},
+  {x:1700, y:60,  w:130, h:80,  lines:["Outcome"]},
+];
+const GOAL_CIRCLES = [
+  {x:475,  y:470, r:22, t:"<n>"}, {x:963,  y:470, r:22, t:"<3>"},
+  {x:1245, y:215, r:22, t:"<n>"}, {x:1315, y:120, r:22, t:"<n>"},
+  {x:1255, y:585, r:22, t:"<3>"}, {x:1537, y:680, r:22, t:"<5>"},
+  {x:1802, y:680, r:22, t:"<5>"}, {x:2054, y:560, r:22, t:"<5>"},
+  {x:2040, y:860, r:22, t:"<5>"},
+];
+const GOAL_DOTS = [
+  {x:55,   y:470, t:"-3"}, {x:258, y:470, t:"-2"}, {x:543, y:470, t:"-1"},
+  {x:746,  y:470, t:"0"},  {x:533, y:585, t:"-3"}, {x:1018, y:215, t:"2"},
+  {x:1300, y:310, t:"1"},  {x:1620, y:120, t:"-3"}, {x:1018, y:585, t:"1"},
+  {x:1310, y:500, t:"3"},  {x:1310, y:680, t:"4"},  {x:1590, y:800, t:"1"},
+  {x:2126, y:505, t:"0"},  {x:2126, y:615, t:"1"},  {x:1855, y:860, t:"5"},
+  {x:2298, y:762, t:"1"},  {x:2268, y:955, t:"-3"}, {x:1870, y:100, t:"6"},
+];
+const GOAL_EDGES = [
+  {c:"w", p:[[68,470],[74,470]]},    {c:"w", p:[[230,470],[245,470]]},
+  {c:"w", p:[[271,470],[277,470]]},  {c:"w", p:[[433,470],[447,470]]},
+  {c:"b", p:[[497,470],[524,470]], l:"Y", lx:503, ly:460},
+  {c:"w", p:[[556,470],[562,470]]},  {c:"w", p:[[718,470],[727,470]]},
+  {c:"w", p:[[759,470],[765,470]]},  {c:"w", p:[[921,470],[935,470]]},
+  {c:"r", p:[[475,492],[475,585],[514,585]], l:"N", lx:483, ly:545},
+  {c:"b", p:[[963,448],[963,215],[999,215]], l:"Y", lx:971, ly:340},
+  {c:"w", p:[[1031,215],[1037,215]]},
+  {c:"w", p:[[1203,215],[1217,215]]},
+  {c:"b", p:[[1245,193],[1245,120],[1287,120]], l:"Y", lx:1253, ly:158},
+  {c:"r", p:[[1245,237],[1245,310],[1281,310]], l:"N", lx:1253, ly:278},
+  {c:"w", p:[[1315,98],[1315,87],[1378,87]]},
+  {c:"w", p:[[1315,142],[1315,197],[1378,197]]},
+  {c:"w", p:[[1534,87],[1620,87],[1620,101]]},
+  {c:"w", p:[[1534,197],[1620,197],[1620,139]]},
+  {c:"r", p:[[963,492],[963,585],[999,585]], l:"N", lx:971, ly:545},
+  {c:"w", p:[[1031,585],[1037,585]]},
+  {c:"w", p:[[1213,585],[1227,585]]},
+  {c:"r", p:[[1255,563],[1255,500],[1291,500]], l:"N", lx:1263, ly:538},
+  {c:"w", p:[[1323,500],[1329,500]]},
+  {c:"b", p:[[1255,607],[1255,680],[1291,680]], l:"Y", lx:1263, ly:650},
+  {c:"w", p:[[1323,680],[1329,680]]},
+  {c:"w", p:[[1495,680],[1509,680]]},
+  {c:"b", p:[[1559,680],[1594,680]], l:"Y", lx:1565, ly:670},
+  {c:"r", p:[[1537,702],[1537,800],[1571,800]], l:"N", lx:1545, ly:760},
+  {c:"w", p:[[1760,680],[1774,680]]},
+  {c:"b", p:[[1802,658],[1802,560],[1846,560]], l:"Y", lx:1810, ly:618},
+  {c:"w", p:[[2012,560],[2026,560]]},
+  {c:"b", p:[[2054,538],[2054,505],[2107,505]], l:"Y", lx:2062, ly:528},
+  {c:"r", p:[[2054,582],[2054,615],[2107,615]], l:"N", lx:2062, ly:608},
+  {c:"r", p:[[1802,702],[1802,860],[1836,860]], l:"N", lx:1810, ly:790},
+  {c:"w", p:[[1868,860],[1874,860]]},
+  {c:"w", p:[[2000,860],[2012,860]]},
+  {c:"w", p:[[2040,838],[2040,762],[2050,762]]},
+  {c:"w", p:[[2040,882],[2040,955],[2050,955]]},
+  {c:"w", p:[[2246,762],[2279,762]]},
+  {c:"w", p:[[2216,955],[2249,955]]},
+];
+const FRAME_DEFS = [
+  { W: FRAME_W, H: FRAME_H, boxes: FRAME_BOXES, circles: FRAME_CIRCLES,
+    dots: FRAME_DOTS, edges: FRAME_EDGES, cam: {x:-60, y:-15},
+    store: 'salvationFrameTexts', title: null },
+  { W: 2360, H: 1060, boxes: GOAL_BOXES, circles: GOAL_CIRCLES,
+    dots: GOAL_DOTS, edges: GOAL_EDGES, cam: {x:-20, y:40},
+    store: 'salvationGoalTexts', title: "Session: Selecting a Goal" },
+];
+function curFrameIdx(){ return viewMode === 8 ? 1 : 0; }
+function CF(){ return FRAME_DEFS[curFrameIdx()]; }
+let frameHintUntil = 0;
+let lastTimerView = 0;
 let frameStatus = null;
 let frameSelected = -1;
+let frameSelectedF = 0;
 
 function clampFrameCam(){
-  frameCam.x = Math.max(Math.min(20, viewW - FRAME_W*FRAME_S - 20), Math.min(20, frameCam.x));
-  frameCam.y = Math.max(Math.min(20, viewH - FRAME_H*FRAME_S - 20), Math.min(20, frameCam.y));
+  CF().cam.x = Math.max(Math.min(20, viewW - CF().W*FRAME_S - 20), Math.min(20, CF().cam.x));
+  CF().cam.y = Math.max(Math.min(20, viewH - CF().H*FRAME_S - 20), Math.min(20, CF().cam.y));
 }
 
 function drawFrameView(){
   clampFrameCam();
-  const s = FRAME_S, ox = frameCam.x, oy = frameCam.y;
+  const s = FRAME_S, ox = CF().cam.x, oy = CF().cam.y;
   const X = x => x*s + ox, Y = y => y*s + oy;
   // edges
-  for (const e of FRAME_EDGES){
+  if (CF().title){
+    ctx.fillStyle = "rgba(0,191,255,0.7)";
+    ctx.font = "14px monospace";
+    ctx.textAlign = "left";
+    ctx.fillText(CF().title, X(60), Y(24));
+  }
+  for (const e of CF().edges){
     ctx.strokeStyle = FRAME_EDGE_COL[e.c];
     ctx.lineWidth = 1.6;
     ctx.beginPath();
@@ -1199,8 +1290,8 @@ function drawFrameView(){
     }
   }
   // boxes
-  FRAME_BOXES.forEach((b, i) => {
-    const sel = (i === frameSelected);
+  CF().boxes.forEach((b, i) => {
+    const sel = (frameSelectedF === curFrameIdx() && i === frameSelected);
     ctx.setLineDash(b.empty ? [5,5] : []);
     ctx.strokeStyle = sel ? "rgba(255,255,255,0.95)"
                           : b.empty ? "rgba(0,191,255,0.3)" : "rgba(0,191,255,0.55)";
@@ -1216,7 +1307,7 @@ function drawFrameView(){
   });
   // circles
   ctx.textAlign = "center";
-  for (const c of FRAME_CIRCLES){
+  for (const c of CF().circles){
     ctx.strokeStyle = "rgba(0,191,255,0.7)";
     ctx.lineWidth = 1.5;
     ctx.fillStyle = "black";
@@ -1227,7 +1318,7 @@ function drawFrameView(){
     ctx.fillText(c.t, X(c.x), Y(c.y)+4);
   }
   // LED junction dots
-  for (const d of FRAME_DOTS){
+  for (const d of CF().dots){
     const dx = X(d.x), dy = Y(d.y);
     const g = ctx.createRadialGradient(dx,dy,0, dx,dy, 22);
     g.addColorStop(0, "rgba(255,255,255,0.5)");
@@ -1240,25 +1331,31 @@ function drawFrameView(){
     ctx.font = "bold 12px monospace";
     ctx.fillText(d.t, dx, dy+4);
   }
-  // hint
-  ctx.fillStyle = "rgba(255,255,255,0.35)";
-  ctx.font = "12px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("drag dark space to pan - tap a box to set status", viewW/2, viewH - 130);
+  // hint: shows for 3s after entering the view, then fades away
+  const hintLeft = frameHintUntil - performance.now();
+  if (hintLeft > 0){
+    ctx.globalAlpha = Math.min(1, hintLeft/500);
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.font = "12px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("drag dark space to pan - tap a box to set status", viewW/2, viewH - 148);
+    ctx.fillText("long press to modify content", viewW/2, viewH - 130);
+    ctx.globalAlpha = 1;
+  }
 }
 
 function frameBoxAt(cx, cy, includeEmpty){
-  const wx = (cx - frameCam.x)/FRAME_S, wy = (cy - frameCam.y)/FRAME_S;
-  for (let i=0;i<FRAME_BOXES.length;i++){
-    const b = FRAME_BOXES[i];
+  const wx = (cx - CF().cam.x)/FRAME_S, wy = (cy - CF().cam.y)/FRAME_S;
+  for (let i=0;i<CF().boxes.length;i++){
+    const b = CF().boxes[i];
     if ((includeEmpty || !b.empty) && wx>=b.x && wx<=b.x+b.w && wy>=b.y && wy<=b.y+b.h) return i;
   }
   return -1;
 }
 
 /* --- FRAME box text editing (long-press a box to open) --- */
-function setFrameBoxText(idx, text, persist){
-  const b = FRAME_BOXES[idx];
+function setFrameBoxText(fi, idx, text, persist){
+  const b = FRAME_DEFS[fi].boxes[idx];
   text = text.trim().replace(/\s+/g, " ");
   if (!text){
     b.lines = []; b.empty = true;
@@ -1283,16 +1380,16 @@ function setFrameBoxText(idx, text, persist){
     if (cur && lines.length < maxLines) lines.push(cur);
     b.lines = lines;
   }
-  if (frameSelected === idx){
+  if (frameSelectedF === fi && frameSelected === idx){
     frameStatus = b.empty ? null : b.lines.join(" ");
     if (b.empty) frameSelected = -1;
     try { localStorage.setItem('salvationStatus', frameStatus || ""); } catch(err) {}
   }
   if (persist){
     try {
-      const map = JSON.parse(localStorage.getItem('salvationFrameTexts') || "{}");
+      const map = JSON.parse(localStorage.getItem(FRAME_DEFS[fi].store) || "{}");
       map[idx] = text;
-      localStorage.setItem('salvationFrameTexts', JSON.stringify(map));
+      localStorage.setItem(FRAME_DEFS[fi].store, JSON.stringify(map));
     } catch(err) {}
   }
 }
@@ -1322,12 +1419,17 @@ function getTextY(){
   return viewH/2 - 40;
 }
 
-function toggleView(){
-  viewMode = (viewMode + 1) % 8;
+function gotoView(v){
+  if (viewMode <= 6) lastTimerView = viewMode;
+  viewMode = v;
   btnView.textContent = VIEW_NAMES[viewMode];
   if (viewMode === 3){ fracCam.init = false; fracTrail.length = 0; } // snap camera on entry
+  if (viewMode >= 7) frameHintUntil = performance.now() + 3000;     // hint on entry
   needsStaticRedraw = true;
   try { localStorage.setItem('salvationView', viewMode); } catch(e) {}
+}
+function toggleView(){
+  gotoView((viewMode + 1) % 9);
 }
 
 /* ---------- DRAW HELPERS ---------- */
@@ -1340,7 +1442,7 @@ function drawStaticLayer(){
   if (viewMode===4){ needsStaticRedraw = false; return; } // wheels render on the anim layer (spinning)
   if (viewMode===5){ needsStaticRedraw = false; return; } // weave renders on the anim layer (traveler)
   if (viewMode===6){ drawSeptStatic(); needsStaticRedraw = false; return; } // sept panel frames
-  if (viewMode===7){ needsStaticRedraw = false; return; } // frame renders on the anim layer (pannable)
+  if (viewMode>=7){ needsStaticRedraw = false; return; } // frame/goal render on the anim layer (pannable)
 
   // Star lines - matched to the WEAVE track (thin, faint)
   ctxStatic.lineWidth = 1.5;
@@ -1577,7 +1679,7 @@ function draw(now){
   } else {
     drawFrameView();
   }
-  if (viewMode !== 7){
+  if (viewMode < 7){
     drawTimerText();
     drawTapHint();
   }
@@ -1598,7 +1700,7 @@ function toggleClock(){
 // The tap target sits on the icon itself (tap-to-start / pause / play),
 // drawn at (viewW/2, getTextY()+74) - so you tap the visible control.
 canvasAnim.addEventListener("click", (e) => {
-  if (viewMode === 7) return; // FRAME taps select boxes, not the clock
+  if (viewMode >= 7) return; // diagram taps select boxes, not the clock
   const rect = canvasAnim.getBoundingClientRect();
   const dx = (e.clientX - rect.left) - rect.width/2;
   const dy = (e.clientY - rect.top)  - (getTextY() + 74);
@@ -1609,11 +1711,12 @@ canvasAnim.addEventListener("click", (e) => {
 /* ---------- FRAME VIEW: pan (drag dark space) + select (tap a box) ---------- */
 let framePtr = null;
 canvasAnim.addEventListener("pointerdown", (e) => {
-  if (viewMode !== 7) return;
+  if (viewMode !== 7 && viewMode !== 8) return;
   if (frameEdit.style.display === "block") return; // dialog open
   const rect = canvasAnim.getBoundingClientRect();
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
-  framePtr = { x: cx, y: cy, camX: frameCam.x, camY: frameCam.y,
+  if (statusHit(cx, cy)) return; // status long-press owns that corner
+  framePtr = { x: cx, y: cy, camX: CF().cam.x, camY: CF().cam.y,
                moved: false, longFired: false,
                boxAtDown: frameBoxAt(cx, cy),           // selectable boxes only
                boxAny: frameBoxAt(cx, cy, true) };      // includes empty boxes
@@ -1623,37 +1726,39 @@ canvasAnim.addEventListener("pointerdown", (e) => {
     framePressTimer = setTimeout(() => {
       if (framePtr && !framePtr.moved){
         framePtr.longFired = true;
-        openFrameEdit(framePtr.boxAny);
+        openFrameEdit(curFrameIdx(), framePtr.boxAny);
       }
     }, 500);
   }
 });
 canvasAnim.addEventListener("pointermove", (e) => {
-  if (viewMode !== 7 || !framePtr) return;
+  if ((viewMode !== 7 && viewMode !== 8) || !framePtr) return;
   const rect = canvasAnim.getBoundingClientRect();
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
   const dx = cx - framePtr.x, dy = cy - framePtr.y;
   if (Math.abs(dx) + Math.abs(dy) > 8){ framePtr.moved = true; clearTimeout(framePressTimer); }
   // pan only when the drag started on dark space, not on a box
   if (framePtr.moved && framePtr.boxAny === -1){
-    frameCam.x = framePtr.camX + dx;
-    frameCam.y = framePtr.camY + dy;
+    CF().cam.x = framePtr.camX + dx;
+    CF().cam.y = framePtr.camY + dy;
     clampFrameCam();
   }
 });
 canvasAnim.addEventListener("pointerup", (e) => {
   clearTimeout(framePressTimer);
-  if (viewMode !== 7 || !framePtr){ framePtr = null; return; }
+  if ((viewMode !== 7 && viewMode !== 8) || !framePtr){ framePtr = null; return; }
   const rect = canvasAnim.getBoundingClientRect();
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
   if (!framePtr.moved && !framePtr.longFired){
     const hit = frameBoxAt(cx, cy);
     if (hit >= 0){
       frameSelected = hit;
-      frameStatus = FRAME_BOXES[hit].lines.join(" ");
+      frameSelectedF = curFrameIdx();
+      frameStatus = CF().boxes[hit].lines.join(" ");
       try {
         localStorage.setItem('salvationStatus', frameStatus);
         localStorage.setItem('salvationStatusIdx', hit);
+        localStorage.setItem('salvationStatusF', frameSelectedF);
       } catch(err) {}
       haptic('light');
     }
@@ -1665,22 +1770,55 @@ canvasAnim.addEventListener("pointercancel", () => { clearTimeout(framePressTime
 const frameEdit = document.getElementById('frameEdit');
 const frameEditText = document.getElementById('frameEditText');
 let frameEditIdx = -1;
+let frameEditF = 0;
 let framePressTimer = null;
 
-function openFrameEdit(idx){
+function openFrameEdit(fi, idx){
+  frameEditF = fi;
   frameEditIdx = idx;
-  frameEditText.value = FRAME_BOXES[idx].lines.join(" ");
+  frameEditText.value = FRAME_DEFS[fi].boxes[idx].lines.join(" ");
   frameEdit.style.display = "block";
   frameEditText.focus();
   haptic('light');
 }
 function closeFrameEdit(save){
-  if (save && frameEditIdx >= 0) setFrameBoxText(frameEditIdx, frameEditText.value, true);
+  if (save && frameEditIdx >= 0) setFrameBoxText(frameEditF, frameEditIdx, frameEditText.value, true);
   frameEdit.style.display = "none";
   frameEditIdx = -1;
 }
 document.getElementById('feSave').addEventListener('click', () => closeFrameEdit(true));
 document.getElementById('feCancel').addEventListener('click', () => closeFrameEdit(false));
+
+/* ---------- STATUS long-press: jump timer <-> its diagram ---------- */
+function statusHit(cx, cy){
+  return !!frameStatus && cx <= 250 && cy <= 80;
+}
+let statusDown = null, statusPressTimer = null;
+canvasAnim.addEventListener("pointerdown", (e) => {
+  if (frameEdit.style.display === "block") return;
+  const rect = canvasAnim.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  if (!statusHit(cx, cy)) return;
+  statusDown = { x: cx, y: cy };
+  clearTimeout(statusPressTimer);
+  statusPressTimer = setTimeout(() => {
+    statusDown = null;
+    if (viewMode >= 7) gotoView(lastTimerView);        // diagram -> back to the timer
+    else gotoView(7 + (frameSelectedF === 1 ? 1 : 0)); // timer -> the status's diagram
+    haptic('medium');
+  }, 500);
+});
+canvasAnim.addEventListener("pointermove", (e) => {
+  if (!statusDown) return;
+  const rect = canvasAnim.getBoundingClientRect();
+  if (Math.abs(e.clientX - rect.left - statusDown.x) +
+      Math.abs(e.clientY - rect.top  - statusDown.y) > 10){
+    clearTimeout(statusPressTimer);
+    statusDown = null;
+  }
+});
+canvasAnim.addEventListener("pointerup",     () => { clearTimeout(statusPressTimer); statusDown = null; });
+canvasAnim.addEventListener("pointercancel", () => { clearTimeout(statusPressTimer); statusDown = null; });
 
 /* ---------- PWA INSTALL PROMPT ---------- */
 let deferredPrompt;
@@ -1745,27 +1883,32 @@ if (modeIdx !== undefined) {
   btnMode.textContent = ["27-MIN", "54-MIN", "81-MIN"][timeMode];
 }
 
-// Restore custom FRAME box texts
+// Restore custom box texts for both diagrams
 try {
-  const map = JSON.parse(localStorage.getItem('salvationFrameTexts') || "{}");
-  for (const k in map){
-    const i = parseInt(k, 10);
-    if (i >= 0 && i < FRAME_BOXES.length) setFrameBoxText(i, map[k], false);
+  for (let f = 0; f < FRAME_DEFS.length; f++){
+    const map = JSON.parse(localStorage.getItem(FRAME_DEFS[f].store) || "{}");
+    for (const k in map){
+      const i = parseInt(k, 10);
+      if (i >= 0 && i < FRAME_DEFS[f].boxes.length) setFrameBoxText(f, i, map[k], false);
+    }
   }
 } catch(e) {}
 
 // Restore last-used view and selected status
 try {
   const savedView = parseInt(localStorage.getItem('salvationView'), 10);
-  if (savedView >= 0 && savedView <= 7){
+  if (savedView >= 0 && savedView <= 8){
     viewMode = savedView;
     btnView.textContent = VIEW_NAMES[viewMode];
   }
   const savedStatus = localStorage.getItem('salvationStatus');
   if (savedStatus) frameStatus = savedStatus;
+  const savedF = parseInt(localStorage.getItem('salvationStatusF'), 10);
+  if (savedF === 0 || savedF === 1) frameSelectedF = savedF;
   const savedIdx = parseInt(localStorage.getItem('salvationStatusIdx'), 10);
-  if (savedIdx >= 0 && savedIdx < FRAME_BOXES.length) frameSelected = savedIdx;
+  if (savedIdx >= 0 && savedIdx < FRAME_DEFS[frameSelectedF].boxes.length) frameSelected = savedIdx;
 } catch(e) {}
+if (viewMode >= 7) frameHintUntil = performance.now() + 3000;
 
 updateTables();
 setupGeometry();
