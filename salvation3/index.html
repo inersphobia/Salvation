@@ -662,49 +662,137 @@ function drawRingDots(t){
 }
 
 /* --- abacus: 7 rows of 3 cells, top row = slowest digit --- */
-const ABACUS_ROWS = numDials + 1;   // 7 dials + a 1/81 incrementer row at the bottom
+const ABACUS_ROWS = numDials + 1;   // 7 dials + a sub-tick incrementer row
+function abacusMinRows(){ return timeMode === 0 ? 3 : 4; } // whole-minute dials
 function abacusLayout(){
   const w = viewW, h = viewH;
-  const gap = 6;
+  const gap = 6, sectionGap = 40;
   const R = ABACUS_ROWS;
-  const cell = Math.max(20, Math.min(48,
-    Math.floor(Math.min((w*0.7 - 2*gap)/3, (h - 320 - (R-1)*gap)/R))));
-  const gridW = 3*cell + 2*gap, gridH = R*cell + (R-1)*gap;
-  return { cell, gap, gridW, gridH, rows: R,
+  const cell = Math.max(18, Math.min(44,
+    Math.floor(Math.min((w*0.7 - 2*gap)/3, (h - 330 - (R-1)*gap - sectionGap)/R))));
+  const gridW = 3*cell + 2*gap;
+  const gridH = R*cell + (R-1)*gap + sectionGap;
+  return { cell, gap, sectionGap, gridW, gridH, rows: R,
            left: (w - gridW)/2,
-           top: Math.max(16, (h - 230 - gridH)/2) };
+           top: Math.max(48, (h - 230 - gridH)/2) };
+}
+function abacusRowY(L, i){
+  return L.top + i*(L.cell + L.gap) + (i >= abacusMinRows() ? L.sectionGap : 0);
+}
+function abacusLabel(i){
+  const t = i === numDials ? ticks[numDials-1]/3 : ticks[i];
+  return t >= 60 ? String(Math.round(t/60)) : "1/" + Math.round(60/t);
 }
 
 function drawAbacusStatic(){
   const L = abacusLayout();
-  ctxStatic.lineWidth = 2;
-  ctxStatic.strokeStyle = "rgba(0,191,255,0.85)";
-  for (let i=0;i<L.rows;i++){
-    const y = L.top + i*(L.cell + L.gap);
-    for (let k=0;k<3;k++){
-      ctxStatic.strokeRect(L.left + k*(L.cell + L.gap), y, L.cell, L.cell);
-    }
+  const mr = abacusMinRows();
+  const bx0 = L.left - 46, bx1 = L.left + L.gridW + 16;
+  const by0 = L.top - 44, by1 = L.top + L.gridH + 14;
+  // faint scanlines over the register area (CRT hint)
+  ctxStatic.strokeStyle = "rgba(0,191,255,0.035)";
+  ctxStatic.lineWidth = 1;
+  for (let sy = by0 + 4; sy < by1; sy += 3){
+    ctxStatic.beginPath();
+    ctxStatic.moveTo(bx0 + 4, sy);
+    ctxStatic.lineTo(bx1 - 4, sy);
+    ctxStatic.stroke();
   }
+  // recessed instrument slots + row labels
+  for (let i=0;i<L.rows;i++){
+    const y = abacusRowY(L, i);
+    for (let k=0;k<3;k++){
+      const x = L.left + k*(L.cell + L.gap);
+      const cx = x + L.cell/2, cy = y + L.cell/2;
+      ctxStatic.fillStyle = "rgba(0,191,255,0.04)";
+      ctxStatic.strokeStyle = "rgba(0,191,255,0.28)";
+      ctxStatic.lineWidth = 1;
+      ctxStatic.beginPath();
+      ctxStatic.arc(cx, cy, L.cell*0.42, 0, Math.PI*2);
+      ctxStatic.fill(); ctxStatic.stroke();
+    }
+    ctxStatic.fillStyle = "rgba(0,191,255,0.5)";
+    ctxStatic.font = "10px monospace";
+    ctxStatic.textAlign = "right";
+    ctxStatic.fillText(abacusLabel(i), L.left - 10, y + L.cell/2 + 3);
+  }
+  // section captions + column key
+  ctxStatic.textAlign = "center";
+  ctxStatic.fillStyle = "rgba(120,150,170,0.5)";
+  ctxStatic.font = "11px monospace";
+  ctxStatic.fillText("M I N U T E S", viewW/2, L.top - 12);
+  ctxStatic.fillText("F R A C T I O N S", viewW/2, abacusRowY(L, mr) - 12);
+  ctxStatic.fillStyle = "rgba(0,191,255,0.4)";
+  ctxStatic.font = "10px monospace";
+  for (let k=0;k<3;k++){
+    ctxStatic.fillText(String(k), L.left + k*(L.cell+L.gap) + L.cell/2, L.top - 30);
+  }
+  // corner brackets framing the register
+  ctxStatic.strokeStyle = "rgba(0,191,255,0.5)";
+  ctxStatic.lineWidth = 1.5;
+  const B = 14;
+  const bracket = (x, y, dx, dy) => {
+    ctxStatic.beginPath();
+    ctxStatic.moveTo(x + dx*B, y);
+    ctxStatic.lineTo(x, y);
+    ctxStatic.lineTo(x, y + dy*B);
+    ctxStatic.stroke();
+  };
+  bracket(bx0, by0, 1, 1); bracket(bx1, by0, -1, 1);
+  bracket(bx0, by1, 1, -1); bracket(bx1, by1, -1, -1);
+}
+
+// Jewel-lamp palette (Nostromo-style): stark white / amber / deep red
+const ABACUS_COL = ["rgb(245,242,228)", "rgb(255,170,50)", "rgb(205,36,48)"];
+function lampMix(rgb, u){ // u>0 mixes toward white (hot core); u<0 darkens (rim)
+  const m = rgb.match(/\d+/g).map(Number);
+  const f = v => Math.max(0, Math.min(255, Math.round(u >= 0 ? v+(255-v)*u : v*(1+u))));
+  return `rgb(${f(m[0])},${f(m[1])},${f(m[2])})`;
 }
 
 function drawAbacusDots(t){
   const L = abacusLayout();
-  const dot = (col, row, pos) => {
-    ctx.fillStyle = digitColor(pos);
-    ctx.beginPath();
-    ctx.arc(L.left + col*(L.cell + L.gap) + L.cell/2,
-            L.top + row*(L.cell + L.gap) + L.cell/2,
-            L.cell*0.28, 0, Math.PI*2);
-    ctx.fill();
+  const idle = !running && !finished && pauseMs === 0;
+  const lamp = (col, row, pos, frac) => {
+    const x = L.left + col*(L.cell + L.gap), y = abacusRowY(L, row);
+    const cx = x + L.cell/2, cy = y + L.cell/2;
+    const base = idle ? "rgb(215,220,225)" : ABACUS_COL[pos-1];
+    const pulse = running ? Math.max(0, 1 - frac/0.25) : 0;
+    // generous halo around the lit lamp
+    const R = L.cell * (1.25 + 0.55*pulse);
+    const g = ctx.createRadialGradient(cx,cy,0, cx,cy,R);
+    g.addColorStop(0, withA(base, (0.4 + 0.3*pulse).toFixed(3)));
+    g.addColorStop(0.5, withA(base, (0.12 + 0.1*pulse).toFixed(3)));
+    g.addColorStop(1, withA(base, "0"));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.fill();
+    // the jewel lamp: a domed light with a hot core
+    const lr = L.cell * 0.34;
+    const lg = ctx.createRadialGradient(cx - lr*0.2, cy - lr*0.25, 1, cx, cy, lr);
+    lg.addColorStop(0,    lampMix(base, 0.8 + 0.15*pulse));
+    lg.addColorStop(0.55, base);
+    lg.addColorStop(1,    lampMix(base, -0.25));
+    ctx.fillStyle = lg;
+    ctx.beginPath(); ctx.arc(cx, cy, lr, 0, Math.PI*2); ctx.fill();
+    // dwell arc: creeps around the bezel, a countdown to the hop
+    if (running){
+      ctx.strokeStyle = "rgba(255,255,255,0.3)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, L.cell*0.46, -Math.PI/2, -Math.PI/2 + frac*Math.PI*2);
+      ctx.stroke();
+    }
   };
   for (let i=0;i<numDials;i++){
     const pos = posIndex(i,t);
-    dot(pos-1, i, pos);
+    const frac = (t % ticks[i]) / ticks[i];
+    lamp(pos-1, i, pos, frac);
   }
-  // bottom row: the 1/81 incrementer (one subdivision faster than the top dial)
+  // bottom row: the sub-tick incrementer (one subdivision below the top dial)
   const e = finished ? totalCycle : t;
-  const incVal = Math.floor(e / (ticks[6]/3)) % 3;   // 0/1/2
-  dot(incVal, numDials, incVal + 1);
+  const subT = ticks[numDials-1]/3;
+  const incVal = Math.floor(e / subT) % 3;
+  lamp(incVal, numDials, incVal + 1, (e % subT)/subT);
 }
 
 /* --- fractal: Sierpinski descent, each digit picks a sub-triangle --- */
@@ -1650,8 +1738,62 @@ function drawSubCounter(elapsed){
   ctx.fill();
 }
 
+/* Seven-segment LED digits (alarm-clock style) for the ABACUS readout */
+const SEG_MAP = { "0":[1,1,1,1,1,1,0], "1":[0,1,1,0,0,0,0], "2":[1,1,0,1,1,0,1], "3":[1,1,1,1,0,0,1] };
+const SEG_RED = "rgb(255,52,38)", SEG_GHOST = "rgba(255,52,38,0.07)";
+function drawSegDigit(x, y, w, h, th, on, ghost){
+  const segs = [
+    [x+th, y, w-2*th, th],
+    [x+w-th, y+th*0.5, th, h/2-th],
+    [x+w-th, y+h/2+th*0.5, th, h/2-th],
+    [x+th, y+h-th, w-2*th, th],
+    [x, y+h/2+th*0.5, th, h/2-th],
+    [x, y+th*0.5, th, h/2-th],
+    [x+th, y+h/2-th/2, w-2*th, th],
+  ];
+  if (ghost){
+    ctx.fillStyle = SEG_GHOST;
+    for (let i=0;i<7;i++) if (!on[i]) ctx.fillRect(segs[i][0]+1, segs[i][1]+1, segs[i][2]-2, segs[i][3]-2);
+  }
+  ctx.fillStyle = SEG_RED;
+  ctx.shadowColor = SEG_RED;
+  ctx.shadowBlur = 7;
+  for (let i=0;i<7;i++) if (on[i]) ctx.fillRect(segs[i][0]+1, segs[i][1]+1, segs[i][2]-2, segs[i][3]-2);
+  ctx.shadowBlur = 0;
+}
+function drawSevenSegText(str, baseY){
+  const H = viewW < 500 ? 30 : 38;
+  const W = H*0.55, TH = Math.max(3, Math.round(H*0.13)), GAP = W*0.5;
+  const wOf = ch => ch === ":" ? TH*2 : ch === "\u2083" ? W*0.62 : (ch === "+" || ch === "-") ? W*0.7 : W;
+  let total = -GAP;
+  for (const ch of str) total += wOf(ch) + GAP;
+  let x = viewW/2 - total/2;
+  const top = baseY - H + 8;
+  for (const ch of str){
+    if (SEG_MAP[ch]){
+      drawSegDigit(x, top, W, H, TH, SEG_MAP[ch], true);
+    } else if (ch === ":"){
+      ctx.fillStyle = SEG_RED;
+      ctx.shadowColor = SEG_RED; ctx.shadowBlur = 7;
+      ctx.fillRect(x + TH*0.5, top + H*0.28, TH, TH);
+      ctx.fillRect(x + TH*0.5, top + H*0.62, TH, TH);
+      ctx.shadowBlur = 0;
+    } else if (ch === "\u2083"){
+      drawSegDigit(x, top + H*0.45, W*0.55, H*0.55, Math.max(2, TH*0.75), SEG_MAP["3"], true);
+    } else if (ch === "+" || ch === "-"){
+      ctx.fillStyle = SEG_RED;
+      ctx.shadowColor = SEG_RED; ctx.shadowBlur = 7;
+      ctx.fillRect(x, top + H/2 - TH/2, W*0.6, TH);
+      if (ch === "+") ctx.fillRect(x + W*0.3 - TH/2, top + H/2 - W*0.3, TH, W*0.6);
+      ctx.shadowBlur = 0;
+    }
+    x += wOf(ch) + GAP;
+  }
+}
+
 function drawTimerText(t){
   const y = getTextY();
+  if (viewMode === 2){ drawSevenSegText(timerStr, y); return; } // LED readout on ABACUS
   ctx.font = viewW < 500 ? "32px monospace" : "40px monospace";
 
   const str = timerStr;
