@@ -23,6 +23,7 @@
     position: absolute;
     top: 0;
     left: 0;
+    touch-action: none; /* we own all gestures; stops browser drag-hijack/pointercancel */
   }
   #canvasStatic { z-index: 1; }
   #canvasAnim { z-index: 2; }
@@ -1429,7 +1430,9 @@ function drawTapHint(){
 /* ---------- MAIN DRAW LOOP ---------- */
 function draw(now){
   try {
-    if (now-lastFrameTime < frameInterval){
+    // drags need native-rate rendering; the 30fps cap makes them feel laggy
+    const dragging = (viewMode === 7 && framePtr);
+    if (!dragging && now-lastFrameTime < frameInterval){
       requestAnimationFrame(draw); return;
     }
     lastFrameTime=now;
@@ -1527,6 +1530,7 @@ canvasAnim.addEventListener("pointerdown", (e) => {
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
   framePtr = { x: cx, y: cy, camX: frameCam.x, camY: frameCam.y,
                moved: false, boxAtDown: frameBoxAt(cx, cy) };
+  try { canvasAnim.setPointerCapture(e.pointerId); } catch(err) {}
 });
 canvasAnim.addEventListener("pointermove", (e) => {
   if (viewMode !== 7 || !framePtr) return;
