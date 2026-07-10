@@ -1626,12 +1626,19 @@ function drawTimerText(t){
   const y = getTextY();
   ctx.font = viewW < 500 ? "32px monospace" : "40px monospace";
 
+  // On RINGS in 27-min mode, also show the 1/81 digit so the innermost
+  // ring has its digit in the readout (7 rings <-> 7 digits)
+  let str = timerStr;
+  if (viewMode === 0 && timeMode === 0 && !finished){
+    str = timerStr.replace("\u2083", (posIndex(numDials-1, t) - 1) + "\u2083");
+  }
+
   // Overtime and idle keep a single color
   const idle = !running && !finished && pauseMs === 0;
   if (finished || idle){
     ctx.fillStyle = finished ? "#ff9500" : "white";
     ctx.textAlign = "center";
-    ctx.fillText(timerStr, viewW/2, y);
+    ctx.fillText(str, viewW/2, y);
     return;
   }
 
@@ -1640,9 +1647,9 @@ function drawTimerText(t){
   // same hue transition as their own ring, syncing text to the orrery.
   const DIGIT_COLORS = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"];
   ctx.textAlign = "left";
-  let x = viewW/2 - ctx.measureText(timerStr).width/2;
+  let x = viewW/2 - ctx.measureText(str).width/2;
   let di = 0; // digits appear in dial order (minutes then fractions)
-  for (const ch of timerStr){
+  for (const ch of str){
     if (ch >= "0" && ch <= "2"){
       if (viewMode === 0){
         const T = ticks[di];
