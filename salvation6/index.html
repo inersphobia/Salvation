@@ -916,20 +916,41 @@ function drawFractalView(t){
 }
 
 /* --- shared layout: where the timer text sits in each view --- */
-/* --- WHEELS: seven rings at the septagram vertices, each a solid color
-   drifting along the same hue path as RINGS (blue -> orange -> red),
-   landing on the pure state exactly at each tick. Cheaper than the old
-   conic-gradient sweep: seven plain strokes, no gradients. --- */
+/* --- WHEELS: rings at the septagram vertices. Each is a rotating sweep
+   (one turn per tick, like the original wheels) whose color graduates
+   along the RINGS hue path: the sweep head is the dial's current blend,
+   and trailing behind it is the recent history of that color journey.
+   27-min mode shows six wheels (the 1/81 dial is dropped, like RINGS). --- */
+function hueAtPhase(ph){ // continuous position in the 3-state cycle, [0,3)
+  ph = ((ph % 3) + 3) % 3;
+  const idx = Math.floor(ph);
+  return ringLerp(idx + 1, ph - idx);
+}
+
 function drawSevenRings(t){
   const idle = !running && !finished && pauseMs === 0;
-  for (let i=0;i<numDials;i++){
+  for (let i=0;i<ringCount();i++){
     const c = worldToScreen(dialPos[i].x, dialPos[i].y);
     const R = 1.25 * scaleF;
+    ctx.lineWidth = 0.16 * scaleF;
     const T = ticks[i];
     const pos = posIndex(i, t);
     const frac = (t % T) / T;
-    ctx.strokeStyle = idle ? "rgba(0,191,255,0.85)" : ringLerp(pos, frac);
-    ctx.lineWidth = 0.16 * scaleF;
+    if (idle){
+      ctx.strokeStyle = "rgba(0,191,255,0.85)";
+    } else if (ctx.createConicGradient){
+      const phase = (pos - 1) + frac;
+      const head = -Math.PI/2 + frac*Math.PI*2;    // sweep head: one turn per tick
+      const g = ctx.createConicGradient(head, c.x, c.y);
+      const STOPS = 12;
+      for (let k=0;k<=STOPS;k++){
+        const u = k/STOPS;                          // 0 = now .. 1 = one tick ago
+        g.addColorStop(u, hueAtPhase(phase - u));
+      }
+      ctx.strokeStyle = g;
+    } else {
+      ctx.strokeStyle = ringLerp(pos, frac);        // fallback: solid blend
+    }
     ctx.beginPath();
     ctx.arc(c.x, c.y, R, 0, Math.PI*2);
     ctx.stroke();
@@ -1637,7 +1658,7 @@ function drawTimerText(t){
   let di = 0; // digits appear in dial order (minutes then fractions)
   for (const ch of str){
     if (ch >= "0" && ch <= "2"){
-      if (viewMode === 0){
+      if (viewMode === 0 || viewMode === 4){
         const T = ticks[di];
         ctx.fillStyle = ringLerp(posIndex(di, t), (t % T)/T);
       } else {
