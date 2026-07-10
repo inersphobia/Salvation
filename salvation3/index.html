@@ -1162,6 +1162,7 @@ const FRAME_EDGES = [
 ];
 const FRAME_EDGE_COL = { w:"rgba(255,255,255,0.55)", b:"rgb(0,120,255)", r:"rgb(255,70,70)" };
 let frameCam = {x:-60, y:-15};
+let frameHintUntil = 0;
 let frameStatus = null;
 let frameSelected = -1;
 
@@ -1240,11 +1241,17 @@ function drawFrameView(){
     ctx.font = "bold 12px monospace";
     ctx.fillText(d.t, dx, dy+4);
   }
-  // hint
-  ctx.fillStyle = "rgba(255,255,255,0.35)";
-  ctx.font = "12px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("drag dark space to pan - tap a box to set status", viewW/2, viewH - 130);
+  // hint: shows for 3s after entering the view, then fades away
+  const hintLeft = frameHintUntil - performance.now();
+  if (hintLeft > 0){
+    ctx.globalAlpha = Math.min(1, hintLeft/500);
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.font = "12px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("drag dark space to pan - tap a box to set status", viewW/2, viewH - 148);
+    ctx.fillText("long press to modify content", viewW/2, viewH - 130);
+    ctx.globalAlpha = 1;
+  }
 }
 
 function frameBoxAt(cx, cy, includeEmpty){
@@ -1326,6 +1333,7 @@ function toggleView(){
   viewMode = (viewMode + 1) % 8;
   btnView.textContent = VIEW_NAMES[viewMode];
   if (viewMode === 3){ fracCam.init = false; fracTrail.length = 0; } // snap camera on entry
+  if (viewMode === 7) frameHintUntil = performance.now() + 3000; // hint on entry
   needsStaticRedraw = true;
   try { localStorage.setItem('salvationView', viewMode); } catch(e) {}
 }
@@ -1766,6 +1774,7 @@ try {
   const savedIdx = parseInt(localStorage.getItem('salvationStatusIdx'), 10);
   if (savedIdx >= 0 && savedIdx < FRAME_BOXES.length) frameSelected = savedIdx;
 } catch(e) {}
+if (viewMode === 7) frameHintUntil = performance.now() + 3000;
 
 updateTables();
 setupGeometry();
