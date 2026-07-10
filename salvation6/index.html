@@ -916,34 +916,20 @@ function drawFractalView(t){
 }
 
 /* --- shared layout: where the timer text sits in each view --- */
-/* --- WHEELS: seven rings at the septagram vertices. The new state color
-   sweeps around each ring like a clock wipe, gradually replacing the old,
-   one full sweep per tick: blue -> orange -> red -> blue --- */
-const RING_STATES = [[0,120,255],[255,160,0],[255,70,70]]; // blue, orange, red
-const rgbStr = a => `rgb(${a[0]},${a[1]},${a[2]})`;
-
+/* --- WHEELS: seven rings at the septagram vertices, each a solid color
+   drifting along the same hue path as RINGS (blue -> orange -> red),
+   landing on the pure state exactly at each tick. Cheaper than the old
+   conic-gradient sweep: seven plain strokes, no gradients. --- */
 function drawSevenRings(t){
+  const idle = !running && !finished && pauseMs === 0;
   for (let i=0;i<numDials;i++){
     const c = worldToScreen(dialPos[i].x, dialPos[i].y);
     const R = 1.25 * scaleF;
     const T = ticks[i];
-    const pc  = (t / T) % 3;
-    const idx = Math.floor(pc);
-    const frac = pc - idx;                         // 0..1 sweep progress this tick
-    const cur = rgbStr(RING_STATES[idx]);          // color being replaced
-    const nxt = rgbStr(RING_STATES[(idx+1)%3]);    // color sweeping in
+    const pos = posIndex(i, t);
+    const frac = (t % T) / T;
+    ctx.strokeStyle = idle ? "rgba(0,191,255,0.85)" : ringLerp(pos, frac);
     ctx.lineWidth = 0.16 * scaleF;
-    if (ctx.createConicGradient){
-      const g = ctx.createConicGradient(-Math.PI/2, c.x, c.y); // sweep from top, clockwise
-      const b = 0.03;                              // soft sweep edge
-      g.addColorStop(0, nxt);
-      g.addColorStop(Math.max(0, frac - b), nxt);
-      g.addColorStop(Math.min(1, frac + b), cur);
-      g.addColorStop(1, cur);
-      ctx.strokeStyle = g;
-    } else {
-      ctx.strokeStyle = frac < 0.5 ? cur : nxt;    // fallback: no conic gradient
-    }
     ctx.beginPath();
     ctx.arc(c.x, c.y, R, 0, Math.PI*2);
     ctx.stroke();
