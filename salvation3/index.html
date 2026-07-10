@@ -929,8 +929,17 @@ function hueAtPhase(ph){ // continuous position in the 3-state cycle, [0,3)
 
 function drawSevenRings(t){
   const idle = !running && !finished && pauseMs === 0;
-  for (let i=0;i<ringCount();i++){
-    const c = worldToScreen(dialPos[i].x, dialPos[i].y);
+  const n = ringCount();
+  for (let i=0;i<n;i++){
+    // full septagram in 54/81; an even hexagon in 27-min (six wheels),
+    // fastest wheel at the top like the septagram's
+    let c;
+    if (n === numDials){
+      c = worldToScreen(dialPos[i].x, dialPos[i].y);
+    } else {
+      const ang = Math.PI/2 + (i+1)*2*Math.PI/n;
+      c = worldToScreen(4.5*Math.cos(ang), 4.5*Math.sin(ang));
+    }
     const R = 1.25 * scaleF;
     ctx.lineWidth = 0.16 * scaleF;
     const T = ticks[i];
