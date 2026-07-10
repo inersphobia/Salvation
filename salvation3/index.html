@@ -71,10 +71,8 @@
 
   /* BUTTON COLORS */
   #btnReset  { background:#e03131; }
-  #btnMode   { background:#5b3fd6; }
-  #btnTones  { background:#444; padding-left:10px; padding-right:10px; }
-  #btnPrev   { background:#008b8b; padding-left:10px; padding-right:10px; }
-  #btnView   { background:#008b8b; }
+  #btnMenu   { background:#008b8b; }
+  #btnPlay   { background:#0074ff; min-width: 110px; }
 
   #ui button.pulse {
     box-shadow: 0 0 16px rgba(255,255,255,0.6);
@@ -96,7 +94,43 @@
     display: none;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   }
-  /* Tone settings dialog */
+  /* Menu panel */
+  #menu {
+    position: fixed;
+    top: 46%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(340px, 90vw);
+    max-height: 76vh;
+    overflow-y: auto;
+    background: #0a0f14;
+    border: 1.5px solid rgba(0,191,255,0.6);
+    border-radius: 12px;
+    padding: 16px;
+    z-index: 40;
+    display: none;
+    font-family: monospace;
+    color: #c7d3da;
+  }
+  #menu .set-title { font-size: 12px; letter-spacing: 0.3em; color: rgba(0,191,255,0.7); margin: 10px 0; text-align: center; }
+  .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .menu-grid button {
+    background: #15222c; border: 1px solid rgba(0,191,255,0.3); color: #c7d3da;
+    border-radius: 8px; padding: 10px 2px; font-size: 13px; font-family: monospace;
+    min-height: 44px; cursor: pointer;
+  }
+  .menu-grid button.active { background: #008b8b; color: white; border-color: transparent; }
+  .menu-grid button.disabled { opacity: 0.35; }
+  #menu .set-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 14px; padding: 8px 2px; cursor: pointer;
+  }
+  #menu input[type="checkbox"] { width: 22px; height: 22px; accent-color: #008b8b; }
+  #menu .fe-row { display: flex; justify-content: flex-end; margin-top: 8px; }
+  #menu .fe-row button { border: none; border-radius: 8px; padding: 10px 18px;
+    font-weight: 600; color: white; min-height: 44px; cursor: pointer; background: #008b8b; }
+
+  /* Tone settings dialog (unused shell kept minimal) */
   #settings {
     position: fixed;
     top: 40%;
@@ -180,12 +214,16 @@
   <button id="dismissBtn" style="background:#666;">Not now</button>
 </div>
 
-<div id="settings">
+<div id="menu">
+  <div class="set-title">T I M E R</div>
+  <div class="menu-grid" id="menuViews"></div>
+  <div class="set-title">D U R A T I O N</div>
+  <div class="menu-grid" id="menuDur"></div>
   <div class="set-title">T O N E S</div>
   <label class="set-row"><span>1/3 minute tone</span><input type="checkbox" id="tone20"></label>
   <label class="set-row"><span>1 minute tone</span><input type="checkbox" id="tone60"></label>
   <label class="set-row"><span>3 minute tone</span><input type="checkbox" id="tone180"></label>
-  <div class="fe-row"><button id="setClose">CLOSE</button></div>
+  <div class="fe-row"><button id="menuClose">CLOSE</button></div>
 </div>
 
 <div id="frameEdit">
@@ -198,11 +236,9 @@
 
 <div id="ui">
   <div class="ui-row" id="uiPrimary">
+    <button id="btnMenu">MENU</button>
+    <button id="btnPlay">START</button>
     <button id="btnReset">RESET</button>
-    <button id="btnMode">27-MIN</button>
-    <button id="btnTones">&#9834;</button>
-    <button id="btnPrev">&#9664;</button>
-    <button id="btnView">RINGS</button>
   </div>
 </div>
 
@@ -256,9 +292,8 @@ let lastFrameTime=0;
 
 /* BUTTONS */
 const btnReset=document.getElementById("btnReset");
-const btnMode=document.getElementById("btnMode");
-const btnView=document.getElementById("btnView");
-const btnPrev=document.getElementById("btnPrev");
+const btnMenu=document.getElementById("btnMenu");
+const btnPlay=document.getElementById("btnPlay");
 
 /* ---------- HAPTICS (Material-style patterns) ---------- */
 const HAPTIC_PATTERNS = {
@@ -607,13 +642,13 @@ function finishClock(){
   );
 }
 
-function toggleMode(){
-  if (running || finished || pauseMs > 0) return;  // must RESET to a clean state first
-  timeMode = (timeMode + 1) % 3;
-  btnMode.textContent = ["27-MIN", "54-MIN", "81-MIN"][timeMode];
+function setDuration(m){
+  if (running || finished || pauseMs > 0) return false; // must RESET first
+  timeMode = m;
   updateTables();
   resetClock();
   needsStaticRedraw = true;
+  return true;
 }
 
 
@@ -1683,15 +1718,12 @@ function getTextY(){
 function gotoView(v){
   if (viewMode <= 6) lastTimerView = viewMode;
   viewMode = v;
-  btnView.textContent = VIEW_NAMES[viewMode];
   if (viewMode === 3){ fracCam.init = false; fracTrail.length = 0; } // snap camera on entry
   if (viewMode >= 7) frameHintUntil = performance.now() + 3000;     // hint on entry
   needsStaticRedraw = true;
   try { localStorage.setItem('salvationView', viewMode); } catch(e) {}
 }
-function toggleView(){
-  gotoView((viewMode + 1) % 9);
-}
+
 
 /* ---------- DRAW HELPERS ---------- */
 function drawStaticLayer(){
@@ -2015,6 +2047,8 @@ function draw(now){
     drawTapHint();
   }
   drawStatus();
+  const playLbl = running ? "PAUSE" : finished ? "RESTART" : pauseMs > 0 ? "RESUME" : "START";
+  if (btnPlay.textContent !== playLbl) btnPlay.textContent = playLbl;
 
   } catch (err) {
     console.error('Draw loop error:', err);
@@ -2117,8 +2151,8 @@ function closeFrameEdit(save){
   frameEdit.style.display = "none";
   frameEditIdx = -1;
 }
-const settingsEl = document.getElementById('settings');
-const btnTones = document.getElementById('btnTones');
+/* ---------- MENU ---------- */
+const menuEl = document.getElementById('menu');
 try {
   const savedTones = JSON.parse(localStorage.getItem('salvationTones') || "null");
   if (savedTones) toneOn = Object.assign(toneOn, savedTones);
@@ -2132,11 +2166,43 @@ TONE_DEFS.forEach(d => {
     haptic('light');
   });
 });
-btnTones.onclick = () => {
-  pulseButton(btnTones, 'light');
-  settingsEl.style.display = settingsEl.style.display === 'block' ? 'none' : 'block';
+function menuSync(){
+  const clean = !running && !finished && pauseMs === 0;
+  document.querySelectorAll('#menuViews button').forEach((b, i) =>
+    b.classList.toggle('active', i === viewMode));
+  document.querySelectorAll('#menuDur button').forEach((b, i) => {
+    b.classList.toggle('active', i === timeMode);
+    b.classList.toggle('disabled', !clean);
+  });
+}
+VIEW_NAMES.forEach((n, i) => {
+  const b = document.createElement('button');
+  b.textContent = n;
+  b.onclick = () => {
+    gotoView(i);
+    menuSync();
+    menuEl.style.display = 'none';
+    haptic('light');
+  };
+  document.getElementById('menuViews').appendChild(b);
+});
+["27 MIN","54 MIN","81 MIN"].forEach((n, i) => {
+  const b = document.createElement('button');
+  b.textContent = n;
+  b.onclick = () => {
+    if (!setDuration(i)){ haptic('light'); return; } // reset first
+    menuSync();
+    menuEl.style.display = 'none';
+    haptic('light');
+  };
+  document.getElementById('menuDur').appendChild(b);
+});
+btnMenu.onclick = () => {
+  pulseButton(btnMenu, 'light');
+  menuSync();
+  menuEl.style.display = menuEl.style.display === 'block' ? 'none' : 'block';
 };
-document.getElementById('setClose').addEventListener('click', () => { settingsEl.style.display = 'none'; });
+document.getElementById('menuClose').addEventListener('click', () => { menuEl.style.display = 'none'; });
 
 document.getElementById('feSave').addEventListener('click', () => closeFrameEdit(true));
 document.getElementById('feCancel').addEventListener('click', () => closeFrameEdit(false));
@@ -2234,7 +2300,6 @@ const modeParam = new URLSearchParams(location.search).get('mode');
 const modeIdx = {"27": 0, "54": 1, "81": 2}[modeParam];
 if (modeIdx !== undefined) {
   timeMode = modeIdx;
-  btnMode.textContent = ["27-MIN", "54-MIN", "81-MIN"][timeMode];
 }
 
 // Migrate: the two old empty boxes (indices 8,9) were replaced by ladders
@@ -2266,7 +2331,6 @@ try {
   const savedView = parseInt(localStorage.getItem('salvationView'), 10);
   if (savedView >= 0 && savedView <= 8){
     viewMode = savedView;
-    btnView.textContent = VIEW_NAMES[viewMode];
   }
   const savedStatus = localStorage.getItem('salvationStatus');
   if (savedStatus) frameStatus = savedStatus;
@@ -2292,9 +2356,11 @@ drawStaticLayer();
 
 /* ---------- BUTTON HOOKS ---------- */
 btnReset.onclick = ()=>{ pulseButton(btnReset); resetClock(); };
-btnMode.onclick  = ()=>{ pulseButton(btnMode, 'light'); toggleMode(); };
-btnView.onclick  = ()=>{ pulseButton(btnView, 'light'); toggleView(); };
-btnPrev.onclick  = ()=>{ pulseButton(btnPrev, 'light'); gotoView((viewMode + 8) % 9); };
+btnPlay.onclick = ()=>{
+  btnPlay.classList.add('pulse');
+  setTimeout(()=>btnPlay.classList.remove('pulse'), 150);
+  toggleClock();
+};
 
 requestAnimationFrame(draw);
 </script>
