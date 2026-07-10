@@ -72,6 +72,7 @@
   /* BUTTON COLORS */
   #btnReset  { background:#e03131; }
   #btnMode   { background:#5b3fd6; }
+  #btnPrev   { background:#008b8b; padding-left:14px; padding-right:14px; }
   #btnView   { background:#008b8b; }
 
   #ui button.pulse {
@@ -164,6 +165,7 @@
   <div class="ui-row" id="uiPrimary">
     <button id="btnReset">RESET</button>
     <button id="btnMode">27-MIN</button>
+    <button id="btnPrev">&#9664;</button>
     <button id="btnView">STAR</button>
   </div>
 </div>
@@ -213,6 +215,7 @@ let lastFrameTime=0;
 const btnReset=document.getElementById("btnReset");
 const btnMode=document.getElementById("btnMode");
 const btnView=document.getElementById("btnView");
+const btnPrev=document.getElementById("btnPrev");
 
 /* ---------- HAPTICS (Material-style patterns) ---------- */
 const HAPTIC_PATTERNS = {
@@ -1123,42 +1126,76 @@ function drawSept(t){
 /* --- FRAME: the practice flowchart as an interactive status board. Drag
    the dark space to pan; tap a rectangle to make it the current status,
    which then shows top-left on every view. --- */
-const FRAME_S = 0.8, FRAME_W = 1440, FRAME_H = 1180;
+const FRAME_S = 0.8, FRAME_W = 2400, FRAME_H = 1180;
 const FRAME_BOXES = [
   {x:255,  y:605,  w:170, h:110, lines:["Hold a mental","image of the goal"]},
   {x:600,  y:745,  w:170, h:110, lines:["Hold a mental","image of the","process"]},
   {x:872,  y:880,  w:170, h:110, lines:["Hold a mental","image of the","next step"]},
   {x:1168, y:1005, w:195, h:115, lines:["Hold a mental model","of the structure of","the process"]},
-  {x:612,  y:372,  w:160, h:92,  lines:["Struggle to","hold it."]},
-  {x:612,  y:222,  w:160, h:92,  lines:["Write notes"]},
-  {x:612,  y:72,   w:160, h:92,  lines:["Take a walk"]},
-  {x:818,  y:72,   w:160, h:92,  lines:["Reset the","counter to (0,3]"]},
-  {x:868,  y:578,  w:160, h:115, lines:[], empty:true},
-  {x:1165, y:712,  w:160, h:115, lines:[], empty:true},
+  {x:612, y:372, w:160, h:92,  lines:["Struggle to","hold it."]},
+  {x:612, y:222, w:160, h:92,  lines:["Write notes"]},
+  {x:612, y:72,  w:160, h:92,  lines:["Take a walk"]},
+  {x:818, y:72,  w:160, h:92,  lines:["Reset the","counter to (0,3]"]},
+  {x:1257, y:372, w:160, h:92,  lines:["Struggle to","hold it."]},
+  {x:1257, y:222, w:160, h:92,  lines:["Write notes"]},
+  {x:1257, y:72,  w:160, h:92,  lines:["Take a walk"]},
+  {x:1463, y:72,  w:160, h:92,  lines:["Reset the","counter to (0,3]"]},
+  {x:1902, y:372, w:160, h:92,  lines:["Struggle to","hold it."]},
+  {x:1902, y:222, w:160, h:92,  lines:["Write notes"]},
+  {x:1902, y:72,  w:160, h:92,  lines:["Take a walk"]},
+  {x:2108, y:72,  w:160, h:92,  lines:["Reset the","counter to (0,3]"]},
 ];
 const FRAME_CIRCLES = [
   {x:505, y:660, r:22, t:"<n>"}, {x:830, y:800, r:22, t:"<n>"}, {x:1122, y:935, r:22, t:"<n>"},
   {x:505, y:418, r:27, t:"(0,3]"}, {x:505, y:267, r:27, t:"[4,6]"}, {x:505, y:117, r:27, t:"[7]"},
+  {x:1150, y:418, r:27, t:"(0,3]"}, {x:1150, y:267, r:27, t:"[4,6]"}, {x:1150, y:117, r:27, t:"[7]"},
+  {x:1795, y:418, r:27, t:"(0,3]"}, {x:1795, y:267, r:27, t:"[4,6]"}, {x:1795, y:117, r:27, t:"[7]"},
 ];
-const FRAME_DOTS = [ {x:218, y:660, t:"0"}, {x:505, y:538, t:"1"}, {x:1032, y:267, t:"0"} ];
+const FRAME_DOTS = [
+  {x:218, y:660, t:"0"},
+  {x:505, y:538, t:"1"}, {x:1032, y:267, t:"0"},
+  {x:1150, y:538, t:"2"}, {x:1677, y:267, t:"0"},
+  {x:1795, y:538, t:"3"}, {x:2322, y:267, t:"0"},
+];
 const FRAME_EDGES = [
   {c:"w", p:[[231,660],[249,660]]}, {c:"w", p:[[425,660],[478,660]]},
-  {c:"w", p:[[505,525],[505,452]]}, {c:"w", p:[[770,800],[803,800]]},
-  {c:"w", p:[[1042,935],[1095,935]]}, {c:"w", p:[[772,267],[1013,267]]},
-  {c:"w", p:[[772,117],[812,117]]},
-  {c:"w", p:[[772,418],[1032,418],[1032,286]]},
-  {c:"w", p:[[978,117],[1032,117],[1032,248]]},
-  {c:"b", p:[[532,418],[606,418]], l:"Y", lx:556, ly:407},
-  {c:"b", p:[[532,267],[606,267]], l:"Y", lx:556, ly:256},
-  {c:"b", p:[[532,117],[606,117]]},
+  {c:"w", p:[[770,800],[803,800]]}, {c:"w", p:[[1042,935],[1095,935]]},
   {c:"b", p:[[505,682],[505,800],[594,800]], l:"Y", lx:514, ly:735},
   {c:"b", p:[[830,822],[830,935],[866,935]], l:"Y", lx:839, ly:878},
   {c:"b", p:[[1122,957],[1122,1062],[1162,1062]], l:"Y", lx:1131, ly:1010},
   {c:"r", p:[[505,638],[505,556]], l:"N", lx:514, ly:600},
+  {c:"r", p:[[830,778],[830,655],[1150,655],[1150,556]], l:"N", lx:839, ly:715},
+  {c:"r", p:[[1122,913],[1122,700],[1795,700],[1795,556]], l:"N", lx:1131, ly:848},
+  {c:"w", p:[[505,525],[505,452]]},
+  {c:"b", p:[[532,418],[606,418]], l:"Y", lx:556, ly:407},
+  {c:"b", p:[[532,267],[606,267]], l:"Y", lx:556, ly:256},
+  {c:"b", p:[[532,117],[606,117]]},
   {c:"r", p:[[505,391],[505,299]], l:"N", lx:514, ly:349},
   {c:"r", p:[[505,240],[505,149]], l:"N", lx:514, ly:198},
-  {c:"r", p:[[830,778],[830,636],[862,636]], l:"N", lx:839, ly:715},
-  {c:"r", p:[[1122,913],[1122,770],[1159,770]], l:"N", lx:1131, ly:848},
+  {c:"w", p:[[772,418],[1032,418],[1032,286]]},
+  {c:"w", p:[[772,267],[1013,267]]},
+  {c:"w", p:[[772,117],[812,117]]},
+  {c:"w", p:[[978,117],[1032,117],[1032,248]]},
+  {c:"w", p:[[1150,525],[1150,452]]},
+  {c:"b", p:[[1177,418],[1251,418]], l:"Y", lx:1201, ly:407},
+  {c:"b", p:[[1177,267],[1251,267]], l:"Y", lx:1201, ly:256},
+  {c:"b", p:[[1177,117],[1251,117]]},
+  {c:"r", p:[[1150,391],[1150,299]], l:"N", lx:1159, ly:349},
+  {c:"r", p:[[1150,240],[1150,149]], l:"N", lx:1159, ly:198},
+  {c:"w", p:[[1417,418],[1677,418],[1677,286]]},
+  {c:"w", p:[[1417,267],[1658,267]]},
+  {c:"w", p:[[1417,117],[1457,117]]},
+  {c:"w", p:[[1623,117],[1677,117],[1677,248]]},
+  {c:"w", p:[[1795,525],[1795,452]]},
+  {c:"b", p:[[1822,418],[1896,418]], l:"Y", lx:1846, ly:407},
+  {c:"b", p:[[1822,267],[1896,267]], l:"Y", lx:1846, ly:256},
+  {c:"b", p:[[1822,117],[1896,117]]},
+  {c:"r", p:[[1795,391],[1795,299]], l:"N", lx:1804, ly:349},
+  {c:"r", p:[[1795,240],[1795,149]], l:"N", lx:1804, ly:198},
+  {c:"w", p:[[2062,418],[2322,418],[2322,286]]},
+  {c:"w", p:[[2062,267],[2303,267]]},
+  {c:"w", p:[[2062,117],[2102,117]]},
+  {c:"w", p:[[2268,117],[2322,117],[2322,248]]},
 ];
 const FRAME_EDGE_COL = { w:"rgba(255,255,255,0.55)", b:"rgb(0,120,255)", r:"rgb(255,70,70)" };
 /* Second diagram: "Session: Selecting a Goal" (from Seth_3.pdf) */
@@ -1263,8 +1300,8 @@ function drawFrameView(){
   if (CF().title){
     ctx.fillStyle = "rgba(0,191,255,0.7)";
     ctx.font = "14px monospace";
-    ctx.textAlign = "left";
-    ctx.fillText(CF().title, X(60), Y(24));
+    ctx.textAlign = "center";
+    ctx.fillText(CF().title, viewW/2, 28);
   }
   for (const e of CF().edges){
     ctx.strokeStyle = FRAME_EDGE_COL[e.c];
@@ -1395,7 +1432,15 @@ function setFrameBoxText(fi, idx, text, persist){
 }
 
 function drawStatus(){
-  if (!frameStatus) return;
+  if (!frameStatus){
+    if (viewMode < 7){
+      ctx.font = "12px monospace";
+      ctx.textAlign = "left";
+      ctx.fillStyle = "rgba(0,191,255,0.45)";
+      ctx.fillText("Go to diagram", 14, 24);
+    }
+    return;
+  }
   ctx.font = "12px monospace";
   ctx.textAlign = "left";
   ctx.fillStyle = "rgba(0,191,255,0.85)";
@@ -1791,7 +1836,8 @@ document.getElementById('feCancel').addEventListener('click', () => closeFrameEd
 
 /* ---------- STATUS long-press: jump timer <-> its diagram ---------- */
 function statusHit(cx, cy){
-  return !!frameStatus && cx <= 250 && cy <= 80;
+  if (cx > 250 || cy > 80) return false;
+  return !!frameStatus || viewMode < 7; // placeholder is pressable too
 }
 let statusDown = null, statusPressTimer = null;
 canvasAnim.addEventListener("pointerdown", (e) => {
@@ -1804,7 +1850,8 @@ canvasAnim.addEventListener("pointerdown", (e) => {
   statusPressTimer = setTimeout(() => {
     statusDown = null;
     if (viewMode >= 7) gotoView(lastTimerView);        // diagram -> back to the timer
-    else gotoView(7 + (frameSelectedF === 1 ? 1 : 0)); // timer -> the status's diagram
+    else if (frameStatus) gotoView(7 + (frameSelectedF === 1 ? 1 : 0)); // timer -> status's diagram
+    else gotoView(7);                                   // no status yet -> first diagram
     haptic('medium');
   }, 500);
 });
@@ -1883,6 +1930,19 @@ if (modeIdx !== undefined) {
   btnMode.textContent = ["27-MIN", "54-MIN", "81-MIN"][timeMode];
 }
 
+// Migrate: the two old empty boxes (indices 8,9) were replaced by ladders
+try {
+  const old = JSON.parse(localStorage.getItem('salvationFrameTexts') || "{}");
+  if ("8" in old || "9" in old){
+    delete old["8"]; delete old["9"];
+    localStorage.setItem('salvationFrameTexts', JSON.stringify(old));
+  }
+  const oi = parseInt(localStorage.getItem('salvationStatusIdx'), 10);
+  if (localStorage.getItem('salvationStatusF') !== "1" && oi >= 8){
+    localStorage.removeItem('salvationStatusIdx');
+  }
+} catch(e) {}
+
 // Restore custom box texts for both diagrams
 try {
   for (let f = 0; f < FRAME_DEFS.length; f++){
@@ -1927,6 +1987,7 @@ drawStaticLayer();
 btnReset.onclick = ()=>{ pulseButton(btnReset); resetClock(); };
 btnMode.onclick  = ()=>{ pulseButton(btnMode, 'light'); toggleMode(); };
 btnView.onclick  = ()=>{ pulseButton(btnView, 'light'); toggleView(); };
+btnPrev.onclick  = ()=>{ pulseButton(btnPrev, 'light'); gotoView((viewMode + 8) % 9); };
 
 requestAnimationFrame(draw);
 </script>
