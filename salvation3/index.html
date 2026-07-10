@@ -589,13 +589,8 @@ function digitColor(pos){
 /* --- rings: ternary orrery, outer ring = slowest digit --- */
 function drawRingsStatic(){
   const c = worldToScreen(0,0);
-  ctxStatic.lineWidth = 2;
-  ctxStatic.strokeStyle = "rgba(0,191,255,0.85)";
-  for (let i=0;i<numDials;i++){
-    ctxStatic.beginPath();
-    ctxStatic.arc(c.x, c.y, (RING_OUTER - i*RING_STEP)*scaleF, 0, Math.PI*2);
-    ctxStatic.stroke();
-  }
+  // rings are drawn on the anim layer now (their color shifts continuously);
+  // only the third-boundary spokes stay static
   // third boundaries, each colored as the third it opens: blue / orange / red
   ctxStatic.lineWidth = 2;
   const rIn = (RING_OUTER - (numDials-1)*RING_STEP)*scaleF;
@@ -610,15 +605,34 @@ function drawRingsStatic(){
   }
 }
 
+// state colors in HSL so transitions travel the hue wheel, not through gray
+const RING_HSL = [[212,100,50],[38,100,50],[0,100,64]]; // blue, orange, red
+function ringLerp(pos, frac){
+  const a = RING_HSL[pos-1], b = RING_HSL[pos % 3];
+  let dh = b[0] - a[0];
+  if (dh > 180) dh -= 360;
+  if (dh < -180) dh += 360;
+  const h = (a[0] + dh*frac + 360) % 360;
+  const sPct = a[1] + (b[1]-a[1])*frac;
+  const l = a[2] + (b[2]-a[2])*frac;
+  return `hsl(${h.toFixed(1)},${sPct.toFixed(1)}%,${l.toFixed(1)}%)`;
+}
+
 function drawRingDots(t){
   const c = worldToScreen(0,0);
+  const idle = !running && !finished && pauseMs === 0;
   for (let i=0;i<numDials;i++){
     const T = ticks[i];
     const pos = posIndex(i,t);
     const frac = (t % T) / T;
+    const col = idle ? "white" : ringLerp(pos, frac);
+    const r = (RING_OUTER - i*RING_STEP)*scaleF;
+    // the ring itself carries the same gradually-shifting color
+    ctx.strokeStyle = idle ? "rgba(0,191,255,0.85)" : col;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI*2); ctx.stroke();
     const total = ((pos-1) + frac) / 3;       // 0..1 around the ring, clockwise from top
     const ang = Math.PI/2 - total*2*Math.PI;
-    const r = (RING_OUTER - i*RING_STEP)*scaleF;
     const dx = c.x + Math.cos(ang)*r, dy = c.y - Math.sin(ang)*r;
     // burst: a brief white-cored glow the instant the dot enters a new
     // third (i.e. changes color), like the WEAVE traveler
@@ -633,7 +647,7 @@ function drawRingDots(t){
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(dx,dy, R, 0, Math.PI*2); ctx.fill();
     }
-    ctx.fillStyle = digitColor(pos);
+    ctx.fillStyle = col;
     ctx.beginPath(); ctx.arc(dx,dy, 6, 0, Math.PI*2); ctx.fill();
     if (pulse > 0.01){
       ctx.fillStyle = `rgba(255,255,255,${pulse.toFixed(3)})`;
