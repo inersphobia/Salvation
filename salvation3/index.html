@@ -94,6 +94,41 @@
     display: none;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   }
+  /* FRAME box text editor */
+  #frameEdit {
+    position: fixed;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(320px, 86vw);
+    background: #0a0f14;
+    border: 1.5px solid rgba(0,191,255,0.6);
+    border-radius: 12px;
+    padding: 14px;
+    z-index: 40;
+    display: none;
+    font-family: monospace;
+  }
+  #frameEdit textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background: black;
+    color: #c7d3da;
+    border: 1px solid rgba(0,191,255,0.35);
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 14px;
+    padding: 8px;
+    resize: none;
+  }
+  #frameEdit .fe-row { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; }
+  #frameEdit button {
+    border: none; border-radius: 8px; padding: 10px 18px;
+    font-weight: 600; color: white; min-height: 44px; cursor: pointer;
+  }
+  #feSave { background: #008b8b; }
+  #feCancel { background: #555; }
+
   #installPrompt button {
     background: white;
     color: #0074ff;
@@ -115,6 +150,14 @@
   <span>Install Triangle Timer as an app?</span>
   <button id="installBtn">Install</button>
   <button id="dismissBtn" style="background:#666;">Not now</button>
+</div>
+
+<div id="frameEdit">
+  <textarea id="frameEditText" rows="3" maxlength="140"></textarea>
+  <div class="fe-row">
+    <button id="feCancel">CANCEL</button>
+    <button id="feSave">SAVE</button>
+  </div>
 </div>
 
 <div id="ui">
@@ -1204,13 +1247,54 @@ function drawFrameView(){
   ctx.fillText("drag dark space to pan - tap a box to set status", viewW/2, viewH - 130);
 }
 
-function frameBoxAt(cx, cy){
+function frameBoxAt(cx, cy, includeEmpty){
   const wx = (cx - frameCam.x)/FRAME_S, wy = (cy - frameCam.y)/FRAME_S;
   for (let i=0;i<FRAME_BOXES.length;i++){
     const b = FRAME_BOXES[i];
-    if (!b.empty && wx>=b.x && wx<=b.x+b.w && wy>=b.y && wy<=b.y+b.h) return i;
+    if ((includeEmpty || !b.empty) && wx>=b.x && wx<=b.x+b.w && wy>=b.y && wy<=b.y+b.h) return i;
   }
   return -1;
+}
+
+/* --- FRAME box text editing (long-press a box to open) --- */
+function setFrameBoxText(idx, text, persist){
+  const b = FRAME_BOXES[idx];
+  text = text.trim().replace(/\s+/g, " ");
+  if (!text){
+    b.lines = []; b.empty = true;
+  } else {
+    b.empty = false;
+    const maxChars = Math.max(8, Math.floor((b.w*FRAME_S - 12)/7.2));
+    const maxLines = Math.max(1, Math.floor((b.h - 42)/20) + 1);
+    const lines = [];
+    let cur = "";
+    for (let word of text.split(" ")){
+      while (word.length > maxChars){
+        if (cur){ lines.push(cur); cur = ""; }
+        lines.push(word.slice(0, maxChars));
+        word = word.slice(maxChars);
+      }
+      if (!word) continue;
+      if (!cur) cur = word;
+      else if ((cur + " " + word).length <= maxChars) cur += " " + word;
+      else { lines.push(cur); cur = word; }
+      if (lines.length >= maxLines) { cur = ""; break; }
+    }
+    if (cur && lines.length < maxLines) lines.push(cur);
+    b.lines = lines;
+  }
+  if (frameSelected === idx){
+    frameStatus = b.empty ? null : b.lines.join(" ");
+    if (b.empty) frameSelected = -1;
+    try { localStorage.setItem('salvationStatus', frameStatus || ""); } catch(err) {}
+  }
+  if (persist){
+    try {
+      const map = JSON.parse(localStorage.getItem('salvationFrameTexts') || "{}");
+      map[idx] = text;
+      localStorage.setItem('salvationFrameTexts', JSON.stringify(map));
+    } catch(err) {}
+  }
 }
 
 function drawStatus(){
@@ -1526,30 +1610,43 @@ canvasAnim.addEventListener("click", (e) => {
 let framePtr = null;
 canvasAnim.addEventListener("pointerdown", (e) => {
   if (viewMode !== 7) return;
+  if (frameEdit.style.display === "block") return; // dialog open
   const rect = canvasAnim.getBoundingClientRect();
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
   framePtr = { x: cx, y: cy, camX: frameCam.x, camY: frameCam.y,
-               moved: false, boxAtDown: frameBoxAt(cx, cy) };
+               moved: false, longFired: false,
+               boxAtDown: frameBoxAt(cx, cy),           // selectable boxes only
+               boxAny: frameBoxAt(cx, cy, true) };      // includes empty boxes
   try { canvasAnim.setPointerCapture(e.pointerId); } catch(err) {}
+  clearTimeout(framePressTimer);
+  if (framePtr.boxAny >= 0){
+    framePressTimer = setTimeout(() => {
+      if (framePtr && !framePtr.moved){
+        framePtr.longFired = true;
+        openFrameEdit(framePtr.boxAny);
+      }
+    }, 500);
+  }
 });
 canvasAnim.addEventListener("pointermove", (e) => {
   if (viewMode !== 7 || !framePtr) return;
   const rect = canvasAnim.getBoundingClientRect();
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
   const dx = cx - framePtr.x, dy = cy - framePtr.y;
-  if (Math.abs(dx) + Math.abs(dy) > 8) framePtr.moved = true;
+  if (Math.abs(dx) + Math.abs(dy) > 8){ framePtr.moved = true; clearTimeout(framePressTimer); }
   // pan only when the drag started on dark space, not on a box
-  if (framePtr.moved && framePtr.boxAtDown === -1){
+  if (framePtr.moved && framePtr.boxAny === -1){
     frameCam.x = framePtr.camX + dx;
     frameCam.y = framePtr.camY + dy;
     clampFrameCam();
   }
 });
 canvasAnim.addEventListener("pointerup", (e) => {
+  clearTimeout(framePressTimer);
   if (viewMode !== 7 || !framePtr){ framePtr = null; return; }
   const rect = canvasAnim.getBoundingClientRect();
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
-  if (!framePtr.moved){
+  if (!framePtr.moved && !framePtr.longFired){
     const hit = frameBoxAt(cx, cy);
     if (hit >= 0){
       frameSelected = hit;
@@ -1563,7 +1660,27 @@ canvasAnim.addEventListener("pointerup", (e) => {
   }
   framePtr = null;
 });
-canvasAnim.addEventListener("pointercancel", () => { framePtr = null; });
+canvasAnim.addEventListener("pointercancel", () => { clearTimeout(framePressTimer); framePtr = null; });
+
+const frameEdit = document.getElementById('frameEdit');
+const frameEditText = document.getElementById('frameEditText');
+let frameEditIdx = -1;
+let framePressTimer = null;
+
+function openFrameEdit(idx){
+  frameEditIdx = idx;
+  frameEditText.value = FRAME_BOXES[idx].lines.join(" ");
+  frameEdit.style.display = "block";
+  frameEditText.focus();
+  haptic('light');
+}
+function closeFrameEdit(save){
+  if (save && frameEditIdx >= 0) setFrameBoxText(frameEditIdx, frameEditText.value, true);
+  frameEdit.style.display = "none";
+  frameEditIdx = -1;
+}
+document.getElementById('feSave').addEventListener('click', () => closeFrameEdit(true));
+document.getElementById('feCancel').addEventListener('click', () => closeFrameEdit(false));
 
 /* ---------- PWA INSTALL PROMPT ---------- */
 let deferredPrompt;
@@ -1627,6 +1744,15 @@ if (modeIdx !== undefined) {
   timeMode = modeIdx;
   btnMode.textContent = ["27-MIN", "54-MIN", "81-MIN"][timeMode];
 }
+
+// Restore custom FRAME box texts
+try {
+  const map = JSON.parse(localStorage.getItem('salvationFrameTexts') || "{}");
+  for (const k in map){
+    const i = parseInt(k, 10);
+    if (i >= 0 && i < FRAME_BOXES.length) setFrameBoxText(i, map[k], false);
+  }
+} catch(e) {}
 
 // Restore last-used view and selected status
 try {
