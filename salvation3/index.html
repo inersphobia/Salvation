@@ -1490,6 +1490,7 @@ function gotoView(v){
   if (viewMode === 3){ fracCam.init = false; fracTrail.length = 0; } // snap camera on entry
   if (viewMode >= 7) frameHintUntil = performance.now() + 3000;     // hint on entry
   needsStaticRedraw = true;
+  try { localStorage.setItem('salvationView', viewMode); } catch(e) {}
 }
 function toggleView(){
   gotoView((viewMode + 1) % 9);
@@ -1987,6 +1988,11 @@ try {
 
 // Restore last-used view and selected status
 try {
+  const savedView = parseInt(localStorage.getItem('salvationView'), 10);
+  if (savedView >= 0 && savedView <= 8){
+    viewMode = savedView;
+    btnView.textContent = VIEW_NAMES[viewMode];
+  }
   const savedStatus = localStorage.getItem('salvationStatus');
   if (savedStatus) frameStatus = savedStatus;
   const savedF = parseInt(localStorage.getItem('salvationStatusF'), 10);
@@ -1994,6 +2000,8 @@ try {
   const savedIdx = parseInt(localStorage.getItem('salvationStatusIdx'), 10);
   if (savedIdx >= 0 && savedIdx < FRAME_DEFS[frameSelectedF].boxes.length) frameSelected = savedIdx;
 } catch(e) {}
+if (viewMode >= 7) frameHintUntil = performance.now() + 3000;
+
 updateTables();
 setupGeometry();
 setupTriangles();
