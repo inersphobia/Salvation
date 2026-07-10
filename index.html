@@ -1623,7 +1623,7 @@ function drawSubCounter(elapsed){
   ctx.fill();
 }
 
-function drawTimerText(){
+function drawTimerText(t){
   const y = getTextY();
   ctx.font = viewW < 500 ? "32px monospace" : "40px monospace";
 
@@ -1637,12 +1637,24 @@ function drawTimerText(){
   }
 
   // Each digit tinted by its value - same code as the dials in every
-  // view (0=blue, 1=orange, 2=red) - so text and animation visibly rhyme
+  // view (0=blue, 1=orange, 2=red). On RINGS, digits drift through the
+  // same hue transition as their own ring, syncing text to the orrery.
   const DIGIT_COLORS = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"];
   ctx.textAlign = "left";
   let x = viewW/2 - ctx.measureText(timerStr).width/2;
+  let di = 0; // digits appear in dial order (minutes then fractions)
   for (const ch of timerStr){
-    ctx.fillStyle = (ch >= "0" && ch <= "2") ? DIGIT_COLORS[+ch] : "rgba(255,255,255,0.85)";
+    if (ch >= "0" && ch <= "2"){
+      if (viewMode === 1){
+        const T = ticks[di];
+        ctx.fillStyle = ringLerp(posIndex(di, t), (t % T)/T);
+      } else {
+        ctx.fillStyle = DIGIT_COLORS[+ch];
+      }
+      di++;
+    } else {
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+    }
     ctx.fillText(ch, x, y);
     x += ctx.measureText(ch).width;
   }
@@ -1739,7 +1751,7 @@ function draw(now){
     drawFrameView();
   }
   if (viewMode < 7){
-    drawTimerText();
+    drawTimerText(vizT);
     drawTapHint();
   }
   drawStatus();
