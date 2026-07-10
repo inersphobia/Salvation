@@ -593,7 +593,7 @@ function drawRingsStatic(){
   // only the third-boundary spokes stay static
   // third boundaries, each colored as the third it opens: blue / orange / red
   ctxStatic.lineWidth = 2;
-  const rIn = (RING_OUTER - (numDials-1)*RING_STEP)*scaleF;
+  const rIn = (RING_OUTER - (ringCount()-1)*RING_STEP)*scaleF;
   const rOut = (RING_OUTER + 0.25)*scaleF;
   for (let k=0;k<3;k++){
     const ang = Math.PI/2 - k*2*Math.PI/3;
@@ -618,10 +618,15 @@ function ringLerp(pos, frac){
   return `hsl(${h.toFixed(1)},${sPct.toFixed(1)}%,${l.toFixed(1)}%)`;
 }
 
+function ringCount(){
+  // 27-min mode drops the 1/81 ring so rings pair 1:1 with the digits
+  return timeMode === 0 ? numDials - 1 : numDials;
+}
+
 function drawRingDots(t){
   const c = worldToScreen(0,0);
   const idle = !running && !finished && pauseMs === 0;
-  for (let i=0;i<numDials;i++){
+  for (let i=0;i<ringCount();i++){
     const T = ticks[i];
     const pos = posIndex(i,t);
     const frac = (t % T) / T;
@@ -1626,12 +1631,7 @@ function drawTimerText(t){
   const y = getTextY();
   ctx.font = viewW < 500 ? "32px monospace" : "40px monospace";
 
-  // On RINGS in 27-min mode, also show the 1/81 digit so the innermost
-  // ring has its digit in the readout (7 rings <-> 7 digits)
-  let str = timerStr;
-  if (viewMode === 0 && timeMode === 0 && !finished){
-    str = timerStr.replace("\u2083", (posIndex(numDials-1, t) - 1) + "\u2083");
-  }
+  const str = timerStr;
 
   // Overtime and idle keep a single color
   const idle = !running && !finished && pauseMs === 0;
