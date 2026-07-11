@@ -293,6 +293,7 @@ const TONE_OPTS = [
   { name: 'L~M~H', steps: [330, 440, 660] },
 ];
 let toneSel = { t180: 2 }; // default: the classic 3-minute mid tone
+let toneVoice = {};         // per interval: 0 bell / 1 marimba / 2 organ
 let timerStr="0000:000₃";
 let overtimeStart=0; // When overtime counting began
 
@@ -407,6 +408,51 @@ function getAudio(){
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
   } catch (err) { return null; }
+}
+
+/* ---------- VOICES: bell / marimba / organ, additive synthesis ---------- */
+const VOICES = ["BELL", "MARIMBA", "ORGAN"];
+function playVoice(freq, soft, voice){
+  try {
+    const ctx = getAudio();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const base = soft ? 0.09 : 0.18;
+    const strike = (f, g, dur) => {
+      const o = ctx.createOscillator(), gn = ctx.createGain();
+      o.connect(gn); gn.connect(audioBus);
+      o.type = 'sine'; o.frequency.value = f;
+      gn.gain.setValueAtTime(0.0001, now);
+      gn.gain.exponentialRampToValueAtTime(g, now + 0.012);
+      gn.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+      gn.gain.linearRampToValueAtTime(0, now + dur + 0.02);
+      o.start(now); o.stop(now + dur + 0.06);
+    };
+    if (voice === 1){          // MARIMBA: woody strike, 1:4 partial, short
+      const dur = soft ? 0.15 : 0.3;
+      strike(freq,      base,       dur);
+      strike(freq*4,    base*0.35,  dur*0.45);
+      strike(freq*9.2,  base*0.1,   0.06);
+    } else if (voice === 2){   // ORGAN: sustained drawbars, soft release
+      const dur = soft ? 0.22 : 0.5;
+      [[freq,1],[freq*2,0.45],[freq*3,0.25]].forEach(([f,m]) => {
+        const o = ctx.createOscillator(), gn = ctx.createGain();
+        o.connect(gn); gn.connect(audioBus);
+        o.type = 'sine'; o.frequency.value = f;
+        gn.gain.setValueAtTime(0.0001, now);
+        gn.gain.exponentialRampToValueAtTime(base*m, now + 0.04);
+        gn.gain.setValueAtTime(base*m, now + dur - 0.08);
+        gn.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+        gn.gain.linearRampToValueAtTime(0, now + dur + 0.02);
+        o.start(now); o.stop(now + dur + 0.06);
+      });
+    } else {                   // BELL: fundamental + octave + shimmer, long tail
+      const dur = soft ? 0.3 : 0.7;
+      strike(freq,       base,      dur);
+      strike(freq*2,     base*0.4,  dur*0.6);
+      strike(freq*2.76,  base*0.14, dur*0.4);
+    }
+  } catch (err) {}
 }
 
 /* ---------- BEEP ---------- */
@@ -2043,14 +2089,15 @@ function draw(now){
         if (idx > (lastToneIdx[d.id] || 0)){
           lastToneIdx[d.id] = idx;
           const opt = TONE_OPTS[sel];
+          const v = toneVoice[d.id] || 0;
           if (opt.seq){
             // arpeggio: the sequence plays through at every mark
-            opt.seq.forEach((f, k) => setTimeout(() => playBeep(f, d.interval < 20), k * 190));
+            opt.seq.forEach((f, k) => setTimeout(() => playVoice(f, d.interval < 20, v), k * 190));
           } else if (opt.steps){
             // unfolding: one note per mark, stepping through the sequence
-            playBeep(opt.steps[(idx - 1) % opt.steps.length], d.interval < 20);
+            playVoice(opt.steps[(idx - 1) % opt.steps.length], d.interval < 20, v);
           } else {
-            playBeep(opt.freq, d.interval < 20);
+            playVoice(opt.freq, d.interval < 20, v);
           }
         }
       }
@@ -2207,6 +2254,10 @@ function closeFrameEdit(save){
 /* ---------- MENU ---------- */
 const menuEl = document.getElementById('menu');
 try {
+  const savedV = JSON.parse(localStorage.getItem('salvationVoices') || "null");
+  if (savedV) toneVoice = savedV;
+} catch(e) {}
+try {
   const saved2 = JSON.parse(localStorage.getItem('salvationTones2') || "null");
   if (saved2) toneSel = saved2;
   else {
@@ -2224,14 +2275,29 @@ TONE_DEFS.forEach(d => {
   row.className = 'set-row';
   const span = document.createElement('span');
   span.textContent = d.label + ' min';
+  const vb = document.createElement('button');
+  vb.className = 'tone-btn';
+  const paintV = () => {
+    vb.textContent = VOICES[toneVoice[d.id] || 0];
+    vb.classList.toggle('on', (toneSel[d.id] || 0) > 0);
+  };
   const b = document.createElement('button');
   b.className = 'tone-btn';
   const paint = () => {
     const sel = toneSel[d.id] || 0;
     b.textContent = TONE_OPTS[sel].name;
     b.classList.toggle('on', sel > 0);
+    paintV();
   };
   paint();
+  vb.onclick = (e) => {
+    e.preventDefault();
+    toneVoice[d.id] = ((toneVoice[d.id] || 0) + 1) % VOICES.length;
+    paintV();
+    try { localStorage.setItem('salvationVoices', JSON.stringify(toneVoice)); } catch(err) {}
+    haptic('light');
+    playVoice(440, false, toneVoice[d.id]); // audition the voice
+  };
   b.onclick = (e) => {
     e.preventDefault();
     toneSel[d.id] = ((toneSel[d.id] || 0) + 1) % TONE_OPTS.length;
@@ -2239,12 +2305,18 @@ TONE_DEFS.forEach(d => {
     try { localStorage.setItem('salvationTones2', JSON.stringify(toneSel)); } catch(err) {}
     haptic('light');
     const opt = TONE_OPTS[toneSel[d.id]];
-    if (opt.seq) opt.seq.forEach((f, k) => setTimeout(() => playBeep(f, true), k * 190)); // arpeggio preview
-    else if (opt.steps) opt.steps.forEach((f, k) => setTimeout(() => playBeep(f, true), k * 340)); // slower: one-per-mark hint
-    else if (opt.freq) playBeep(opt.freq, d.interval < 20); // preview
+    const v = toneVoice[d.id] || 0;
+    if (opt.seq) opt.seq.forEach((f, k) => setTimeout(() => playVoice(f, true, v), k * 190)); // arpeggio preview
+    else if (opt.steps) opt.steps.forEach((f, k) => setTimeout(() => playVoice(f, true, v), k * 340)); // one-per-mark hint
+    else if (opt.freq) playVoice(opt.freq, d.interval < 20, v); // preview
   };
   row.appendChild(span);
-  row.appendChild(b);
+  const grp = document.createElement('span');
+  grp.style.display = 'flex';
+  grp.style.gap = '6px';
+  grp.appendChild(vb);
+  grp.appendChild(b);
+  row.appendChild(grp);
   document.getElementById('menuTones').appendChild(row);
 });
 function menuSync(){
