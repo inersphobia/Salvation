@@ -2034,8 +2034,12 @@ function draw(now){
         if (idx > (lastToneIdx[d.id] || 0)){
           lastToneIdx[d.id] = idx;
           const opt = TONE_OPTS[sel];
-          const f = opt.seq ? opt.seq[(idx - 1) % opt.seq.length] : opt.freq;
-          playBeep(f, d.interval < 20);
+          if (opt.seq){
+            // arpeggio: the sequence plays through at every mark
+            opt.seq.forEach((f, k) => setTimeout(() => playBeep(f, d.interval < 20), k * 190));
+          } else {
+            playBeep(opt.freq, d.interval < 20);
+          }
         }
       }
 
