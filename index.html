@@ -411,7 +411,7 @@ function getAudio(){
 }
 
 /* ---------- VOICES: bell / marimba / organ, additive synthesis ---------- */
-const VOICES = ["BELL", "MARIMBA", "ORGAN"];
+const VOICES = ["BELL", "MARIMBA", "ORGAN", "E.PIANO"];
 function playVoice(freq, soft, voice){
   try {
     const ctx = getAudio();
@@ -446,6 +446,12 @@ function playVoice(freq, soft, voice){
         gn.gain.linearRampToValueAtTime(0, now + dur + 0.02);
         o.start(now); o.stop(now + dur + 0.06);
       });
+    } else if (voice === 3){   // E.PIANO: warm detuned tine, soft attack ding
+      const dur = soft ? 0.35 : 0.9;
+      strike(freq,        base*0.9,  dur);        // body
+      strike(freq*1.003,  base*0.35, dur);        // detune -> warm chorus
+      strike(freq*2,      base*0.16, dur*0.5);    // gentle 2nd harmonic
+      strike(freq*4.2,    base*0.12, 0.09);       // the tine "ding" on attack
     } else {                   // BELL: fundamental + octave + shimmer, long tail
       const dur = soft ? 0.3 : 0.7;
       strike(freq,       base,      dur);
