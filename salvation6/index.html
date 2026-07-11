@@ -126,6 +126,12 @@
     font-size: 14px; padding: 8px 2px; cursor: pointer;
   }
   #menu input[type="checkbox"] { width: 22px; height: 22px; accent-color: #008b8b; }
+  #menu .tone-btn {
+    background: #15222c; border: 1px solid rgba(0,191,255,0.3); color: #c7d3da;
+    border-radius: 8px; padding: 8px 6px; min-width: 66px; min-height: 40px;
+    font-family: monospace; font-size: 12px; cursor: pointer;
+  }
+  #menu .tone-btn.on { background: #008b8b; color: white; border-color: transparent; }
   #menu .fe-row { display: flex; justify-content: flex-end; margin-top: 8px; }
   #menu .fe-row button { border: none; border-radius: 8px; padding: 10px 18px;
     font-weight: 600; color: white; min-height: 44px; cursor: pointer; background: #008b8b; }
@@ -220,9 +226,7 @@
   <div class="set-title">D U R A T I O N</div>
   <div class="menu-grid" id="menuDur"></div>
   <div class="set-title">T O N E S</div>
-  <label class="set-row"><span>1/3 minute tone</span><input type="checkbox" id="tone20"></label>
-  <label class="set-row"><span>1 minute tone</span><input type="checkbox" id="tone60"></label>
-  <label class="set-row"><span>3 minute tone</span><input type="checkbox" id="tone180"></label>
+  <div id="menuTones"></div>
   <div class="fe-row"><button id="menuClose">CLOSE</button></div>
 </div>
 
@@ -268,11 +272,21 @@ let startMs=0, pauseMs=0;
 let lastBeepMinute = 0;
 let lastToneIdx = {};
 const TONE_DEFS = [
-  { id: 'tone20',  interval: 20,  freq: 660 },
-  { id: 'tone60',  interval: 60,  freq: 550 },
-  { id: 'tone180', interval: 180, freq: 440 },
+  { id: 't1620', label: '27',   interval: 1620 },
+  { id: 't540',  label: '9',    interval: 540 },
+  { id: 't180',  label: '3',    interval: 180 },
+  { id: 't60',   label: '1',    interval: 60 },
+  { id: 't20',   label: '1/3',  interval: 20 },
+  { id: 't6',    label: '1/9',  interval: 60/9 },
+  { id: 't2',    label: '1/27', interval: 60/27 },
 ];
-let toneOn = { tone20: false, tone60: false, tone180: true };
+const TONE_OPTS = [
+  { name: 'OFF' },
+  { name: 'LOW',  freq: 330 },
+  { name: 'MID',  freq: 440 },
+  { name: 'HIGH', freq: 660 },
+];
+let toneSel = { t180: 2 }; // default: the classic 3-minute mid tone
 let timerStr="0000:000₃";
 let overtimeStart=0; // When overtime counting began
 
@@ -376,7 +390,7 @@ function clearTimerNotification(){
 }
 
 /* ---------- BEEP ---------- */
-function playBeep(freq){
+function playBeep(freq, soft){
   try {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const osc = audioContext.createOscillator();
@@ -386,11 +400,12 @@ function playBeep(freq){
     osc.frequency.value = freq || 440;
     osc.type = 'sine';
     const now = audioContext.currentTime;
+    const g = soft ? 0.1 : 0.2, dur = soft ? 0.12 : 0.3;
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.2, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+    gain.gain.linearRampToValueAtTime(g, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + dur);
     osc.start(now);
-    osc.stop(now + 0.3);
+    osc.stop(now + dur);
   } catch(err) {}
 }
 
@@ -1998,8 +2013,12 @@ function draw(now){
 
       for (const d of TONE_DEFS){
         const idx = Math.floor(elapsed / d.interval);
-        if (!toneOn[d.id]){ lastToneIdx[d.id] = idx; continue; }
-        if (idx > (lastToneIdx[d.id] || 0)){ lastToneIdx[d.id] = idx; playBeep(d.freq); }
+        const sel = toneSel[d.id] || 0;
+        if (!sel){ lastToneIdx[d.id] = idx; continue; }
+        if (idx > (lastToneIdx[d.id] || 0)){
+          lastToneIdx[d.id] = idx;
+          playBeep(TONE_OPTS[sel].freq, d.interval < 20);
+        }
       }
 
       if (elapsed>=totalCycle && !finished) finishClock();
@@ -2154,17 +2173,43 @@ function closeFrameEdit(save){
 /* ---------- MENU ---------- */
 const menuEl = document.getElementById('menu');
 try {
-  const savedTones = JSON.parse(localStorage.getItem('salvationTones') || "null");
-  if (savedTones) toneOn = Object.assign(toneOn, savedTones);
+  const saved2 = JSON.parse(localStorage.getItem('salvationTones2') || "null");
+  if (saved2) toneSel = saved2;
+  else {
+    const old = JSON.parse(localStorage.getItem('salvationTones') || "null");
+    if (old){
+      toneSel = {};
+      if (old.tone20)  toneSel.t20  = 2;
+      if (old.tone60)  toneSel.t60  = 2;
+      if (old.tone180) toneSel.t180 = 2;
+    }
+  }
 } catch(e) {}
 TONE_DEFS.forEach(d => {
-  const cb = document.getElementById(d.id);
-  cb.checked = !!toneOn[d.id];
-  cb.addEventListener('change', () => {
-    toneOn[d.id] = cb.checked;
-    try { localStorage.setItem('salvationTones', JSON.stringify(toneOn)); } catch(e) {}
+  const row = document.createElement('label');
+  row.className = 'set-row';
+  const span = document.createElement('span');
+  span.textContent = d.label + ' min';
+  const b = document.createElement('button');
+  b.className = 'tone-btn';
+  const paint = () => {
+    const sel = toneSel[d.id] || 0;
+    b.textContent = TONE_OPTS[sel].name;
+    b.classList.toggle('on', sel > 0);
+  };
+  paint();
+  b.onclick = (e) => {
+    e.preventDefault();
+    toneSel[d.id] = ((toneSel[d.id] || 0) + 1) % TONE_OPTS.length;
+    paint();
+    try { localStorage.setItem('salvationTones2', JSON.stringify(toneSel)); } catch(err) {}
     haptic('light');
-  });
+    const sel = toneSel[d.id];
+    if (sel > 0) playBeep(TONE_OPTS[sel].freq, d.interval < 20); // preview
+  };
+  row.appendChild(span);
+  row.appendChild(b);
+  document.getElementById('menuTones').appendChild(row);
 });
 function menuSync(){
   const clean = !running && !finished && pauseMs === 0;
