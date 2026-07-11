@@ -392,10 +392,21 @@ function clearTimerNotification(){
   });
 }
 
+/* ---------- AUDIO (one shared context; browsers cap live contexts) ---------- */
+let audioCtx = null;
+function getAudio(){
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  } catch (err) { return null; }
+}
+
 /* ---------- BEEP ---------- */
 function playBeep(freq, soft){
   try {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const audioContext = getAudio();
+    if (!audioContext) return;
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();
     osc.connect(gain);
@@ -415,7 +426,8 @@ function playBeep(freq, soft){
 /* ---------- COMPLETION TONE ---------- */
 function playCompletionTone(){
   try {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const audioContext = getAudio();
+    if (!audioContext) return;
     
     // Create a pleasant two-tone chime
     const playTone = (freq, startTime, duration) => {
@@ -614,6 +626,7 @@ function startClock(){
   if (finished) resetClock();
   startMs = pauseMs>0 ? performance.now()-pauseMs : performance.now();
   running=true;
+  getAudio(); // unlock audio within the user gesture
   requestWakeLock();
   showTimerNotification(
     'Salvation timer running',
@@ -2021,8 +2034,12 @@ function draw(now){
         if (idx > (lastToneIdx[d.id] || 0)){
           lastToneIdx[d.id] = idx;
           const opt = TONE_OPTS[sel];
-          const f = opt.seq ? opt.seq[(idx - 1) % opt.seq.length] : opt.freq;
-          playBeep(f, d.interval < 20);
+          if (opt.seq){
+            // arpeggio: the sequence plays through at every mark
+            opt.seq.forEach((f, k) => setTimeout(() => playBeep(f, d.interval < 20), k * 190));
+          } else {
+            playBeep(opt.freq, d.interval < 20);
+          }
         }
       }
 
