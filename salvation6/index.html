@@ -132,9 +132,10 @@
     font-family: monospace; font-size: 12px; cursor: pointer;
   }
   #menu .tone-btn.on { background: #008b8b; color: white; border-color: transparent; }
-  #menu .fe-row { display: flex; justify-content: flex-end; margin-top: 8px; }
+  #menu .fe-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
   #menu .fe-row button { border: none; border-radius: 8px; padding: 10px 18px;
     font-weight: 600; color: white; min-height: 44px; cursor: pointer; background: #008b8b; }
+  #menuDefault { background: #555 !important; }
 
   /* Tone settings dialog (unused shell kept minimal) */
   #settings {
@@ -227,7 +228,7 @@
   <div class="menu-grid" id="menuDur"></div>
   <div class="set-title">T O N E S</div>
   <div id="menuTones"></div>
-  <div class="fe-row"><button id="menuClose">CLOSE</button></div>
+  <div class="fe-row"><button id="menuDefault">DEFAULT</button><button id="menuClose">CLOSE</button></div>
 </div>
 
 <div id="frameEdit">
@@ -2286,6 +2287,7 @@ try {
     }
   }
 } catch(e) {}
+const tonePaints = []; // repaint callbacks, one per tone row (used by DEFAULT)
 TONE_DEFS.forEach(d => {
   const row = document.createElement('label');
   row.className = 'set-row';
@@ -2306,6 +2308,7 @@ TONE_DEFS.forEach(d => {
     paintV();
   };
   paint();
+  tonePaints.push(paint);
   vb.onclick = (e) => {
     e.preventDefault();
     toneVoice[d.id] = ((toneVoice[d.id] || 0) + 1) % VOICES.length;
@@ -2372,6 +2375,27 @@ btnMenu.onclick = () => {
   menuEl.style.display = menuEl.style.display === 'block' ? 'none' : 'block';
 };
 document.getElementById('menuClose').addEventListener('click', () => { menuEl.style.display = 'none'; });
+
+/* DEFAULT: restore the house settings (RINGS, 54 min, the E.PIANO ladder) */
+const DEFAULT_PRESET = {
+  view: 0,   // RINGS
+  dur: 1,    // 54 MIN
+  tones:  { t1620: 3, t540: 6, t180: 5, t60: 4, t20: 3, t6: 2, t2: 1 },  // HIGH, L>M>H, M>H, L>M, HIGH, MID, LOW
+  voices: { t1620: 2, t540: 3, t180: 3, t60: 3, t20: 3, t6: 3, t2: 3 },  // ORGAN on 27, E.PIANO elsewhere
+};
+document.getElementById('menuDefault').addEventListener('click', () => {
+  toneSel   = Object.assign({}, DEFAULT_PRESET.tones);
+  toneVoice = Object.assign({}, DEFAULT_PRESET.voices);
+  try {
+    localStorage.setItem('salvationTones2', JSON.stringify(toneSel));
+    localStorage.setItem('salvationVoices', JSON.stringify(toneVoice));
+  } catch(e) {}
+  tonePaints.forEach(p => p());
+  gotoView(DEFAULT_PRESET.view);
+  setDuration(DEFAULT_PRESET.dur); // duration stays reset-gated: no-op mid-session
+  menuSync();
+  haptic('medium');
+});
 
 document.getElementById('feSave').addEventListener('click', () => closeFrameEdit(true));
 document.getElementById('feCancel').addEventListener('click', () => closeFrameEdit(false));
