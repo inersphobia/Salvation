@@ -285,6 +285,9 @@ const TONE_OPTS = [
   { name: 'LOW',  freq: 330 },
   { name: 'MID',  freq: 440 },
   { name: 'HIGH', freq: 660 },
+  { name: 'L>M',   seq: [330, 440] },
+  { name: 'M>H',   seq: [440, 660] },
+  { name: 'L>M>H', seq: [330, 440, 660] },
 ];
 let toneSel = { t180: 2 }; // default: the classic 3-minute mid tone
 let timerStr="0000:000₃";
@@ -2017,7 +2020,9 @@ function draw(now){
         if (!sel){ lastToneIdx[d.id] = idx; continue; }
         if (idx > (lastToneIdx[d.id] || 0)){
           lastToneIdx[d.id] = idx;
-          playBeep(TONE_OPTS[sel].freq, d.interval < 20);
+          const opt = TONE_OPTS[sel];
+          const f = opt.seq ? opt.seq[(idx - 1) % opt.seq.length] : opt.freq;
+          playBeep(f, d.interval < 20);
         }
       }
 
@@ -2204,8 +2209,9 @@ TONE_DEFS.forEach(d => {
     paint();
     try { localStorage.setItem('salvationTones2', JSON.stringify(toneSel)); } catch(err) {}
     haptic('light');
-    const sel = toneSel[d.id];
-    if (sel > 0) playBeep(TONE_OPTS[sel].freq, d.interval < 20); // preview
+    const opt = TONE_OPTS[toneSel[d.id]];
+    if (opt.seq) opt.seq.forEach((f, k) => setTimeout(() => playBeep(f, true), k * 190)); // preview the climb
+    else if (opt.freq) playBeep(opt.freq, d.interval < 20); // preview
   };
   row.appendChild(span);
   row.appendChild(b);
