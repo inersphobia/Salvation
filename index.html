@@ -396,10 +396,14 @@ function clearTimerNotification(){
 }
 
 /* ---------- AUDIO (one shared context; browsers cap live contexts) ---------- */
-let audioCtx = null;
+let audioCtx = null, audioBus = null;
 function getAudio(){
   try {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!audioCtx){
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      audioBus = audioCtx.createDynamicsCompressor(); // headroom for chords
+      audioBus.connect(audioCtx.destination);
+    }
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
   } catch (err) { return null; }
@@ -413,16 +417,17 @@ function playBeep(freq, soft){
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();
     osc.connect(gain);
-    gain.connect(audioContext.destination);
+    gain.connect(audioBus);
     osc.frequency.value = freq || 440;
     osc.type = 'sine';
     const now = audioContext.currentTime;
     const g = soft ? 0.1 : 0.2, dur = soft ? 0.12 : 0.3;
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(g, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + dur);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(g, now + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    gain.gain.linearRampToValueAtTime(0, now + dur + 0.02);
     osc.start(now);
-    osc.stop(now + dur);
+    osc.stop(now + dur + 0.06);
   } catch(err) {}
 }
 
@@ -436,19 +441,20 @@ function playCompletionTone(){
     const playTone = (freq, startTime, duration) => {
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
-      
+
       oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
+      gainNode.connect(audioBus);
+
       oscillator.frequency.value = freq;
       oscillator.type = 'sine';
-      
-      gainNode.gain.setValueAtTime(0, startTime);
-      gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.01);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-      
+
+      gainNode.gain.setValueAtTime(0.0001, startTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.3, startTime + 0.015);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+      gainNode.gain.linearRampToValueAtTime(0, startTime + duration + 0.02);
+
       oscillator.start(startTime);
-      oscillator.stop(startTime + duration);
+      oscillator.stop(startTime + duration + 0.06);
     };
     
     const now = audioContext.currentTime;
