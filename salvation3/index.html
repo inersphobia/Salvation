@@ -446,12 +446,22 @@ function playVoice(freq, soft, voice){
         gn.gain.linearRampToValueAtTime(0, now + dur + 0.02);
         o.start(now); o.stop(now + dur + 0.06);
       });
-    } else if (voice === 3){   // E.PIANO: warm detuned tine, soft attack ding
-      const dur = soft ? 0.35 : 0.9;
-      strike(freq,        base*0.9,  dur);        // body
-      strike(freq*1.003,  base*0.35, dur);        // detune -> warm chorus
-      strike(freq*2,      base*0.16, dur*0.5);    // gentle 2nd harmonic
-      strike(freq*4.2,    base*0.12, 0.09);       // the tine "ding" on attack
+    } else if (voice === 3){   // E.PIANO: round warm body (recipe A) - no tine
+      const k = soft ? 0.4 : 1;
+      const ep = (ratio, g, atk, half, out, det) => {
+        const o = ctx.createOscillator(), gn = ctx.createGain();
+        o.connect(gn); gn.connect(audioBus);
+        o.type = 'sine'; o.frequency.value = freq * ratio * (det || 1);
+        gn.gain.setValueAtTime(0.0001, now);
+        gn.gain.exponentialRampToValueAtTime(g, now + atk);          // slow bloom, no pluck
+        gn.gain.exponentialRampToValueAtTime(g * 0.08, now + half);  // warm ring-down
+        gn.gain.exponentialRampToValueAtTime(0.0001, now + out);     // fade to silence
+        gn.gain.linearRampToValueAtTime(0, now + out + 0.02);
+        o.start(now); o.stop(now + out + 0.06);
+      };
+      ep(1, base,        0.020, 1.4*k, 1.9*k, 1);       // body
+      ep(1, base*0.45,   0.025, 1.4*k, 1.9*k, 1.0025);  // detuned pair -> chorus warmth
+      ep(2, base*0.13,   0.030, 0.7*k, 1.0*k, 1);       // soft 2nd harmonic
     } else {                   // BELL: fundamental + octave + shimmer, long tail
       const dur = soft ? 0.3 : 0.7;
       strike(freq,       base,      dur);
