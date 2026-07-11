@@ -288,6 +288,9 @@ const TONE_OPTS = [
   { name: 'L>M',   seq: [330, 440] },
   { name: 'M>H',   seq: [440, 660] },
   { name: 'L>M>H', seq: [330, 440, 660] },
+  { name: 'L~M',   steps: [330, 440] },
+  { name: 'M~H',   steps: [440, 660] },
+  { name: 'L~M~H', steps: [330, 440, 660] },
 ];
 let toneSel = { t180: 2 }; // default: the classic 3-minute mid tone
 let timerStr="0000:000₃";
@@ -2037,6 +2040,9 @@ function draw(now){
           if (opt.seq){
             // arpeggio: the sequence plays through at every mark
             opt.seq.forEach((f, k) => setTimeout(() => playBeep(f, d.interval < 20), k * 190));
+          } else if (opt.steps){
+            // unfolding: one note per mark, stepping through the sequence
+            playBeep(opt.steps[(idx - 1) % opt.steps.length], d.interval < 20);
           } else {
             playBeep(opt.freq, d.interval < 20);
           }
@@ -2227,7 +2233,8 @@ TONE_DEFS.forEach(d => {
     try { localStorage.setItem('salvationTones2', JSON.stringify(toneSel)); } catch(err) {}
     haptic('light');
     const opt = TONE_OPTS[toneSel[d.id]];
-    if (opt.seq) opt.seq.forEach((f, k) => setTimeout(() => playBeep(f, true), k * 190)); // preview the climb
+    if (opt.seq) opt.seq.forEach((f, k) => setTimeout(() => playBeep(f, true), k * 190)); // arpeggio preview
+    else if (opt.steps) opt.steps.forEach((f, k) => setTimeout(() => playBeep(f, true), k * 340)); // slower: one-per-mark hint
     else if (opt.freq) playBeep(opt.freq, d.interval < 20); // preview
   };
   row.appendChild(span);
