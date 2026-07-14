@@ -137,6 +137,50 @@
     font-weight: 600; color: white; min-height: 44px; cursor: pointer; background: #008b8b; }
   #menuDefault { background: #555 !important; }
 
+  /* Custom duration row: CUSTOM button + minute stepper */
+  .custom-row { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-bottom: 14px; }
+  #btnCustom { background: #15222c; border: 1px solid rgba(0,191,255,0.3); color: #c7d3da;
+    border-radius: 8px; padding: 10px 2px; font-size: 13px; font-family: monospace;
+    min-height: 44px; cursor: pointer; }
+  #btnCustom.active { background: #008b8b; color: white; border-color: transparent; }
+  #btnCustom.disabled { opacity: 0.35; }
+  .stepper { display: flex; border: 1px solid rgba(0,191,255,0.3); border-radius: 8px;
+    overflow: hidden; background: #0e161d; }
+  .stepper button { width: 52px; border: none; background: #15222c; color: #9fd8ea;
+    font-size: 20px; font-family: monospace; cursor: pointer; }
+  .stepper .val { flex: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 15px; color: white; cursor: pointer; }
+  .stepper.dim { opacity: 0.45; }
+
+  /* Sound: mute bar + volume grid */
+  #muteBar { display: flex; width: 100%; align-items: center; justify-content: center; gap: 10px;
+    min-height: 46px; border-radius: 8px; margin-bottom: 8px; box-sizing: border-box;
+    border: 1px solid rgba(0,191,255,0.3); background: #15222c; color: #c7d3da;
+    font-size: 13px; letter-spacing: 0.15em; font-family: monospace; cursor: pointer; }
+  #muteBar.on { background: #7a4a00; border-color: rgba(255,180,60,0.8); color: #ffd9a0;
+    box-shadow: 0 0 12px rgba(255,160,0,0.35); }
+  #menuTones.muted .set-row { opacity: 0.35; }
+
+  /* Custom time keypad */
+  #custPad { position: fixed; top: 44%; left: 50%; transform: translate(-50%, -50%);
+    width: min(300px, 86vw); background: #0a0f14; border: 1.5px solid rgba(0,191,255,0.6);
+    border-radius: 12px; padding: 18px; z-index: 60; display: none;
+    font-family: monospace; color: #c7d3da; }
+  #custPad .cp-val { text-align: center; font-size: 42px; color: white; min-height: 50px; }
+  #custPad .cp-val span { font-size: 16px; color: #7c8a94; }
+  #custPad .cp-stop { text-align: center; font-size: 14px; margin: 4px 0 14px; color: #7c8a94; }
+  #custPad .cp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  #custPad .cp-grid button { background: #15222c; border: 1px solid rgba(0,191,255,0.3);
+    color: #c7d3da; border-radius: 8px; min-height: 50px; font-size: 20px;
+    font-family: monospace; cursor: pointer; }
+  #custPad .cp-grid button.fn { font-size: 14px; color: #9fd8ea; }
+  #custPad .fe-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  #custPad .fe-row button { border: none; border-radius: 8px; padding: 10px 18px;
+    font-weight: 600; color: white; min-height: 44px; cursor: pointer; font-family: monospace; }
+  #cpSet { background: #008b8b; } #cpSet.dim { opacity: 0.4; }
+  #cpCancel { background: #555; }
+  #custPad .cp-hint { text-align: center; font-size: 11px; color: #5a6a75; margin-top: 10px; }
+
   /* Tone settings dialog (unused shell kept minimal) */
   #settings {
     position: fixed;
@@ -225,7 +269,18 @@
   <div class="set-title">T I M E R</div>
   <div class="menu-grid" id="menuViews"></div>
   <div class="set-title">D U R A T I O N</div>
-  <div class="menu-grid" id="menuDur"></div>
+  <div class="menu-grid" id="menuDur" style="margin-bottom:8px"></div>
+  <div class="custom-row">
+    <button id="btnCustom">CUSTOM</button>
+    <div class="stepper" id="custStep">
+      <button id="custMinus">&minus;</button>
+      <div class="val" id="custVal">20 MIN</div>
+      <button id="custPlus">+</button>
+    </div>
+  </div>
+  <div class="set-title">S O U N D</div>
+  <button id="muteBar">&#128266;&nbsp; MUTE</button>
+  <div class="menu-grid" id="menuVol"></div>
   <div class="set-title">T O N E S</div>
   <div id="menuTones"></div>
   <div class="fe-row"><button id="menuDefault">DEFAULT</button><button id="menuClose">CLOSE</button></div>
@@ -237,6 +292,20 @@
     <button id="feCancel">CANCEL</button>
     <button id="feSave">SAVE</button>
   </div>
+</div>
+
+<div id="custPad">
+  <div class="set-title">C U S T O M &nbsp; T I M E</div>
+  <div class="cp-val"><span id="cpNum">20</span> <span>MIN</span></div>
+  <div class="cp-stop" id="cpStop"></div>
+  <div class="cp-grid" id="cpGrid">
+    <button>1</button><button>2</button><button>3</button>
+    <button>4</button><button>5</button><button>6</button>
+    <button>7</button><button>8</button><button>9</button>
+    <button class="fn" id="cpClr">CLR</button><button>0</button><button class="fn" id="cpBack">&#9003;</button>
+  </div>
+  <div class="fe-row"><button id="cpCancel">CANCEL</button><button id="cpSet">SET</button></div>
+  <div class="cp-hint">1 &ndash; 243 minutes</div>
 </div>
 
 <div id="ui">
@@ -296,6 +365,20 @@ const TONE_OPTS = [
 let toneSel = { t180: 2 }; // default: the classic 3-minute mid tone
 let toneVoice = {};         // per interval: 0 bell / 1 marimba / 2 organ
 let timerStr="0000:000₃";
+let overtimeStr="";
+
+/* Sound + custom duration state */
+let muted = false;                    // salvationMute: silence everything, settings kept
+let volSel = 2;                       // salvationVol: 0 LOW / 1 MED / 2 HIGH
+const VOL_LEVELS = [0.3, 0.6, 1.0];
+let customMins = 20;                  // salvationCustom: minutes for timeMode 3
+try {
+  muted = localStorage.getItem('salvationMute') === "1";
+  const v = parseInt(localStorage.getItem('salvationVol'), 10);
+  if (v >= 0 && v <= 2) volSel = v;
+  const c = parseInt(localStorage.getItem('salvationCustom'), 10);
+  if (c >= 1 && c <= 243) customMins = c;
+} catch(e) {}
 let overtimeStart=0; // When overtime counting began
 
 /* Wake Lock */
@@ -398,22 +481,31 @@ function clearTimerNotification(){
 }
 
 /* ---------- AUDIO (one shared context; browsers cap live contexts) ---------- */
-let audioCtx = null, audioBus = null;
+let audioCtx = null, audioBus = null, masterVol = null;
 function getAudio(){
   try {
     if (!audioCtx){
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       audioBus = audioCtx.createDynamicsCompressor(); // headroom for chords
-      audioBus.connect(audioCtx.destination);
+      masterVol = audioCtx.createGain();              // LOW / MED / HIGH
+      masterVol.gain.value = VOL_LEVELS[volSel];
+      audioBus.connect(masterVol);
+      masterVol.connect(audioCtx.destination);
     }
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
   } catch (err) { return null; }
 }
+function setVolume(v){
+  volSel = v;
+  try { localStorage.setItem('salvationVol', String(v)); } catch(e) {}
+  if (masterVol) masterVol.gain.setTargetAtTime(VOL_LEVELS[v], audioCtx.currentTime, 0.03);
+}
 
 /* ---------- VOICES: bell / marimba / organ, additive synthesis ---------- */
 const VOICES = ["BELL", "MARIMBA", "ORGAN", "E.PIANO"];
 function playVoice(freq, soft, voice){
+  if (muted) return;
   try {
     const ctx = getAudio();
     if (!ctx) return;
@@ -474,6 +566,7 @@ function playVoice(freq, soft, voice){
 
 /* ---------- BEEP ---------- */
 function playBeep(freq, soft){
+  if (muted) return;
   try {
     const audioContext = getAudio();
     if (!audioContext) return;
@@ -496,6 +589,7 @@ function playBeep(freq, soft){
 
 /* ---------- COMPLETION TONE ---------- */
 function playCompletionTone(){
+  if (muted) return;
   try {
     const audioContext = getAudio();
     if (!audioContext) return;
@@ -566,7 +660,8 @@ function updateTables(){
   const m = timeMode === 0 ? 3 : 1;
   intervals = baseIntervals.map(v=>v/m);
   ticks     = baseTicks.map(v=>v/m);
-  totalCycle = [27*60, 54*60, 81*60][timeMode];
+  // timeMode 3 = custom: same ladder as 54/81, the stop line moves
+  totalCycle = timeMode === 3 ? customMins*60 : [27*60, 54*60, 81*60][timeMode];
 }
 
 /* ---------- UTILS ---------- */
@@ -689,7 +784,17 @@ function updateOvertimeText(el){
   // Fixed overtime tick rates (same for both modes)
   const overtimeTicks = [81*60, 27*60, 9*60, 3*60, 60]; // 81min, 27min, 9min, 3min, 1min
   const digits = overtimeTicks.map(T => Math.floor(el/T) % 3).join("");
-  timerStr = "+" + digits + "₃";
+  overtimeStr = "+" + digits + "₃";
+}
+
+function setFinalTimerText(){
+  // On completion the readout rolls over to the true ternary of the
+  // whole cycle: 27 -> 1000, 54 -> 2000, 81 -> 10000.
+  let mins = Math.round(totalCycle / 60), m = "";
+  while (mins > 0){ m = (mins % 3) + m; mins = Math.floor(mins / 3); }
+  const width = timeMode === 0 ? 3 : 4;
+  while (m.length < width) m = "0" + m;
+  timerStr = m + ":000₃";
 }
 
 /* ---------- CLOCK CONTROL ---------- */
@@ -702,7 +807,7 @@ function startClock(){
   requestWakeLock();
   showTimerNotification(
     'Salvation timer running',
-    ["27", "54", "81"][timeMode] + '-minute cycle in progress',
+    (timeMode === 3 ? customMins : [27, 54, 81][timeMode]) + '-minute cycle in progress',
     [{action:'pause', title:'Pause'}, {action:'reset', title:'Reset'}]
   );
 }
@@ -720,7 +825,7 @@ function pauseClock(){
 function resetClock(){
   running=false; finished=false;
   pauseMs=0; startMs=performance.now();
-  overtimeStart=0; lastBeepMinute=0; lastToneIdx={};
+  overtimeStart=0; lastBeepMinute=0; lastToneIdx={}; overtimeStr="";
   buildLedPaths();
   centerColor=Array(numDials).fill("white");
   centerSize =Array(numDials).fill(8);
@@ -734,7 +839,7 @@ function finishClock(){
   finished=true;
   running=false;
   overtimeStart = startMs + totalCycle * 1000;
-  updateTimerText(totalCycle);
+  setFinalTimerText();
   playCompletionTone();
   haptic('heavy');
   releaseWakeLock();
@@ -1982,8 +2087,8 @@ function drawSegDigit(x, y, w, h, th, on, ghost){
   for (let i=0;i<7;i++) if (on[i]) ctx.fillRect(segs[i][0]+1, segs[i][1]+1, segs[i][2]-2, segs[i][3]-2);
   ctx.shadowBlur = 0;
 }
-function drawSevenSegText(str, baseY){
-  const H = viewW < 500 ? 30 : 38;
+function drawSevenSegText(str, baseY, scale){
+  const H = (viewW < 500 ? 30 : 38) * (scale || 1);
   const W = H*0.55, TH = Math.max(3, Math.round(H*0.13)), GAP = W*0.5;
   const wOf = ch => ch === ":" ? TH*2 : ch === "\u2083" ? W*0.62 : (ch === "+" || ch === "-") ? W*0.7 : W;
   let total = -GAP;
@@ -2014,17 +2119,26 @@ function drawSevenSegText(str, baseY){
 
 function drawTimerText(t){
   const y = getTextY();
-  if (viewMode === 2){ drawSevenSegText(timerStr, y); return; } // LED readout on ABACUS
+  if (viewMode === 2){ // LED readout on ABACUS
+    drawSevenSegText(timerStr, y);
+    if (finished && overtimeStr) drawSevenSegText(overtimeStr, y + (viewW < 500 ? 34 : 42), 0.62);
+    return;
+  }
   ctx.font = viewW < 500 ? "32px monospace" : "40px monospace";
 
   const str = timerStr;
 
-  // Overtime and idle keep a single color
+  // Final value and idle keep a single color
   const idle = !running && !finished && pauseMs === 0;
   if (finished || idle){
     ctx.fillStyle = finished ? "#ff9500" : "white";
     ctx.textAlign = "center";
     ctx.fillText(str, viewW/2, y);
+    if (finished && overtimeStr){
+      ctx.font = viewW < 500 ? "19px monospace" : "23px monospace";
+      ctx.fillStyle = "rgba(255,149,0,0.7)";
+      ctx.fillText(overtimeStr, viewW/2, y + (viewW < 500 ? 28 : 34));
+    }
     return;
   }
 
@@ -2050,6 +2164,22 @@ function drawTimerText(t){
     ctx.fillText(ch, x, y);
     x += ctx.measureText(ch).width;
   }
+}
+
+function drawMuteBadge(){
+  // small amber speaker-x, top-right, on every view while muted
+  if (!muted) return;
+  const x = viewW - 36, y = 16;
+  ctx.fillStyle = ctx.strokeStyle = "rgba(255,160,0,0.8)";
+  ctx.beginPath();
+  ctx.moveTo(x, y+4); ctx.lineTo(x+5, y+4); ctx.lineTo(x+11, y-2);
+  ctx.lineTo(x+11, y+14); ctx.lineTo(x+5, y+8); ctx.lineTo(x, y+8);
+  ctx.closePath(); ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x+15, y+2); ctx.lineTo(x+22, y+10);
+  ctx.moveTo(x+22, y+2); ctx.lineTo(x+15, y+10);
+  ctx.stroke();
 }
 
 function drawTapHint(){
@@ -2164,6 +2294,7 @@ function draw(now){
     drawTapHint();
   }
   drawStatus();
+  drawMuteBadge();
   const playLbl = running ? "PAUSE" : finished ? "RESTART" : pauseMs > 0 ? "RESUME" : "START";
   if (btnPlay.textContent !== playLbl) btnPlay.textContent = playLbl;
 
@@ -2346,6 +2477,17 @@ function menuSync(){
     b.classList.toggle('active', i === timeMode);
     b.classList.toggle('disabled', !clean);
   });
+  const bc = document.getElementById('btnCustom');
+  bc.classList.toggle('active', timeMode === 3);
+  bc.classList.toggle('disabled', !clean);
+  document.getElementById('custStep').classList.toggle('dim', timeMode !== 3);
+  document.getElementById('custVal').textContent = customMins + " MIN";
+  const mb = document.getElementById('muteBar');
+  mb.classList.toggle('on', muted);
+  mb.innerHTML = muted ? "&#128263;&nbsp; MUTED &mdash; TAP TO UNMUTE" : "&#128266;&nbsp; MUTE";
+  document.querySelectorAll('#menuVol button').forEach((b, i) =>
+    b.classList.toggle('active', i === volSel));
+  document.getElementById('menuTones').classList.toggle('muted', muted);
 }
 VIEW_NAMES.forEach((n, i) => {
   const b = document.createElement('button');
@@ -2368,6 +2510,102 @@ VIEW_NAMES.forEach((n, i) => {
     haptic('light');
   };
   document.getElementById('menuDur').appendChild(b);
+});
+
+/* ---------- CUSTOM duration ---------- */
+function setCustomMins(v){
+  v = Math.max(1, Math.min(243, v));
+  if (v === customMins) return true;
+  if (timeMode === 3){
+    // changing the live duration: same gate as switching presets
+    if (running || finished || pauseMs > 0){ haptic('light'); return false; }
+    customMins = v;
+    updateTables();
+    resetClock();
+    needsStaticRedraw = true;
+  } else {
+    customMins = v; // just remember it for the next time CUSTOM is picked
+  }
+  try { localStorage.setItem('salvationCustom', String(customMins)); } catch(e) {}
+  menuSync();
+  return true;
+}
+document.getElementById('btnCustom').onclick = () => {
+  if (!setDuration(3)){ haptic('light'); return; } // reset first
+  menuSync();
+  haptic('light');
+};
+document.getElementById('custMinus').onclick = () => { if (setCustomMins(customMins - 1)) haptic('light'); };
+document.getElementById('custPlus').onclick  = () => { if (setCustomMins(customMins + 1)) haptic('light'); };
+
+/* keypad dialog */
+const custPad = document.getElementById('custPad');
+let cpEntry = "";
+function cpRender(){
+  const n = parseInt(cpEntry || "0", 10);
+  document.getElementById('cpNum').textContent = cpEntry || "0";
+  const valid = n >= 1 && n <= 243;
+  document.getElementById('cpSet').classList.toggle('dim', !valid);
+  const stop = document.getElementById('cpStop');
+  if (!valid){ stop.innerHTML = "&mdash;"; return; }
+  let m = "", x = n;
+  while (x > 0){ m = (x % 3) + m; x = Math.floor(x / 3); }
+  while (m.length < 4) m = "0" + m;
+  const DC = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"];
+  const span = (ch, col) => '<span style="color:' + col + '">' + ch + '</span>';
+  let html = "stops at ";
+  for (const ch of m) html += span(ch, DC[+ch]);
+  html += span(":", "rgba(255,255,255,0.85)");
+  for (let k = 0; k < 3; k++) html += span("0", DC[0]);
+  html += span("₃", "rgba(255,255,255,0.85)");
+  stop.innerHTML = html;
+}
+document.getElementById('custVal').onclick = () => {
+  cpEntry = String(customMins);
+  cpRender();
+  custPad.style.display = 'block';
+  haptic('light');
+};
+document.querySelectorAll('#cpGrid button').forEach(b => {
+  if (b.id) return;
+  b.onclick = () => {
+    if (cpEntry.length >= 3 && cpEntry !== "0") return;
+    cpEntry = (cpEntry === "0" ? "" : cpEntry) + b.textContent;
+    cpRender();
+    haptic('light');
+  };
+});
+document.getElementById('cpClr').onclick  = () => { cpEntry = ""; cpRender(); haptic('light'); };
+document.getElementById('cpBack').onclick = () => { cpEntry = cpEntry.slice(0, -1); cpRender(); haptic('light'); };
+document.getElementById('cpCancel').onclick = () => { custPad.style.display = 'none'; };
+document.getElementById('cpSet').onclick = () => {
+  const n = parseInt(cpEntry || "0", 10);
+  if (n < 1 || n > 243) return;
+  custPad.style.display = 'none';
+  if (!setCustomMins(n)) return;
+  if (timeMode !== 3 && !setDuration(3)) haptic('light'); // value saved; mode needs a reset
+  menuSync();
+  haptic('medium');
+};
+
+/* ---------- SOUND: mute + volume ---------- */
+document.getElementById('muteBar').onclick = () => {
+  muted = !muted;
+  try { localStorage.setItem('salvationMute', muted ? "1" : "0"); } catch(e) {}
+  menuSync();
+  haptic('medium');
+  if (!muted) playVoice(440, true, 0); // little chirp to confirm sound is back
+};
+["LOW","MED","HIGH"].forEach((n, i) => {
+  const b = document.createElement('button');
+  b.textContent = n;
+  b.onclick = () => {
+    setVolume(i);
+    menuSync();
+    haptic('light');
+    playVoice(440, false, 0); // audition the level
+  };
+  document.getElementById('menuVol').appendChild(b);
 });
 btnMenu.onclick = () => {
   pulseButton(btnMenu, 'light');
