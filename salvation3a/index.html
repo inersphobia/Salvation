@@ -296,6 +296,7 @@ const TONE_OPTS = [
 let toneSel = { t180: 2 }; // default: the classic 3-minute mid tone
 let toneVoice = {};         // per interval: 0 bell / 1 marimba / 2 organ
 let timerStr="0000:000₃";
+let overtimeStr="";
 let overtimeStart=0; // When overtime counting began
 
 /* Wake Lock */
@@ -689,7 +690,17 @@ function updateOvertimeText(el){
   // Fixed overtime tick rates (same for both modes)
   const overtimeTicks = [81*60, 27*60, 9*60, 3*60, 60]; // 81min, 27min, 9min, 3min, 1min
   const digits = overtimeTicks.map(T => Math.floor(el/T) % 3).join("");
-  timerStr = "+" + digits + "₃";
+  overtimeStr = "+" + digits + "₃";
+}
+
+function setFinalTimerText(){
+  // On completion the readout rolls over to the true ternary of the
+  // whole cycle: 27 -> 1000, 54 -> 2000, 81 -> 10000.
+  let mins = Math.round(totalCycle / 60), m = "";
+  while (mins > 0){ m = (mins % 3) + m; mins = Math.floor(mins / 3); }
+  const width = timeMode === 0 ? 3 : 4;
+  while (m.length < width) m = "0" + m;
+  timerStr = m + ":000₃";
 }
 
 /* ---------- CLOCK CONTROL ---------- */
@@ -720,7 +731,7 @@ function pauseClock(){
 function resetClock(){
   running=false; finished=false;
   pauseMs=0; startMs=performance.now();
-  overtimeStart=0; lastBeepMinute=0; lastToneIdx={};
+  overtimeStart=0; lastBeepMinute=0; lastToneIdx={}; overtimeStr="";
   buildLedPaths();
   centerColor=Array(numDials).fill("white");
   centerSize =Array(numDials).fill(8);
@@ -734,7 +745,7 @@ function finishClock(){
   finished=true;
   running=false;
   overtimeStart = startMs + totalCycle * 1000;
-  updateTimerText(totalCycle);
+  setFinalTimerText();
   playCompletionTone();
   haptic('heavy');
   releaseWakeLock();
@@ -1982,8 +1993,8 @@ function drawSegDigit(x, y, w, h, th, on, ghost){
   for (let i=0;i<7;i++) if (on[i]) ctx.fillRect(segs[i][0]+1, segs[i][1]+1, segs[i][2]-2, segs[i][3]-2);
   ctx.shadowBlur = 0;
 }
-function drawSevenSegText(str, baseY){
-  const H = viewW < 500 ? 30 : 38;
+function drawSevenSegText(str, baseY, scale){
+  const H = (viewW < 500 ? 30 : 38) * (scale || 1);
   const W = H*0.55, TH = Math.max(3, Math.round(H*0.13)), GAP = W*0.5;
   const wOf = ch => ch === ":" ? TH*2 : ch === "\u2083" ? W*0.62 : (ch === "+" || ch === "-") ? W*0.7 : W;
   let total = -GAP;
@@ -2014,17 +2025,26 @@ function drawSevenSegText(str, baseY){
 
 function drawTimerText(t){
   const y = getTextY();
-  if (viewMode === 2){ drawSevenSegText(timerStr, y); return; } // LED readout on ABACUS
+  if (viewMode === 2){ // LED readout on ABACUS
+    drawSevenSegText(timerStr, y);
+    if (finished && overtimeStr) drawSevenSegText(overtimeStr, y + (viewW < 500 ? 34 : 42), 0.62);
+    return;
+  }
   ctx.font = viewW < 500 ? "32px monospace" : "40px monospace";
 
   const str = timerStr;
 
-  // Overtime and idle keep a single color
+  // Final value and idle keep a single color
   const idle = !running && !finished && pauseMs === 0;
   if (finished || idle){
     ctx.fillStyle = finished ? "#ff9500" : "white";
     ctx.textAlign = "center";
     ctx.fillText(str, viewW/2, y);
+    if (finished && overtimeStr){
+      ctx.font = viewW < 500 ? "19px monospace" : "23px monospace";
+      ctx.fillStyle = "rgba(255,149,0,0.7)";
+      ctx.fillText(overtimeStr, viewW/2, y + (viewW < 500 ? 28 : 34));
+    }
     return;
   }
 
