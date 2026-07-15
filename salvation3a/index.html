@@ -1916,13 +1916,13 @@ function drawStatus(){
   lines.forEach((ln, k) => ctx.fillText(ln, 14, 24 + k*16));
 }
 
-/* ---------- DREAM: a mage conjures the dream, pixel by pixel ----------
-   Old-school adventure scene. Each 1/81-minute tick, a spark leaves the
-   mage's staff and one pixel of an 81x81 vision emerges in the portal:
-   81 minutes = 81x81 = 6561 pixels = the whole dream, made real.
-   Music: "Dreams Become Real" Kevin MacLeod (incompetech.com) CC BY */
-const DREAM_T81 = 60/81;                     // one conjure every 1/81 minute
-const DREAM_PIX = 81*81;                     // the full dream
+/* ---------- DREAM: a mage in a dungeon paints the dream in tiles ----------
+   Each 1/81-minute tick lays one pixel; 81 ticks complete a 9x9 TILE = one
+   minute. The fresco on the dungeon wall is tiled minutes: 27-min sessions
+   paint a chalice (27 tiles), 54 a sword in the stone (54), 81 the castle
+   (81). The staff orb's glow is the infinitesimal fraction building toward
+   each 1/81. Music: "Dreams Become Real" Kevin MacLeod (incompetech) CC BY */
+const DREAM_T81 = 60/81;
 const DREAM_AUDIO_SRC = (/\/salvation\d/i.test(location.pathname) ? "../" : "./") + "audio/dreams-become-real.mp3";
 let dreamAudio = null, dreamAudioDead = false, dreamAudioTry = 0;
 function syncDreamAudio(){
@@ -1949,97 +1949,137 @@ function syncDreamAudio(){
     }
   } catch(e) {}
 }
-
-/* deterministic PRNG so the dream always assembles the same way */
 function dreamRng(seed){
   let s = seed >>> 0;
   return () => { s = (s * 1103515245 + 12345) >>> 0; return s / 4294967296; };
 }
 
-/* the target image: a dreamed landscape, drawn once at 81x81 */
-let dreamTargetData = null, dreamOrder = null, dreamReveal = null, dreamRevealN = 0, dreamRevealCtx = null;
-function dreamInitArt(){
-  if (dreamTargetData) return;
+/* ---- the three artworks, 9 tiles wide; height = duration in tiles ---- */
+let dreamArt = { kind: "", rows: 9, data: null };
+let dreamReveal = null, dreamRevealCtx = null, dreamRevealN = 0;
+function dreamPickKind(){
+  const m = Math.round(totalCycle/60);
+  return m <= 27 ? "chalice" : m <= 54 ? "sword" : "castle";
+}
+function dreamBuildArt(kind){
+  const rows = kind === "chalice" ? 3 : kind === "sword" ? 6 : 9;
+  const H = rows*9;
   const c = document.createElement('canvas');
-  c.width = 81; c.height = 81;
+  c.width = 81; c.height = H;
   const g = c.getContext('2d');
-  // night sky in dithered bands
-  const bands = ["#060f26", "#0a1734", "#0e1d3d", "#122446"];
-  for (let y = 0; y < 46; y++){
-    const b = Math.min(3, Math.floor(y/12));
+  const px = (x, y, col) => { g.fillStyle = col; g.fillRect(x, y, 1, 1); };
+  if (kind === "chalice"){
+    for (let y = 0; y < 27; y++)
+      for (let x = 0; x < 81; x++)
+        px(x, y, (x*7 + y*13) % 23 === 0 ? "#120f1c" : y < 9 ? "#0c0a14" : y < 18 ? "#0a0912" : "#080810");
+    // candle-glow dither around the cup
+    for (let y = 0; y < 27; y++)
+      for (let x = 20; x < 61; x++){
+        const d = Math.hypot(x - 40, (y - 12)*1.6);
+        if (d < 16 && d > 7 && (x*3 + y*5) % 4 === 0) px(x, y, "#1c1408");
+      }
+    for (let x = 31; x <= 49; x++) px(x, 5, "#f2cf7a");                 // rim
+    for (let y = 6; y <= 11; y++){                                       // bowl
+      const half = Math.round(9 - (y - 6)*1.4);
+      for (let x = 40 - half; x <= 40 + half; x++)
+        px(x, y, x === 40 - half ? "#f2cf7a" : x === 40 + half ? "#a5762a" : "#d9a441");
+    }
+    px(36, 8, "#c23b4a"); px(40, 8, "#3a7bd9"); px(44, 8, "#3aa05c");     // gems
+    for (let y = 12; y <= 17; y++){ px(39, y, "#b8892f"); px(40, y, "#d9a441"); px(41, y, "#a5762a"); }
+    for (let x = 36; x <= 44; x++) px(x, 18, "#d9a441");                  // base
+    for (let x = 33; x <= 47; x++) px(x, 19, "#d9a441");
+    for (let x = 32; x <= 48; x++) px(x, 20, "#a5762a");
+    [[20,4],[60,7],[14,19],[66,17],[47,2]].forEach(([x,y]) => px(x, y, "#eef4fa"));
+  } else if (kind === "sword"){
+    for (let y = 0; y < 54; y++)
+      for (let x = 0; x < 81; x++)
+        px(x, y, (x*11 + y*7) % 29 === 0 ? "#0e1526" : y < 18 ? "#070d1f" : y < 36 ? "#091124" : "#0b1326");
+    const rs = dreamRng(5454);
+    for (let i = 0; i < 26; i++) px(Math.floor(rs()*81), Math.floor(rs()*30), i % 3 ? "#8fb8d8" : "#e6f0fa");
+    g.fillStyle = "#e6eef8"; g.beginPath(); g.arc(66, 8, 4, 0, 2*Math.PI); g.fill();   // moon
+    g.fillStyle = "#091124"; g.beginPath(); g.arc(68, 6.5, 4, 0, 2*Math.PI); g.fill();
+    for (let x = 10; x <= 70; x++){                                       // the stone
+      const h = 9 - Math.round(Math.abs(x - 40)/4.5);
+      if (h > 0){
+        for (let y = 53 - h; y <= 53; y++) px(x, y, y === 53 - h ? "#2e323c" : "#22252d");
+      }
+    }
+    px(38, 47, "#171a20"); px(43, 49, "#171a20"); px(35, 50, "#171a20");  // cracks
+    for (let x = 38; x <= 42; x++) px(x, 8, "#d9a441");                   // pommel
+    for (let x = 39; x <= 41; x++) px(x, 9, "#f2cf7a");
+    for (let y = 10; y <= 15; y++){                                       // grip
+      px(39, y, "#5a3b22"); px(40, y, y % 2 ? "#432c19" : "#5a3b22"); px(41, y, "#432c19");
+    }
+    for (let x = 31; x <= 49; x++){ px(x, 16, "#d9a441"); px(x, 17, "#a5762a"); }  // guard
+    px(30, 16, "#f2cf7a"); px(50, 16, "#f2cf7a");
+    for (let y = 18; y <= 48; y++){                                       // blade, into the stone
+      px(39, y, "#eef4fa"); px(40, y, "#c9d4e0"); px(41, y, "#9fb0c4");
+    }
+  } else {
+    // the castle landscape (the 81-minute dream)
+    const bands = ["#060f26", "#0a1734", "#0e1d3d", "#122446"];
+    for (let y = 0; y < 46; y++)
+      for (let x = 0; x < 81; x++){
+        const b = Math.min(3, Math.floor(y/12));
+        const dither = (y % 12 === 11) && ((x + y) % 2 === 0) && b < 3;
+        px(x, y, bands[dither ? b+1 : b]);
+      }
+    const rs = dreamRng(20260715);
+    for (let i = 0; i < 46; i++)
+      px(Math.floor(rs()*81), Math.floor(rs()*38), i % 3 ? "#8fb8d8" : "#e6f0fa");
+    g.fillStyle = "#e6eef8"; g.beginPath(); g.arc(63, 11, 6, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#0a1734"; g.beginPath(); g.arc(66, 9, 6, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#0c1830";
     for (let x = 0; x < 81; x++){
-      const dither = (y % 12 === 11) && ((x + y) % 2 === 0) && b < 3;
-      g.fillStyle = bands[dither ? b+1 : b];
-      g.fillRect(x, y, 1, 1);
+      const y = 44 - Math.round(5*Math.sin(x/9) + 4*Math.sin(x/23 + 2));
+      g.fillRect(x, y, 1, 54 - y);
+    }
+    g.fillStyle = "#1a2230";
+    g.fillRect(20, 28, 11, 26);
+    for (let x = 20; x <= 30; x += 2) g.fillRect(x, 26, 1, 2);
+    g.fillRect(32, 34, 5, 20);
+    for (let x = 32; x <= 36; x += 2) g.fillRect(x, 32, 1, 2);
+    g.fillStyle = "#ffb84d"; g.fillRect(24, 36, 2, 3);
+    g.fillStyle = "#0a120e";
+    for (let x = 0; x < 81; x++){
+      const y = 54 - Math.round(3*Math.sin(x/13 + 1));
+      g.fillRect(x, y, 1, 81 - y);
+    }
+    g.fillStyle = "#16202b";
+    for (let i = 0; i < 26; i++){
+      const y = 80 - i, x = 40 - Math.round(i*0.5) - Math.round(3*Math.sin(i/4));
+      g.fillRect(x, y, 2, 1);
     }
   }
-  // stars
-  const rs = dreamRng(20260715);
-  for (let i = 0; i < 46; i++){
-    const x = Math.floor(rs()*81), y = Math.floor(rs()*38);
-    g.fillStyle = i % 3 ? "#8fb8d8" : "#e6f0fa";
-    g.fillRect(x, y, 1, 1);
-  }
-  // crescent moon
-  g.fillStyle = "#e6eef8";
-  g.beginPath(); g.arc(63, 11, 6, 0, 2*Math.PI); g.fill();
-  g.fillStyle = "#0a1734";
-  g.beginPath(); g.arc(66, 9, 6, 0, 2*Math.PI); g.fill();
-  // far mountains
-  g.fillStyle = "#0c1830";
-  for (let x = 0; x < 81; x++){
-    const y = 44 - Math.round(5*Math.sin(x/9) + 4*Math.sin(x/23 + 2));
-    g.fillRect(x, y, 1, 54 - y);
-  }
-  // the castle of the dream
-  g.fillStyle = "#1a2230";
-  g.fillRect(20, 28, 11, 26);                       // keep
-  for (let x = 20; x <= 30; x += 2) g.fillRect(x, 26, 1, 2);  // crenellations
-  g.fillRect(32, 34, 5, 20);                        // side tower
-  for (let x = 32; x <= 36; x += 2) g.fillRect(x, 32, 1, 2);
-  g.fillStyle = "#ffb84d";
-  g.fillRect(24, 36, 2, 3);                         // the lit window
-  // near hill
-  g.fillStyle = "#0a120e";
-  for (let x = 0; x < 81; x++){
-    const y = 54 - Math.round(3*Math.sin(x/13 + 1));
-    g.fillRect(x, y, 1, 81 - y);
-  }
-  // a path winding toward the castle
-  g.fillStyle = "#16202b";
-  for (let i = 0; i < 26; i++){
-    const y = 80 - i, x = 40 - Math.round(i*0.5) - Math.round(3*Math.sin(i/4));
-    g.fillRect(x, y, 2, 1);
-  }
-  dreamTargetData = g.getImageData(0, 0, 81, 81).data;
-  // conjure order: a fixed shuffle - the dream always coalesces the same way
-  dreamOrder = new Uint16Array(DREAM_PIX);
-  for (let i = 0; i < DREAM_PIX; i++) dreamOrder[i] = i;
-  const ro = dreamRng(7777);
-  for (let i = DREAM_PIX - 1; i > 0; i--){
-    const j = Math.floor(ro() * (i + 1));
-    const tmp = dreamOrder[i]; dreamOrder[i] = dreamOrder[j]; dreamOrder[j] = tmp;
-  }
+  return { kind, rows, data: g.getImageData(0, 0, 81, H).data };
+}
+function dreamEnsureArt(){
+  const kind = dreamPickKind();
+  if (dreamArt.kind === kind) return;
+  dreamArt = dreamBuildArt(kind);
   dreamReveal = document.createElement('canvas');
-  dreamReveal.width = 81; dreamReveal.height = 81;
+  dreamReveal.width = 81; dreamReveal.height = dreamArt.rows*9;
   dreamRevealCtx = dreamReveal.getContext('2d');
   dreamRevealN = 0;
+  needsStaticRedraw = true;      // the wall frame follows the fresco size
+}
+/* tick k -> pixel coords: tiles fill raster-wise, pixels raster within the tile */
+function dreamPixelPos(k){
+  const tile = Math.floor(k/81), r = k % 81;
+  return { x: (tile % 9)*9 + r % 9, y: Math.floor(tile/9)*9 + Math.floor(r/9) };
 }
 function dreamRevealTo(n){
-  if (n < dreamRevealN){
-    dreamRevealCtx.clearRect(0, 0, 81, 81);
-    dreamRevealN = 0;
-  }
+  if (n < dreamRevealN){ dreamRevealCtx.clearRect(0, 0, 81, dreamArt.rows*9); dreamRevealN = 0; }
   while (dreamRevealN < n){
-    const p = dreamOrder[dreamRevealN];
-    const px = p % 81, py = Math.floor(p / 81), o = p*4;
-    dreamRevealCtx.fillStyle = "rgb(" + dreamTargetData[o] + "," + dreamTargetData[o+1] + "," + dreamTargetData[o+2] + ")";
-    dreamRevealCtx.fillRect(px, py, 1, 1);
+    const p = dreamPixelPos(dreamRevealN);
+    const o = (p.y*81 + p.x)*4, d = dreamArt.data;
+    dreamRevealCtx.fillStyle = "rgb(" + d[o] + "," + d[o+1] + "," + d[o+2] + ")";
+    dreamRevealCtx.fillRect(p.x, p.y, 1, 1);
     dreamRevealN++;
   }
 }
 
-/* the hooded mage */
+/* ---- the hooded mage ---- */
 const DREAM_MAGE = [
   "....HHHH......",
   "...HHHHHH.....",
@@ -2068,99 +2108,86 @@ const DREAM_MAGE_COL = {
 };
 function dreamLayout(){
   const k = Math.max(0.8, Math.min(viewW/412, 1.25));
-  const ps = Math.max(2, Math.floor(3*k));          // integer pixel scale for the 81x81 vision
-  const portalSize = 81*ps;
-  const portalLeft = Math.round((viewW - portalSize)/2);
-  const portalTop = Math.round(108*k);
-  const floorY = Math.round(portalTop + portalSize + 210*k);
-  const S = Math.max(3, Math.round(4*k));           // mage pixel size
-  const mageX = Math.round(34*k), mageY = floorY - 20*S;
-  return { k, ps, portalSize, portalLeft, portalTop, portalBottom: portalTop + portalSize,
-           floorY, S, mageX, mageY,
+  const ps = Math.max(2, Math.floor(3*k));
+  const rows = dreamArt.rows || 9;
+  const frescoW = 81*ps, frescoH = rows*9*ps;
+  const frescoLeft = Math.round((viewW - frescoW)/2);
+  // center smaller frescos in the band the 81-tile one would fill
+  const frescoTop = Math.round(96*k + (81*ps - frescoH)/2);
+  const floorY = Math.round(96*k + 81*ps + 90*k);
+  const S = Math.max(3, Math.round(4*k));
+  const mageX = Math.round(28*k);
+  const mageY = Math.round(floorY + 100*k - 20*S);
+  return { k, ps, rows, frescoW, frescoH, frescoLeft, frescoTop,
+           frescoBottom: frescoTop + frescoH, floorY, S, mageX, mageY,
            orbX: mageX + 12*S + Math.floor(S/2), orbY: mageY + 8*S + Math.floor(S/2),
-           textY: floorY + Math.round(58*k) };
+           textY: Math.round(floorY + 158*k) };
 }
-function drawDreamCave(){
-  // static layer: the cave
+function drawDreamDungeon(){
+  dreamEnsureArt();
   const L = dreamLayout();
-  ctxStatic.fillStyle = "#05070b";
-  ctxStatic.fillRect(0, 0, viewW, viewH);
-  const r = dreamRng(424242);
-  // rough rock texture
-  for (let i = 0; i < 900; i++){
-    const x = r()*viewW, y = r()*viewH;
-    if (y > L.floorY) continue;
-    ctxStatic.fillStyle = r() < 0.5 ? "#0a0e16" : "#0d1320";
-    ctxStatic.fillRect(Math.floor(x/4)*4, Math.floor(y/4)*4, 4, 4);
-  }
-  // stalactites
-  ctxStatic.fillStyle = "#030407";
-  for (let i = 0; i < 9; i++){
-    const x = (i + 0.5 + (r()-0.5))*viewW/9, w = (10 + r()*22)*L.k, h = (26 + r()*60)*L.k;
-    ctxStatic.beginPath();
-    ctxStatic.moveTo(x - w/2, 0); ctxStatic.lineTo(x + w/2, 0); ctxStatic.lineTo(x, h);
-    ctxStatic.closePath(); ctxStatic.fill();
-  }
-  // cave floor
-  ctxStatic.fillStyle = "#0c0a10";
-  ctxStatic.fillRect(0, L.floorY, viewW, viewH - L.floorY);
-  ctxStatic.fillStyle = "#131019";
-  for (let i = 0; i < 90; i++){
-    const x = r()*viewW, y = L.floorY + r()*(viewH - L.floorY);
-    ctxStatic.fillRect(Math.floor(x/4)*4, Math.floor(y/4)*4, 4, 4);
-  }
-}
-function drawDreamCounter(t, L, shown, idle){
-  // ternary odometer of conjured pixels (9 places: 6561 = 100000000)
-  const f = Math.round(20*L.k), yT = Math.round(52*L.k);
-  const DC = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"];
-  const items = [];
-  for (let p = 8; p >= 0; p--){
-    const conj = !idle && shown >= Math.pow(3, p);
-    items.push(conj ? { d: Math.floor(shown/Math.pow(3,p)) % 3, p } : { ast: true, p });
-  }
-  ctx.textAlign = "left";
-  const astF = Math.round(f*0.72) + "px monospace", digF = f + "px monospace";
-  let w = 0;
-  for (const it of items){
-    ctx.font = it.ast ? astF : digF;
-    w += ctx.measureText(it.ast ? "*" : String(it.d)).width + 1.5;
-  }
-  ctx.font = Math.round(f*0.55) + "px monospace";
-  w += ctx.measureText("3").width;
-  let x = viewW/2 - w/2;
-  const astPs = items.filter(j => j.ast).map(j => j.p);
-  const nearestP = astPs.length ? Math.min.apply(null, astPs) : -1;
-  for (const it of items){
-    if (it.ast){
-      ctx.font = astF;
-      ctx.fillStyle = it.p === nearestP ? "rgba(160,180,190,0.38)" : "rgba(160,180,190,0.2)";
-      ctx.fillText("*", x, yT - f*0.18);
-      x += ctx.measureText("*").width + 1.5;
-    } else {
-      ctx.font = digF;
-      let a = 1;
-      if (!idle && !finished && it.d === 0){
-        const sec = t % (Math.pow(3, it.p) * DREAM_T81);  // late zeros, at conjure speed
-        if (sec < 0.5) a = 0.15 + (sec/0.5)*0.85;
-      }
-      ctx.globalAlpha = a;
-      ctx.fillStyle = DC[it.d];
-      ctx.fillText(String(it.d), x, yT);
-      ctx.globalAlpha = 1;
-      x += ctx.measureText(String(it.d)).width + 1.5;
+  const r = dreamRng(97531);
+  // back wall: staggered stone bricks
+  ctxStatic.fillStyle = "#08090d";
+  ctxStatic.fillRect(0, 0, viewW, L.floorY);
+  const bh = Math.round(15*L.k), bw = Math.round(32*L.k);
+  const shades = ["#141721", "#12141d", "#161924", "#101319"];
+  for (let row = 0, y = 0; y < L.floorY; row++, y += bh){
+    const off = (row % 2) * Math.round(bw/2);
+    for (let x = -off; x < viewW; x += bw){
+      ctxStatic.fillStyle = shades[Math.floor(r()*shades.length)];
+      ctxStatic.fillRect(x + 1, y + 1, bw - 2, Math.min(bh, L.floorY - y) - 2);
     }
   }
-  ctx.font = Math.round(f*0.55) + "px monospace";
-  ctx.fillStyle = "rgba(255,255,255,0.4)";
-  ctx.fillText("3", x, yT + 3*L.k);
-  ctx.font = Math.round(12*L.k) + "px monospace";
-  ctx.textAlign = "center";
-  ctx.fillStyle = "rgba(90,106,117,0.8)";
-  ctx.fillText(shown + " / 6561", viewW/2, yT + 20*L.k);
+  // the fresco's stone frame, set into the wall
+  const b = Math.round(6*L.k);
+  ctxStatic.fillStyle = "#232733";
+  ctxStatic.fillRect(L.frescoLeft - b, L.frescoTop - b, L.frescoW + 2*b, L.frescoH + 2*b);
+  ctxStatic.fillStyle = "#2e3342";
+  ctxStatic.fillRect(L.frescoLeft - b, L.frescoTop - b, L.frescoW + 2*b, Math.max(2, Math.round(2*L.k)));
+  ctxStatic.fillStyle = "#0c0e14";
+  ctxStatic.fillRect(L.frescoLeft - 2, L.frescoTop - 2, L.frescoW + 4, L.frescoH + 4);
+  // sconce brackets beside the fresco
+  const sy = L.frescoTop + L.frescoH/2;
+  for (const sx of [L.frescoLeft - 36*L.k, L.frescoLeft + L.frescoW + 36*L.k]){
+    ctxStatic.fillStyle = "#241a10";
+    ctxStatic.fillRect(sx - 2*L.k, sy, 4*L.k, 12*L.k);
+    ctxStatic.fillStyle = "#31241a";
+    ctxStatic.fillRect(sx - 4*L.k, sy + 10*L.k, 8*L.k, 3*L.k);
+  }
+  // floor: big flagstones
+  ctxStatic.fillStyle = "#12101a";
+  ctxStatic.fillRect(0, L.floorY, viewW, viewH - L.floorY);
+  ctxStatic.fillStyle = "#1c1a24";
+  ctxStatic.fillRect(0, L.floorY, viewW, Math.max(2, Math.round(2*L.k)));
+  const fh = Math.round(30*L.k), fw = Math.round(58*L.k);
+  const fshades = ["#141218", "#100e15", "#16141c"];
+  for (let row = 0, y = L.floorY + 2; y < viewH; row++, y += fh){
+    const off = (row % 2) * Math.round(fw/2);
+    for (let x = -off; x < viewW; x += fw){
+      ctxStatic.fillStyle = fshades[Math.floor(r()*fshades.length)];
+      ctxStatic.fillRect(x + 1, y + 1, fw - 2, fh - 2);
+    }
+  }
 }
-function drawDreamMage(L, t, ticks, idle, launchGlow){
-  const bob = idle ? 0 : (ticks % 2) * L.S;          // he pumps with every conjure
+function drawDreamTorch(x, y, k){
+  const w = performance.now()/1000;
+  const cols = ["#ff9a3c", "#ffc75a", "#ff7030"];
+  const ph = Math.floor(w*7 + x) % 3;
+  ctx.shadowColor = "rgba(255,150,50,0.6)";
+  ctx.shadowBlur = 8;
+  ctx.fillStyle = cols[ph];
+  ctx.fillRect(x - 3*k, y - 4*k, 6*k, 6*k);
+  ctx.fillStyle = cols[(ph+1) % 3];
+  ctx.fillRect(x - 2*k, y - 8*k, 4*k, 4*k);
+  if (Math.floor(w*9 + x) % 2){
+    ctx.fillStyle = cols[(ph+2) % 3];
+    ctx.fillRect(x - k, y - 11*k, 2*k, 3*k);
+  }
+  ctx.shadowBlur = 0;
+}
+function drawDreamMage(L, ticks, idle, glow){
+  const bob = idle ? 0 : (ticks % 2) * L.S;
   for (let ry = 0; ry < DREAM_MAGE.length; ry++){
     const row = DREAM_MAGE[ry];
     for (let rx = 0; rx < row.length; rx++){
@@ -2170,64 +2197,86 @@ function drawDreamMage(L, t, ticks, idle, launchGlow){
       ctx.fillRect(L.mageX + rx*L.S, L.mageY + ry*L.S + bob, L.S, L.S);
     }
   }
-  // the staff orb
+  // the orb: its glow is the infinitesimal fraction building toward 1/81
   const oy = L.orbY + (idle ? 0 : (ticks % 2) * L.S);
-  const glow = idle ? 0.25 : 0.4 + 0.6*launchGlow;
-  ctx.fillStyle = "rgba(174,240,255," + glow + ")";
-  ctx.shadowColor = "rgba(174,240,255," + glow + ")";
-  ctx.shadowBlur = 6 + 14*launchGlow;
+  const a = idle ? 0.22 : 0.15 + 0.85*glow;
+  ctx.fillStyle = "rgba(174,240,255," + a + ")";
+  ctx.shadowColor = "rgba(174,240,255," + a + ")";
+  ctx.shadowBlur = 4 + 16*(idle ? 0 : glow);
   ctx.fillRect(L.orbX - L.S, oy - L.S, L.S*2, L.S*2);
   ctx.shadowBlur = 0;
 }
 function drawDream(t){
-  dreamInitArt();
+  dreamEnsureArt();
   const L = dreamLayout();
   const idle = !running && !finished && pauseMs === 0;
-  const totalTicks = Math.min(DREAM_PIX, Math.round(totalCycle/60)*81);
+  const totalTiles = Math.min(dreamArt.rows*9, Math.round(totalCycle/60));
+  const totalTicks = totalTiles*81;
   const ticks = finished ? totalTicks : idle ? 0 : Math.min(totalTicks, Math.floor(t/DREAM_T81));
   const sub = idle || finished ? 0 : t % DREAM_T81;
 
-  // spark flight: leaves the orb late in the interval, arrives at the boundary
-  const flightT = Math.min(0.34, DREAM_T81*0.45);
-  const flying = !idle && !finished && ticks < totalTicks && sub > DREAM_T81 - flightT;
-  const flyFrac = flying ? (sub - (DREAM_T81 - flightT))/flightT : 0;
+  // the spark released at each boundary flies for a beat, then the pixel lands
+  const flightT = 0.22;
+  const flying = !idle && !finished && ticks > 0 && sub < flightT;
+  const shown = flying ? ticks - 1 : ticks;
+  dreamRevealTo(shown);
 
-  drawDreamCounter(t, L, ticks, idle);
+  // torches
+  const sy = L.frescoTop + L.frescoH/2;
+  drawDreamTorch(L.frescoLeft - 36*L.k, sy, L.k);
+  drawDreamTorch(L.frescoLeft + L.frescoW + 36*L.k, sy, L.k);
 
-  // the portal and the vision
-  const shimmer = idle ? 0.22 : 0.32 + 0.1*Math.sin(t*1.7);
-  ctx.strokeStyle = finished ? "rgba(255,180,80,0.85)" : "rgba(0,191,255," + shimmer + ")";
-  ctx.lineWidth = finished ? 2.5 : 1.5;
-  if (finished){
-    ctx.shadowColor = "rgba(255,160,60,0.7)";
-    ctx.shadowBlur = 10 + 6*Math.sin(performance.now()/700);
-  }
-  ctx.strokeRect(L.portalLeft - 3, L.portalTop - 3, L.portalSize + 6, L.portalSize + 6);
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = "#01030a";
-  ctx.fillRect(L.portalLeft, L.portalTop, L.portalSize, L.portalSize);
-  dreamRevealTo(ticks);
+  // the fresco: dark plaster, tile grid, the emerging painting
+  ctx.fillStyle = "#04060c";
+  ctx.fillRect(L.frescoLeft, L.frescoTop, L.frescoW, L.frescoH);
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(dreamReveal, L.portalLeft, L.portalTop, L.portalSize, L.portalSize);
+  ctx.drawImage(dreamReveal, L.frescoLeft, L.frescoTop, L.frescoW, L.frescoH);
   ctx.imageSmoothingEnabled = true;
+  ctx.strokeStyle = "rgba(255,255,255,0.045)";
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 9; i++){
+    const x = L.frescoLeft + i*9*L.ps;
+    ctx.beginPath(); ctx.moveTo(x, L.frescoTop); ctx.lineTo(x, L.frescoTop + L.frescoH); ctx.stroke();
+  }
+  for (let i = 1; i < L.rows; i++){
+    const y = L.frescoTop + i*9*L.ps;
+    ctx.beginPath(); ctx.moveTo(L.frescoLeft, y); ctx.lineTo(L.frescoLeft + L.frescoW, y); ctx.stroke();
+  }
+  // the tile being painted this minute
+  if (!idle && !finished && shown < totalTicks){
+    const tile = Math.floor(shown/81);
+    ctx.strokeStyle = "rgba(0,191,255,0.25)";
+    ctx.strokeRect(L.frescoLeft + (tile % 9)*9*L.ps + 0.5,
+                   L.frescoTop + Math.floor(tile/9)*9*L.ps + 0.5,
+                   9*L.ps - 1, 9*L.ps - 1);
+  }
+  if (finished){
+    const pulse = 0.5 + 0.5*Math.sin(performance.now()/700);
+    ctx.strokeStyle = "rgba(255,180,80," + (0.5 + 0.35*pulse) + ")";
+    ctx.lineWidth = 2;
+    ctx.shadowColor = "rgba(255,160,60,0.7)";
+    ctx.shadowBlur = 8 + 6*pulse;
+    ctx.strokeRect(L.frescoLeft - 3, L.frescoTop - 3, L.frescoW + 6, L.frescoH + 6);
+    ctx.shadowBlur = 0;
+  }
 
-  // the mage, conjuring
-  drawDreamMage(L, t, ticks, idle, flying ? 1 - flyFrac : Math.max(0, 1 - sub/0.3));
+  // the mage; orb charge = fraction of this 1/81 already lived
+  drawDreamMage(L, ticks, idle, Math.min(1, sub/DREAM_T81));
 
-  // the spark, arcing from orb to its pixel
+  // the spark, carrying the freed pixel to its place in the tile
   if (flying){
-    const p = dreamOrder[ticks];
-    const tx = L.portalLeft + (p % 81)*L.ps + L.ps/2;
-    const ty = L.portalTop + Math.floor(p/81)*L.ps + L.ps/2;
-    const mx = (L.orbX + tx)/2 - 60*L.k, my = Math.min(L.orbY, ty) - 70*L.k;
-    const q = flyFrac;
+    const p = dreamPixelPos(ticks - 1);
+    const tx = L.frescoLeft + p.x*L.ps + L.ps/2;
+    const ty = L.frescoTop + p.y*L.ps + L.ps/2;
+    const mx = (L.orbX + tx)/2 - 50*L.k, my = Math.min(L.orbY, ty) - 60*L.k;
+    const q = sub/flightT;
     const bez = (a, b, c, u) => (1-u)*(1-u)*a + 2*(1-u)*u*b + u*u*c;
     for (let s = 0; s <= 3; s++){
-      const u = Math.max(0, q - s*0.05);
-      const sx = bez(L.orbX, mx, tx, u), sy = bez(L.orbY, my, ty, u);
+      const u = Math.max(0, q - s*0.06);
+      const sx2 = bez(L.orbX, mx, tx, u), sy2 = bez(L.orbY, my, ty, u);
       ctx.fillStyle = "rgba(220,245,255," + (0.9 - s*0.25) + ")";
       if (s === 0){ ctx.shadowColor = "rgba(174,240,255,0.9)"; ctx.shadowBlur = 8; }
-      ctx.fillRect(sx - 1.5, sy - 1.5, 3, 3);
+      ctx.fillRect(sx2 - 1.5, sy2 - 1.5, 3, 3);
       ctx.shadowBlur = 0;
     }
   }
@@ -2236,7 +2285,7 @@ function drawDream(t){
   ctx.font = Math.round(9*L.k) + "px monospace";
   ctx.textAlign = "center";
   ctx.fillStyle = "rgba(120,135,145,0.45)";
-  ctx.fillText("♪ Dreams Become Real — Kevin MacLeod (incompetech.com) · CC BY", viewW/2, L.portalBottom + 16*L.k);
+  ctx.fillText("♪ Dreams Become Real — Kevin MacLeod (incompetech.com) · CC BY", viewW/2, L.floorY - 10*L.k);
 }
 
 
@@ -2268,7 +2317,7 @@ function drawStaticLayer(){
   if (viewMode===4){ needsStaticRedraw = false; return; } // wheels render on the anim layer (spinning)
   if (viewMode===5){ needsStaticRedraw = false; return; } // weave renders on the anim layer (traveler)
   if (viewMode===6){ drawSeptStatic(); needsStaticRedraw = false; return; } // sept panel frames
-  if (viewMode===7){ drawDreamCave(); needsStaticRedraw = false; return; } // the cave is static
+  if (viewMode===7){ drawDreamDungeon(); needsStaticRedraw = false; return; } // the dungeon is static
   if (viewMode>=8){ needsStaticRedraw = false; return; } // frame/goal render on the anim layer (pannable)
 
   // Star lines - matched to the WEAVE track (thin, faint)
