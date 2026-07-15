@@ -1,4 +1,4 @@
-const CACHE_NAME = 'salvation-v79';
+const CACHE_NAME = 'salvation-v80';
 const urlsToCache = [
   './',
   './index.html',
@@ -7,11 +7,12 @@ const urlsToCache = [
   './icon-512.png'
 ];
 
-// Install event - cache resources
+// Install event - cache resources (music is optional: missing file must not break install)
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
+      .then(cache => cache.addAll(urlsToCache)
+        .then(() => cache.add('./audio/dreams-become-real.mp3').catch(() => {})))
   );
   self.skipWaiting();
 });
