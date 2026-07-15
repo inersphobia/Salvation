@@ -1985,63 +1985,65 @@ function dreamLayout(){
 function dreamSlot(L, i){
   return { x: L.left + (i%9)*(L.cs + L.gap), y: L.gridTop + Math.floor(i/9)*(L.cs + L.gap) };
 }
-function drawDreamCounter(t, L, shown, idle, P){
-  const bigF = Math.round(38*L.k), smallF = Math.round(24*L.k);
-  const yBig = 78*L.k;
-  ctx.textAlign = "left";
-  ctx.font = bigF + "px monospace";
-  const nStr = String(shown);
-  const wN = ctx.measureText(nStr).width;
-  ctx.font = smallF + "px monospace";
-  const wOf = ctx.measureText(" / 81").width;
-  let x = viewW/2 - (wN + wOf)/2;
-  ctx.font = bigF + "px monospace";
-  ctx.fillStyle = idle ? "rgba(160,180,190,0.4)" : "#e8f4f8";
-  ctx.fillText(nStr, x, yBig);
-  x += wN;
-  ctx.font = smallF + "px monospace";
-  ctx.fillStyle = "rgba(74,90,100,0.9)";
-  ctx.fillText(" / 81", x, yBig);
-
-  // ternary of the pixel count, under the asterisk law (5 places: 81 = 10000)
-  const f = Math.round(15*L.k), yT = yBig + 24*L.k;
+function drawDreamCounter(t, L, shownN, idle){
+  // the count itself is base 3: pixels forged, out of 10000 (81)
+  const bigF = Math.round(34*L.k), smallF = Math.round(19*L.k);
+  const yBig = 76*L.k;
   const DC = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"];
   const items = [];
   for (let p = 4; p >= 0; p--){
-    const conj = !idle && shown >= Math.pow(3, p);
-    items.push(conj ? { d: Math.floor(shown/Math.pow(3,p)) % 3, p } : { ast: true, p });
+    const conj = !idle && shownN >= Math.pow(3, p);
+    items.push(conj ? { d: Math.floor(shownN/Math.pow(3,p)) % 3, p } : { ast: true, p });
   }
-  ctx.font = f + "px monospace";
-  let w = 0;
-  for (const it of items) w += ctx.measureText(it.ast ? "*" : String(it.d)).width + 2;
-  w += ctx.measureText("3").width * 0.7;
-  let tx = viewW/2 - w/2;
+  ctx.textAlign = "left";
+  const astF = Math.round(bigF*0.7) + "px monospace", digF = bigF + "px monospace";
+  let wBig = 0;
+  for (const it of items){
+    ctx.font = it.ast ? astF : digF;
+    wBig += ctx.measureText(it.ast ? "*" : String(it.d)).width + 2;
+  }
+  ctx.font = smallF + "px monospace";
+  const den = " / 10000";
+  const wDen = ctx.measureText(den).width + ctx.measureText("3").width*0.7;
+  let x = viewW/2 - (wBig + wDen)/2;
   const astPs = items.filter(j => j.ast).map(j => j.p);
   const nearestP = astPs.length ? Math.min.apply(null, astPs) : -1;
   for (const it of items){
     if (it.ast){
+      ctx.font = astF;
       ctx.fillStyle = it.p === nearestP ? "rgba(160,180,190,0.28)" : "rgba(160,180,190,0.13)";
-      ctx.fillText("*", tx, yT);
-      tx += ctx.measureText("*").width + 2;
+      ctx.fillText("*", x, yBig - bigF*0.2);
+      x += ctx.measureText("*").width + 2;
     } else {
+      ctx.font = digF;
       let a = 1;
       if (!idle && !finished && it.d === 0){
-        const sec = t % (Math.pow(3, it.p) * P);   // the back-filled zero arrives late
+        const sec = t % (Math.pow(3, it.p) * 60);   // the back-filled zero arrives late
         if (sec < 0.85) a = sec < 0.25 ? 0.08 : 0.08 + ((sec-0.25)/0.6)*0.92;
       }
       ctx.globalAlpha = a;
       ctx.fillStyle = DC[it.d];
-      ctx.fillText(String(it.d), tx, yT);
+      ctx.fillText(String(it.d), x, yBig);
       ctx.globalAlpha = 1;
-      tx += ctx.measureText(String(it.d)).width + 2;
+      x += ctx.measureText(String(it.d)).width + 2;
     }
   }
-  ctx.font = Math.round(f*0.7) + "px monospace";
-  ctx.fillStyle = "rgba(255,255,255,0.5)";
-  ctx.fillText("3", tx, yT + 3*L.k);
+  ctx.font = smallF + "px monospace";
+  ctx.fillStyle = "rgba(74,90,100,0.9)";
+  ctx.fillText(den, x, yBig);
+  x += ctx.measureText(den).width;
+  ctx.font = Math.round(smallF*0.7) + "px monospace";
+  ctx.fillStyle = "rgba(255,255,255,0.4)";
+  ctx.fillText("3", x, yBig + 3*L.k);
+
+  // decimal echo underneath, small and dim
+  ctx.font = Math.round(13*L.k) + "px monospace";
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(90,106,117,0.8)";
+  ctx.fillText(shownN + " / 81", viewW/2, yBig + 24*L.k);
 }
-function drawDreamTriangle(t, L, lapFrac, sub, idle, forgeIdx){
-  // frame + third-ticks
+function drawDreamTriangle(t, L, lapFrac, subPiece, idle){
+  // frame + third-ticks (each edge = 1/9 min; ticks mark the 1/27s)
   ctx.strokeStyle = "rgba(0,191,255,0.35)";
   ctx.lineWidth = 1.2;
   ctx.beginPath();
@@ -2063,19 +2065,34 @@ function drawDreamTriangle(t, L, lapFrac, sub, idle, forgeIdx){
     }
   }
 
-  // the pixel being forged, charging at the centroid
-  if (!idle && !finished && forgeIdx < 81){
-    const sz = 14*L.k;
-    ctx.globalAlpha = 0.08 + 0.72*lapFrac;
-    ctx.fillStyle = dreamRestColor(forgeIdx);
-    ctx.shadowColor = "rgba(207,232,240,0.7)";
-    ctx.shadowBlur = 8*lapFrac;
-    ctx.fillRect(L.centroid.x - sz/2, L.centroid.y - sz/2, sz, sz);
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 1;
+  // the 1/3-piece being composed at the centroid: a 3x3 of 1/27s,
+  // each 1/27 filled in three 1/81 steps. The cascade, visible.
+  if (!idle && !finished){
+    const COLS = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"];
+    const T27 = 20/9, T81 = 20/27;
+    const done27 = Math.floor(subPiece / T27);          // completed 1/27 cells (0..8)
+    const step81 = Math.floor((subPiece % T27) / T81);  // 0/1/2 within the live cell
+    const sz = 26*L.k, mg = Math.max(1, 2*L.k);
+    const mcs = (sz - 2*mg)/3;
+    const ox = L.centroid.x - sz/2, oy = L.centroid.y - sz/2;
+    for (let i = 0; i < 9; i++){
+      const mx = ox + (i%3)*(mcs+mg), my = oy + Math.floor(i/3)*(mcs+mg);
+      if (i < done27 || i === done27){
+        const a = i < done27 ? 0.9 : 0.22 + 0.3*step81;  // three discrete 1/81 steps
+        ctx.globalAlpha = a;
+        ctx.fillStyle = COLS[Math.floor(i/3)];
+        ctx.shadowColor = COLS[Math.floor(i/3)];
+        ctx.shadowBlur = i < done27 ? 3 : 2 + 2*step81;
+        ctx.fillRect(mx, my, mcs, mcs);
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      } else {
+        ctx.fillStyle = "rgba(255,255,255,0.05)";
+        ctx.fillRect(mx, my, mcs, mcs);
+      }
+    }
   }
 
-  // the bead, with a short comet trail
+  // the bead: one lap per 1/3 minute
   if (!idle && !finished){
     const e = Math.min(2, Math.floor(lapFrac*3));
     const ef = lapFrac*3 - e;
@@ -2109,45 +2126,42 @@ function drawDreamTriangle(t, L, lapFrac, sub, idle, forgeIdx){
   ctx.font = Math.round(12*L.k) + "px monospace";
   ctx.fillStyle = "rgb(255,160,0)"; ctx.fillText("1", L.c1.x, L.c1.y + 4*L.k);
   ctx.fillStyle = "rgb(255,70,70)"; ctx.fillText("2", L.c2.x, L.c2.y + 4*L.k);
-  // the dual corner: 0 while the lap runs, flaring to 3 as the bead arrives
-  const flare = !idle && (lapFrac > 0.93 || (!finished && sub < 0.6));
-  if (flare || finished){
-    ctx.fillStyle = "rgba(230,244,248,0.95)";
+  // the top corner is the carry: 0 while the lap runs, 1 as the bead
+  // arrives (the count became 10), then back to 0.
+  const carry = !idle && !finished && (lapFrac > 0.93 || subPiece < 0.6);
+  if (carry){
+    ctx.fillStyle = "rgba(255,255,255,0.95)";
     ctx.shadowColor = "rgba(0,191,255,0.9)"; ctx.shadowBlur = 10;
-    ctx.fillText("3", L.c0.x - 3*L.k, L.c0.y + 4*L.k);
+    ctx.fillText("1", L.c0.x, L.c0.y + 4*L.k);
     ctx.shadowBlur = 0;
-    ctx.font = Math.round(9*L.k) + "px monospace";
-    ctx.fillStyle = "rgba(0,191,255,0.4)";
-    ctx.fillText("0", L.c0.x + 6*L.k, L.c0.y - 2*L.k);
   } else {
     ctx.fillStyle = idle ? "rgba(160,180,190,0.5)" : "rgba(230,244,248,0.8)";
-    ctx.fillText("0", L.c0.x - 3*L.k, L.c0.y + 4*L.k);
-    ctx.font = Math.round(9*L.k) + "px monospace";
-    ctx.fillStyle = "rgba(0,191,255,0.3)";
-    ctx.fillText("3", L.c0.x + 6*L.k, L.c0.y - 2*L.k);
+    ctx.fillText("0", L.c0.x, L.c0.y + 4*L.k);
   }
 }
 function drawDream(t){
   const L = dreamLayout();
   const idle = !running && !finished && pauseMs === 0;
-  const P = totalCycle/81;
-  const n = finished ? 81 : idle ? 0 : Math.min(81, Math.floor(t/P));
-  const lapFrac = idle || finished ? 0 : (t % P)/P;
-  const sub = idle || finished ? 999 : t % P;
-  const fallDur = Math.min(0.45, P*0.4);
-  const falling = !idle && !finished && n > 0 && sub < fallDur;
-  const shown = falling ? n-1 : n;
+  // absolute time: pixel = 1 minute, built from three 1/3-min pieces
+  const PIECE = 20, fallDur = 0.45;
+  const totalPix = Math.min(81, Math.round(totalCycle/60));
+  let pieces = idle ? 0 : finished ? totalPix*3 : Math.min(totalPix*3, Math.floor(t/PIECE));
+  const subPiece = idle || finished ? 999 : t % PIECE;
+  const lapFrac = idle || finished ? 0 : subPiece / PIECE;
+  const falling = !idle && !finished && pieces > 0 && pieces < totalPix*3 + 1 && subPiece < fallDur;
+  const shownPieces = falling ? pieces - 1 : pieces;
+  const shownN = Math.floor(shownPieces / 3);          // whole pixels
+  const partSlices = shownPieces % 3;                  // slices of the pixel being built
 
-  drawDreamCounter(t, L, shown, idle, P);
-  drawDreamTriangle(t, L, lapFrac, sub, idle, n);
+  drawDreamCounter(t, L, shownN, idle);
+  drawDreamTriangle(t, L, lapFrac, subPiece, idle);
 
-  // the grid: 81 slots, typewriter order
+  // the grid: 81 slots; pixels assemble from three slices, bottom-up
   for (let i = 0; i < 81; i++){
     const s = dreamSlot(L, i);
-    if (i < shown){
-      const ch = DREAM_MASK[Math.floor(i/9)][i%9];
+    const ch = DREAM_MASK[Math.floor(i/9)][i%9];
+    if (i < shownN){
       if (finished && ch === 'O'){
-        // the eye opens: the pupil ignites, breathing slowly
         const pulse = 0.5 + 0.5*Math.sin(performance.now()/900);
         ctx.fillStyle = "rgba(235,250,255,0.95)";
         ctx.shadowColor = "rgba(160,220,255,0.95)";
@@ -2157,9 +2171,8 @@ function drawDream(t){
         continue;
       }
       ctx.fillStyle = dreamRestColor(i);
-      if (i === shown-1 && !idle && !finished){
-        // the newest pixel still cooling
-        const age = falling ? 0 : sub - fallDur;
+      if (i === shownN-1 && partSlices === 0 && !idle && !finished){
+        const age = falling ? 0 : subPiece - fallDur;  // just sealed whole pixel
         const heat = Math.max(0, 1 - age/1.5);
         if (heat > 0){
           ctx.shadowColor = "rgba(207,232,240," + (0.9*heat) + ")";
@@ -2173,34 +2186,46 @@ function drawDream(t){
       ctx.strokeStyle = "rgba(0,191,255,0.07)";
       ctx.lineWidth = 1;
       ctx.strokeRect(s.x + 0.5, s.y + 0.5, L.cs - 1, L.cs - 1);
-      const ch = DREAM_MASK[Math.floor(i/9)][i%9];
       if (ch !== '.'){
         ctx.fillStyle = ch === 'O' ? "rgba(0,191,255,0.07)" : "rgba(207,232,240,0.05)";
         ctx.fillRect(s.x, s.y, L.cs, L.cs);
       }
+      if (i === shownN && partSlices > 0){
+        // the block being built: landed thirds, bottom-up
+        const sh = L.cs/3;
+        ctx.fillStyle = dreamRestColor(i);
+        ctx.globalAlpha = 0.85;
+        for (let k = 0; k < partSlices; k++)
+          ctx.fillRect(s.x, s.y + L.cs - (k+1)*sh, L.cs, sh - 0.5);
+        ctx.globalAlpha = 1;
+      }
     }
   }
 
-  // the falling pixel: forged at the triangle, landing in its slot
+  // the falling 1/3-piece: forged at the triangle, landing as a slice
   if (falling){
-    const i = n - 1;
-    const s = dreamSlot(L, i);
-    const q = sub / fallDur, e = q*q;
-    const fx = L.centroid.x + (s.x + L.cs/2 - L.centroid.x)*e;
-    const fy = L.centroid.y + (s.y + L.cs/2 - L.centroid.y)*e;
-    ctx.strokeStyle = "rgba(207,232,240,0.18)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(L.centroid.x + (s.x + L.cs/2 - L.centroid.x)*Math.max(0, e-0.18),
-               L.centroid.y + (s.y + L.cs/2 - L.centroid.y)*Math.max(0, e-0.18));
-    ctx.lineTo(fx, fy);
-    ctx.stroke();
-    const sz = (14 + (L.cs-14)*e)*1;
-    ctx.fillStyle = dreamRestColor(i);
-    ctx.shadowColor = "rgba(207,232,240,0.85)";
-    ctx.shadowBlur = 10;
-    ctx.fillRect(fx - sz/2, fy - sz/2, sz, sz);
-    ctx.shadowBlur = 0;
+    const fp = pieces - 1;                              // the airborne piece
+    const pix = Math.floor(fp/3), slice = fp % 3;
+    if (pix < 81){
+      const s = dreamSlot(L, pix);
+      const tx = s.x + L.cs/2, ty = s.y + L.cs - slice*L.cs/3 - L.cs/6;
+      const q = subPiece / fallDur, e = q*q;
+      const fx = L.centroid.x + (tx - L.centroid.x)*e;
+      const fy = L.centroid.y + (ty - L.centroid.y)*e;
+      ctx.strokeStyle = "rgba(207,232,240,0.18)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(L.centroid.x + (tx - L.centroid.x)*Math.max(0, e-0.18),
+                 L.centroid.y + (ty - L.centroid.y)*Math.max(0, e-0.18));
+      ctx.lineTo(fx, fy);
+      ctx.stroke();
+      const w = 20*L.k + (L.cs - 20*L.k)*e, h = 9*L.k + (L.cs/3 - 9*L.k)*e;
+      ctx.fillStyle = dreamRestColor(pix);
+      ctx.shadowColor = "rgba(207,232,240,0.85)";
+      ctx.shadowBlur = 10;
+      ctx.fillRect(fx - w/2, fy - h/2, w, h);
+      ctx.shadowBlur = 0;
+    }
   }
 
   // attribution (CC BY)
@@ -2209,7 +2234,6 @@ function drawDream(t){
   ctx.fillStyle = "rgba(120,135,145,0.45)";
   ctx.fillText("♪ Dreams Become Real — Kevin MacLeod (incompetech.com) · CC BY", viewW/2, L.bottom + 20*L.k);
 }
-
 
 function getTextY(){
   if (viewMode===2){ const L = abacusLayout();  return L.top + L.gridH + 56; }
