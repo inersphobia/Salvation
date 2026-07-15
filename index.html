@@ -2113,12 +2113,12 @@ function dreamLayout(){
   const rows = dreamArt.rows || 9;
   const frescoW = 81*ps, frescoH = rows*9*ps;
   const frescoLeft = Math.round((viewW - frescoW)/2);
-  // center smaller frescos in the band the 81-tile one would fill
-  const frescoTop = Math.round(72*k + (81*ps - frescoH)/2);
+  // smaller frescos sit low on the wall, where the mage works
+  const frescoTop = Math.round(72*k + (81*ps - frescoH));
   const floorY = Math.round(72*k + 81*ps + 46*k);
   const S = Math.max(3, Math.round(4*k));
-  const mageX = Math.round(28*k);
-  const mageY = Math.round(floorY + 100*k - 20*S);
+  const mageX = Math.round(34*k);
+  const mageY = Math.round(floorY + 26*k - 20*S);   // feet on the floor, body against the wall
   return { k, ps, rows, frescoW, frescoH, frescoLeft, frescoTop,
            frescoBottom: frescoTop + frescoH, floorY, S, mageX, mageY,
            orbX: mageX + 12*S + Math.floor(S/2), orbY: mageY + 8*S + Math.floor(S/2),
@@ -2280,17 +2280,15 @@ function drawDream(t){
   // the mage; orb charge = fraction of this 1/81 already lived
   drawDreamMage(L, ticks, idle, Math.min(1, sub/DREAM_T81));
 
-  // the spark, carrying the freed pixel to its place in the tile
+  // the spark: a straight beam from orb to its place in the tile
   if (flying){
     const p = dreamPixelPos(ticks - 1);
     const tx = L.frescoLeft + p.x*L.ps + L.ps/2;
     const ty = L.frescoTop + p.y*L.ps + L.ps/2;
-    const mx = (L.orbX + tx)/2 - 50*L.k, my = Math.min(L.orbY, ty) - 60*L.k;
     const q = sub/flightT;
-    const bez = (a, b, c, u) => (1-u)*(1-u)*a + 2*(1-u)*u*b + u*u*c;
     for (let s = 0; s <= 3; s++){
-      const u = Math.max(0, q - s*0.06);
-      const sx2 = bez(L.orbX, mx, tx, u), sy2 = bez(L.orbY, my, ty, u);
+      const u = Math.max(0, q - s*0.07);
+      const sx2 = L.orbX + (tx - L.orbX)*u, sy2 = L.orbY + (ty - L.orbY)*u;
       ctx.fillStyle = "rgba(220,245,255," + (0.9 - s*0.25) + ")";
       if (s === 0){ ctx.shadowColor = "rgba(174,240,255,0.9)"; ctx.shadowBlur = 8; }
       ctx.fillRect(sx2 - 1.5, sy2 - 1.5, 3, 3);
@@ -2302,7 +2300,7 @@ function drawDream(t){
   ctx.font = Math.round(9*L.k) + "px monospace";
   ctx.textAlign = "center";
   ctx.fillStyle = "rgba(120,135,145,0.45)";
-  ctx.fillText("♪ Dreams Become Real — Kevin MacLeod (incompetech.com) · CC BY", viewW/2, L.floorY - 10*L.k);
+  ctx.fillText("♪ Dreams Become Real — Kevin MacLeod (incompetech.com) · CC BY", viewW/2, Math.min(viewH - 96, L.textY + 118*L.k));
 }
 
 
