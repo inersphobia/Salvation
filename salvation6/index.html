@@ -1971,12 +1971,12 @@ function dreamBuildArt(kind){
   if (kind === "chalice"){
     for (let y = 0; y < 27; y++)
       for (let x = 0; x < 81; x++)
-        px(x, y, (x*7 + y*13) % 23 === 0 ? "#120f1c" : y < 9 ? "#0c0a14" : y < 18 ? "#0a0912" : "#080810");
+        px(x, y, (x*7 + y*13) % 23 === 0 ? "#2c2144" : y < 9 ? "#1e1430" : y < 18 ? "#241a38" : "#181026");
     // candle-glow dither around the cup
     for (let y = 0; y < 27; y++)
       for (let x = 20; x < 61; x++){
         const d = Math.hypot(x - 40, (y - 12)*1.6);
-        if (d < 16 && d > 7 && (x*3 + y*5) % 4 === 0) px(x, y, "#1c1408");
+        if (d < 16 && d > 7 && (x*3 + y*5) % 4 === 0) px(x, y, "#3a2a14");
       }
     for (let x = 31; x <= 49; x++) px(x, 5, "#f2cf7a");                 // rim
     for (let y = 6; y <= 11; y++){                                       // bowl
@@ -1993,18 +1993,18 @@ function dreamBuildArt(kind){
   } else if (kind === "sword"){
     for (let y = 0; y < 54; y++)
       for (let x = 0; x < 81; x++)
-        px(x, y, (x*11 + y*7) % 29 === 0 ? "#0e1526" : y < 18 ? "#070d1f" : y < 36 ? "#091124" : "#0b1326");
+        px(x, y, (x*11 + y*7) % 29 === 0 ? "#20365a" : y < 18 ? "#14243e" : y < 36 ? "#182c48" : "#1c3252");
     const rs = dreamRng(5454);
     for (let i = 0; i < 26; i++) px(Math.floor(rs()*81), Math.floor(rs()*30), i % 3 ? "#8fb8d8" : "#e6f0fa");
     g.fillStyle = "#e6eef8"; g.beginPath(); g.arc(66, 8, 4, 0, 2*Math.PI); g.fill();   // moon
-    g.fillStyle = "#091124"; g.beginPath(); g.arc(68, 6.5, 4, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#14243e"; g.beginPath(); g.arc(68, 6.5, 4, 0, 2*Math.PI); g.fill();
     for (let x = 10; x <= 70; x++){                                       // the stone
       const h = 9 - Math.round(Math.abs(x - 40)/4.5);
       if (h > 0){
-        for (let y = 53 - h; y <= 53; y++) px(x, y, y === 53 - h ? "#2e323c" : "#22252d");
+        for (let y = 53 - h; y <= 53; y++) px(x, y, y === 53 - h ? "#4a505e" : "#3a3f4c");
       }
     }
-    px(38, 47, "#171a20"); px(43, 49, "#171a20"); px(35, 50, "#171a20");  // cracks
+    px(38, 47, "#242830"); px(43, 49, "#242830"); px(35, 50, "#242830");  // cracks
     for (let x = 38; x <= 42; x++) px(x, 8, "#d9a441");                   // pommel
     for (let x = 39; x <= 41; x++) px(x, 9, "#f2cf7a");
     for (let y = 10; y <= 15; y++){                                       // grip
@@ -2017,7 +2017,7 @@ function dreamBuildArt(kind){
     }
   } else {
     // the castle landscape (the 81-minute dream)
-    const bands = ["#060f26", "#0a1734", "#0e1d3d", "#122446"];
+    const bands = ["#0d1b40", "#122650", "#183060", "#1e3a70"];
     for (let y = 0; y < 46; y++)
       for (let x = 0; x < 81; x++){
         const b = Math.min(3, Math.floor(y/12));
@@ -2028,24 +2028,25 @@ function dreamBuildArt(kind){
     for (let i = 0; i < 46; i++)
       px(Math.floor(rs()*81), Math.floor(rs()*38), i % 3 ? "#8fb8d8" : "#e6f0fa");
     g.fillStyle = "#e6eef8"; g.beginPath(); g.arc(63, 11, 6, 0, 2*Math.PI); g.fill();
-    g.fillStyle = "#0a1734"; g.beginPath(); g.arc(66, 9, 6, 0, 2*Math.PI); g.fill();
-    g.fillStyle = "#0c1830";
+    g.fillStyle = "#122650"; g.beginPath(); g.arc(66, 9, 6, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#1e3a70"; g.fillRect(0, 46, 81, 35);   // horizon band under the ridge line
+    g.fillStyle = "#16294a";
     for (let x = 0; x < 81; x++){
       const y = 44 - Math.round(5*Math.sin(x/9) + 4*Math.sin(x/23 + 2));
-      g.fillRect(x, y, 1, 54 - y);
+      g.fillRect(x, y, 1, 58 - y);
     }
-    g.fillStyle = "#1a2230";
+    g.fillStyle = "#2c3852";
     g.fillRect(20, 28, 11, 26);
     for (let x = 20; x <= 30; x += 2) g.fillRect(x, 26, 1, 2);
     g.fillRect(32, 34, 5, 20);
     for (let x = 32; x <= 36; x += 2) g.fillRect(x, 32, 1, 2);
-    g.fillStyle = "#ffb84d"; g.fillRect(24, 36, 2, 3);
-    g.fillStyle = "#0a120e";
+    g.fillStyle = "#ffc85e"; g.fillRect(24, 36, 2, 3);
+    g.fillStyle = "#12231a";
     for (let x = 0; x < 81; x++){
       const y = 54 - Math.round(3*Math.sin(x/13 + 1));
       g.fillRect(x, y, 1, 81 - y);
     }
-    g.fillStyle = "#16202b";
+    g.fillStyle = "#2c3d4d";
     for (let i = 0; i < 26; i++){
       const y = 80 - i, x = 40 - Math.round(i*0.5) - Math.round(3*Math.sin(i/4));
       g.fillRect(x, y, 2, 1);
@@ -2108,13 +2109,13 @@ const DREAM_MAGE_COL = {
 };
 function dreamLayout(){
   const k = Math.max(0.8, Math.min(viewW/412, 1.25));
-  const ps = Math.max(2, Math.floor(3*k));
+  const ps = Math.max(3, Math.round(4*k));
   const rows = dreamArt.rows || 9;
   const frescoW = 81*ps, frescoH = rows*9*ps;
   const frescoLeft = Math.round((viewW - frescoW)/2);
   // center smaller frescos in the band the 81-tile one would fill
-  const frescoTop = Math.round(96*k + (81*ps - frescoH)/2);
-  const floorY = Math.round(96*k + 81*ps + 90*k);
+  const frescoTop = Math.round(72*k + (81*ps - frescoH)/2);
+  const floorY = Math.round(72*k + 81*ps + 46*k);
   const S = Math.max(3, Math.round(4*k));
   const mageX = Math.round(28*k);
   const mageY = Math.round(floorY + 100*k - 20*S);
@@ -2147,9 +2148,17 @@ function drawDreamDungeon(){
   ctxStatic.fillRect(L.frescoLeft - b, L.frescoTop - b, L.frescoW + 2*b, Math.max(2, Math.round(2*L.k)));
   ctxStatic.fillStyle = "#0c0e14";
   ctxStatic.fillRect(L.frescoLeft - 2, L.frescoTop - 2, L.frescoW + 4, L.frescoH + 4);
+  // the prepared surface: blank plaster, waiting for paint
+  ctxStatic.fillStyle = "#37322a";
+  ctxStatic.fillRect(L.frescoLeft, L.frescoTop, L.frescoW, L.frescoH);
+  for (let i = 0; i < 420; i++){
+    ctxStatic.fillStyle = r() < 0.5 ? "#302b23" : "#3c372e";
+    ctxStatic.fillRect(L.frescoLeft + Math.floor(r()*L.frescoW/2)*2,
+                       L.frescoTop + Math.floor(r()*L.frescoH/2)*2, 2, 2);
+  }
   // sconce brackets beside the fresco
   const sy = L.frescoTop + L.frescoH/2;
-  for (const sx of [L.frescoLeft - 36*L.k, L.frescoLeft + L.frescoW + 36*L.k]){
+  for (const sx of [Math.round(L.frescoLeft/2), viewW - Math.round(L.frescoLeft/2)]){
     ctxStatic.fillStyle = "#241a10";
     ctxStatic.fillRect(sx - 2*L.k, sy, 4*L.k, 12*L.k);
     ctxStatic.fillStyle = "#31241a";
@@ -2223,12 +2232,10 @@ function drawDream(t){
 
   // torches
   const sy = L.frescoTop + L.frescoH/2;
-  drawDreamTorch(L.frescoLeft - 36*L.k, sy, L.k);
-  drawDreamTorch(L.frescoLeft + L.frescoW + 36*L.k, sy, L.k);
+  drawDreamTorch(Math.round(L.frescoLeft/2), sy, L.k);
+  drawDreamTorch(viewW - Math.round(L.frescoLeft/2), sy, L.k);
 
-  // the fresco: dark plaster, tile grid, the emerging painting
-  ctx.fillStyle = "#04060c";
-  ctx.fillRect(L.frescoLeft, L.frescoTop, L.frescoW, L.frescoH);
+  // the fresco: paint over blank plaster (plaster lives on the static layer)
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(dreamReveal, L.frescoLeft, L.frescoTop, L.frescoW, L.frescoH);
   ctx.imageSmoothingEnabled = true;
@@ -2242,10 +2249,20 @@ function drawDream(t){
     const y = L.frescoTop + i*9*L.ps;
     ctx.beginPath(); ctx.moveTo(L.frescoLeft, y); ctx.lineTo(L.frescoLeft + L.frescoW, y); ctx.stroke();
   }
+  // wet paint: the freshest strokes glint, so the brush is always visible
+  if (!idle && !finished){
+    for (let j = 0; j < 10; j++){
+      const i2 = shown - 1 - j;
+      if (i2 < 0) break;
+      const p2 = dreamPixelPos(i2);
+      ctx.fillStyle = "rgba(255,250,230," + (0.5*(1 - j/10)) + ")";
+      ctx.fillRect(L.frescoLeft + p2.x*L.ps, L.frescoTop + p2.y*L.ps, L.ps, L.ps);
+    }
+  }
   // the tile being painted this minute
   if (!idle && !finished && shown < totalTicks){
     const tile = Math.floor(shown/81);
-    ctx.strokeStyle = "rgba(0,191,255,0.25)";
+    ctx.strokeStyle = "rgba(0,191,255,0.35)";
     ctx.strokeRect(L.frescoLeft + (tile % 9)*9*L.ps + 0.5,
                    L.frescoTop + Math.floor(tile/9)*9*L.ps + 0.5,
                    9*L.ps - 1, 9*L.ps - 1);
