@@ -1916,29 +1916,13 @@ function drawStatus(){
   lines.forEach((ln, k) => ctx.fillText(ln, 14, 24 + k*16));
 }
 
-/* ---------- DREAM: the paradox, made mechanical ----------
-   An escapement triangle forges one pixel per 1/81 of the session.
-   The corner it returns to is both 0 and 3. All 81 pixels land -
-   some are night, some are the figure. The eye opens at 81.
+/* ---------- DREAM: a mage conjures the dream, pixel by pixel ----------
+   Old-school adventure scene. Each 1/81-minute tick, a spark leaves the
+   mage's staff and one pixel of an 81x81 vision emerges in the portal:
+   81 minutes = 81x81 = 6561 pixels = the whole dream, made real.
    Music: "Dreams Become Real" Kevin MacLeod (incompetech.com) CC BY */
-const DREAM_MASK = [
-  ".........",
-  "..#####..",
-  ".#.....#.",
-  "#..ooo..#",
-  "#.ooOoo.#",
-  "#..ooo..#",
-  ".#.....#.",
-  "..#####..",
-  ".........",
-];
-function dreamRestColor(i){
-  const ch = DREAM_MASK[Math.floor(i/9)][i%9];
-  return ch === '#' ? "rgba(207,232,240,0.82)"
-       : ch === 'o' ? "rgba(120,190,215,0.72)"
-       : ch === 'O' ? "rgba(60,80,110,0.9)"
-       :              "rgba(38,52,94,0.55)";
-}
+const DREAM_T81 = 60/81;                     // one conjure every 1/81 minute
+const DREAM_PIX = 81*81;                     // the full dream
 const DREAM_AUDIO_SRC = (/\/salvation\d/i.test(location.pathname) ? "../" : "./") + "audio/dreams-become-real.mp3";
 let dreamAudio = null, dreamAudioDead = false, dreamAudioTry = 0;
 function syncDreamAudio(){
@@ -1965,265 +1949,285 @@ function syncDreamAudio(){
     }
   } catch(e) {}
 }
+
+/* deterministic PRNG so the dream always assembles the same way */
+function dreamRng(seed){
+  let s = seed >>> 0;
+  return () => { s = (s * 1103515245 + 12345) >>> 0; return s / 4294967296; };
+}
+
+/* the target image: a dreamed landscape, drawn once at 81x81 */
+let dreamTargetData = null, dreamOrder = null, dreamReveal = null, dreamRevealN = 0, dreamRevealCtx = null;
+function dreamInitArt(){
+  if (dreamTargetData) return;
+  const c = document.createElement('canvas');
+  c.width = 81; c.height = 81;
+  const g = c.getContext('2d');
+  // night sky in dithered bands
+  const bands = ["#060f26", "#0a1734", "#0e1d3d", "#122446"];
+  for (let y = 0; y < 46; y++){
+    const b = Math.min(3, Math.floor(y/12));
+    for (let x = 0; x < 81; x++){
+      const dither = (y % 12 === 11) && ((x + y) % 2 === 0) && b < 3;
+      g.fillStyle = bands[dither ? b+1 : b];
+      g.fillRect(x, y, 1, 1);
+    }
+  }
+  // stars
+  const rs = dreamRng(20260715);
+  for (let i = 0; i < 46; i++){
+    const x = Math.floor(rs()*81), y = Math.floor(rs()*38);
+    g.fillStyle = i % 3 ? "#8fb8d8" : "#e6f0fa";
+    g.fillRect(x, y, 1, 1);
+  }
+  // crescent moon
+  g.fillStyle = "#e6eef8";
+  g.beginPath(); g.arc(63, 11, 6, 0, 2*Math.PI); g.fill();
+  g.fillStyle = "#0a1734";
+  g.beginPath(); g.arc(66, 9, 6, 0, 2*Math.PI); g.fill();
+  // far mountains
+  g.fillStyle = "#0c1830";
+  for (let x = 0; x < 81; x++){
+    const y = 44 - Math.round(5*Math.sin(x/9) + 4*Math.sin(x/23 + 2));
+    g.fillRect(x, y, 1, 54 - y);
+  }
+  // the castle of the dream
+  g.fillStyle = "#1a2230";
+  g.fillRect(20, 28, 11, 26);                       // keep
+  for (let x = 20; x <= 30; x += 2) g.fillRect(x, 26, 1, 2);  // crenellations
+  g.fillRect(32, 34, 5, 20);                        // side tower
+  for (let x = 32; x <= 36; x += 2) g.fillRect(x, 32, 1, 2);
+  g.fillStyle = "#ffb84d";
+  g.fillRect(24, 36, 2, 3);                         // the lit window
+  // near hill
+  g.fillStyle = "#0a120e";
+  for (let x = 0; x < 81; x++){
+    const y = 54 - Math.round(3*Math.sin(x/13 + 1));
+    g.fillRect(x, y, 1, 81 - y);
+  }
+  // a path winding toward the castle
+  g.fillStyle = "#16202b";
+  for (let i = 0; i < 26; i++){
+    const y = 80 - i, x = 40 - Math.round(i*0.5) - Math.round(3*Math.sin(i/4));
+    g.fillRect(x, y, 2, 1);
+  }
+  dreamTargetData = g.getImageData(0, 0, 81, 81).data;
+  // conjure order: a fixed shuffle - the dream always coalesces the same way
+  dreamOrder = new Uint16Array(DREAM_PIX);
+  for (let i = 0; i < DREAM_PIX; i++) dreamOrder[i] = i;
+  const ro = dreamRng(7777);
+  for (let i = DREAM_PIX - 1; i > 0; i--){
+    const j = Math.floor(ro() * (i + 1));
+    const tmp = dreamOrder[i]; dreamOrder[i] = dreamOrder[j]; dreamOrder[j] = tmp;
+  }
+  dreamReveal = document.createElement('canvas');
+  dreamReveal.width = 81; dreamReveal.height = 81;
+  dreamRevealCtx = dreamReveal.getContext('2d');
+  dreamRevealN = 0;
+}
+function dreamRevealTo(n){
+  if (n < dreamRevealN){
+    dreamRevealCtx.clearRect(0, 0, 81, 81);
+    dreamRevealN = 0;
+  }
+  while (dreamRevealN < n){
+    const p = dreamOrder[dreamRevealN];
+    const px = p % 81, py = Math.floor(p / 81), o = p*4;
+    dreamRevealCtx.fillStyle = "rgb(" + dreamTargetData[o] + "," + dreamTargetData[o+1] + "," + dreamTargetData[o+2] + ")";
+    dreamRevealCtx.fillRect(px, py, 1, 1);
+    dreamRevealN++;
+  }
+}
+
+/* the hooded mage */
+const DREAM_MAGE = [
+  "....HHHH......",
+  "...HHHHHH.....",
+  "..HHhhhhHH....",
+  "..HhFFFFhH....",
+  "..HhFeFeFh....",
+  "..HhFFFFhH....",
+  "...hFFFFh.....",
+  "..RRrRRrRR....",
+  ".RRRRRRRRR..O.",
+  ".RRRRRRRRRgS..",
+  ".RRRRRRRRR.S..",
+  ".RRrRRRRrR.S..",
+  ".RRRRRRRRR.S..",
+  ".RRRRRRRRR.S..",
+  ".RRrRRRRrR.S..",
+  ".RRRRRRRRR.S..",
+  ".RRRRRRRR..S..",
+  ".rRRRRRRr..S..",
+  ".rrRRRRrr..S..",
+  ".rrrrrrrr..S..",
+];
+const DREAM_MAGE_COL = {
+  H: "#3a2a55", h: "#241a38", F: "#0d0a14", e: "#9fd8ea",
+  R: "#46316b", r: "#2c1f47", S: "#5d4326", O: "#aef0ff", g: "#8a7f9a",
+};
 function dreamLayout(){
   const k = Math.max(0.8, Math.min(viewW/412, 1.25));
-  const cs = 26*k, gap = 4*k;
-  const gridW = 9*cs + 8*gap;
-  const left = (viewW - gridW)/2;
-  const gridTop = 348*k;
-  const cx = viewW/2;
-  const triTop = 148*k, triSide = 168*k;
-  const triH = triSide*Math.sqrt(3)/2;
-  return {
-    k, cs, gap, left, gridTop, gridH: gridW, bottom: gridTop + gridW,
-    cx, c0: {x: cx, y: triTop},
-    c1: {x: cx + triSide/2, y: triTop + triH},
-    c2: {x: cx - triSide/2, y: triTop + triH},
-    centroid: {x: cx, y: triTop + triH*0.62},
-  };
+  const ps = Math.max(2, Math.floor(3*k));          // integer pixel scale for the 81x81 vision
+  const portalSize = 81*ps;
+  const portalLeft = Math.round((viewW - portalSize)/2);
+  const portalTop = Math.round(108*k);
+  const floorY = Math.round(portalTop + portalSize + 210*k);
+  const S = Math.max(3, Math.round(4*k));           // mage pixel size
+  const mageX = Math.round(34*k), mageY = floorY - 20*S;
+  return { k, ps, portalSize, portalLeft, portalTop, portalBottom: portalTop + portalSize,
+           floorY, S, mageX, mageY,
+           orbX: mageX + 12*S + Math.floor(S/2), orbY: mageY + 8*S + Math.floor(S/2),
+           textY: floorY + Math.round(58*k) };
 }
-function dreamSlot(L, i){
-  return { x: L.left + (i%9)*(L.cs + L.gap), y: L.gridTop + Math.floor(i/9)*(L.cs + L.gap) };
+function drawDreamCave(){
+  // static layer: the cave
+  const L = dreamLayout();
+  ctxStatic.fillStyle = "#05070b";
+  ctxStatic.fillRect(0, 0, viewW, viewH);
+  const r = dreamRng(424242);
+  // rough rock texture
+  for (let i = 0; i < 900; i++){
+    const x = r()*viewW, y = r()*viewH;
+    if (y > L.floorY) continue;
+    ctxStatic.fillStyle = r() < 0.5 ? "#0a0e16" : "#0d1320";
+    ctxStatic.fillRect(Math.floor(x/4)*4, Math.floor(y/4)*4, 4, 4);
+  }
+  // stalactites
+  ctxStatic.fillStyle = "#030407";
+  for (let i = 0; i < 9; i++){
+    const x = (i + 0.5 + (r()-0.5))*viewW/9, w = (10 + r()*22)*L.k, h = (26 + r()*60)*L.k;
+    ctxStatic.beginPath();
+    ctxStatic.moveTo(x - w/2, 0); ctxStatic.lineTo(x + w/2, 0); ctxStatic.lineTo(x, h);
+    ctxStatic.closePath(); ctxStatic.fill();
+  }
+  // cave floor
+  ctxStatic.fillStyle = "#0c0a10";
+  ctxStatic.fillRect(0, L.floorY, viewW, viewH - L.floorY);
+  ctxStatic.fillStyle = "#131019";
+  for (let i = 0; i < 90; i++){
+    const x = r()*viewW, y = L.floorY + r()*(viewH - L.floorY);
+    ctxStatic.fillRect(Math.floor(x/4)*4, Math.floor(y/4)*4, 4, 4);
+  }
 }
-function drawDreamCounter(t, L, shownN, idle){
-  // the count itself is base 3: pixels forged, out of 10000 (81)
-  const bigF = Math.round(34*L.k), smallF = Math.round(19*L.k);
-  const yBig = 76*L.k;
+function drawDreamCounter(t, L, shown, idle){
+  // ternary odometer of conjured pixels (9 places: 6561 = 100000000)
+  const f = Math.round(20*L.k), yT = Math.round(52*L.k);
   const DC = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"];
   const items = [];
-  for (let p = 4; p >= 0; p--){
-    const conj = !idle && shownN >= Math.pow(3, p);
-    items.push(conj ? { d: Math.floor(shownN/Math.pow(3,p)) % 3, p } : { ast: true, p });
+  for (let p = 8; p >= 0; p--){
+    const conj = !idle && shown >= Math.pow(3, p);
+    items.push(conj ? { d: Math.floor(shown/Math.pow(3,p)) % 3, p } : { ast: true, p });
   }
   ctx.textAlign = "left";
-  const astF = Math.round(bigF*0.7) + "px monospace", digF = bigF + "px monospace";
-  let wBig = 0;
+  const astF = Math.round(f*0.72) + "px monospace", digF = f + "px monospace";
+  let w = 0;
   for (const it of items){
     ctx.font = it.ast ? astF : digF;
-    wBig += ctx.measureText(it.ast ? "*" : String(it.d)).width + 2;
+    w += ctx.measureText(it.ast ? "*" : String(it.d)).width + 1.5;
   }
-  ctx.font = smallF + "px monospace";
-  const den = " / 10000";
-  const wDen = ctx.measureText(den).width + ctx.measureText("3").width*0.7;
-  let x = viewW/2 - (wBig + wDen)/2;
+  ctx.font = Math.round(f*0.55) + "px monospace";
+  w += ctx.measureText("3").width;
+  let x = viewW/2 - w/2;
   const astPs = items.filter(j => j.ast).map(j => j.p);
   const nearestP = astPs.length ? Math.min.apply(null, astPs) : -1;
   for (const it of items){
     if (it.ast){
       ctx.font = astF;
-      ctx.fillStyle = it.p === nearestP ? "rgba(160,180,190,0.28)" : "rgba(160,180,190,0.13)";
-      ctx.fillText("*", x, yBig - bigF*0.2);
-      x += ctx.measureText("*").width + 2;
+      ctx.fillStyle = it.p === nearestP ? "rgba(160,180,190,0.38)" : "rgba(160,180,190,0.2)";
+      ctx.fillText("*", x, yT - f*0.18);
+      x += ctx.measureText("*").width + 1.5;
     } else {
       ctx.font = digF;
       let a = 1;
       if (!idle && !finished && it.d === 0){
-        const sec = t % (Math.pow(3, it.p) * 60);   // the back-filled zero arrives late
-        if (sec < 0.85) a = sec < 0.25 ? 0.08 : 0.08 + ((sec-0.25)/0.6)*0.92;
+        const sec = t % (Math.pow(3, it.p) * DREAM_T81);  // late zeros, at conjure speed
+        if (sec < 0.5) a = 0.15 + (sec/0.5)*0.85;
       }
       ctx.globalAlpha = a;
       ctx.fillStyle = DC[it.d];
-      ctx.fillText(String(it.d), x, yBig);
+      ctx.fillText(String(it.d), x, yT);
       ctx.globalAlpha = 1;
-      x += ctx.measureText(String(it.d)).width + 2;
+      x += ctx.measureText(String(it.d)).width + 1.5;
     }
   }
-  ctx.font = smallF + "px monospace";
-  ctx.fillStyle = "rgba(74,90,100,0.9)";
-  ctx.fillText(den, x, yBig);
-  x += ctx.measureText(den).width;
-  ctx.font = Math.round(smallF*0.7) + "px monospace";
+  ctx.font = Math.round(f*0.55) + "px monospace";
   ctx.fillStyle = "rgba(255,255,255,0.4)";
-  ctx.fillText("3", x, yBig + 3*L.k);
-
-  // decimal echo underneath, small and dim
-  ctx.font = Math.round(13*L.k) + "px monospace";
+  ctx.fillText("3", x, yT + 3*L.k);
+  ctx.font = Math.round(12*L.k) + "px monospace";
   ctx.textAlign = "center";
   ctx.fillStyle = "rgba(90,106,117,0.8)";
-  ctx.fillText(shownN + " / 81", viewW/2, yBig + 24*L.k);
+  ctx.fillText(shown + " / 6561", viewW/2, yT + 20*L.k);
 }
-function drawDreamTriangle(t, L, lapFrac, subPiece, idle){
-  // frame + third-ticks (each edge = 1/9 min; ticks mark the 1/27s)
-  ctx.strokeStyle = "rgba(0,191,255,0.35)";
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(L.c0.x, L.c0.y); ctx.lineTo(L.c1.x, L.c1.y);
-  ctx.lineTo(L.c2.x, L.c2.y); ctx.closePath();
-  ctx.stroke();
-  const edges = [[L.c0, L.c1], [L.c1, L.c2], [L.c2, L.c0]];
-  ctx.strokeStyle = "rgba(0,191,255,0.2)";
-  ctx.lineWidth = 1;
-  for (const [a, b] of edges){
-    for (const q of [1/3, 2/3]){
-      const px = a.x + (b.x-a.x)*q, py = a.y + (b.y-a.y)*q;
-      const nx = (b.y-a.y), ny = -(b.x-a.x);
-      const nl = Math.hypot(nx, ny);
-      ctx.beginPath();
-      ctx.moveTo(px, py);
-      ctx.lineTo(px + nx/nl*5*L.k, py + ny/nl*5*L.k);
-      ctx.stroke();
+function drawDreamMage(L, t, ticks, idle, launchGlow){
+  const bob = idle ? 0 : (ticks % 2) * L.S;          // he pumps with every conjure
+  for (let ry = 0; ry < DREAM_MAGE.length; ry++){
+    const row = DREAM_MAGE[ry];
+    for (let rx = 0; rx < row.length; rx++){
+      const c = DREAM_MAGE_COL[row[rx]];
+      if (!c) continue;
+      ctx.fillStyle = c;
+      ctx.fillRect(L.mageX + rx*L.S, L.mageY + ry*L.S + bob, L.S, L.S);
     }
   }
-
-  // the 1/3-piece being composed at the centroid: a 3x3 of 1/27s,
-  // each 1/27 filled in three 1/81 steps. The cascade, visible.
-  if (!idle && !finished){
-    const COLS = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"];
-    const T27 = 20/9, T81 = 20/27;
-    const done27 = Math.floor(subPiece / T27);          // completed 1/27 cells (0..8)
-    const step81 = Math.floor((subPiece % T27) / T81);  // 0/1/2 within the live cell
-    const sz = 26*L.k, mg = Math.max(1, 2*L.k);
-    const mcs = (sz - 2*mg)/3;
-    const ox = L.centroid.x - sz/2, oy = L.centroid.y - sz/2;
-    for (let i = 0; i < 9; i++){
-      const mx = ox + (i%3)*(mcs+mg), my = oy + Math.floor(i/3)*(mcs+mg);
-      if (i < done27 || i === done27){
-        const a = i < done27 ? 0.9 : 0.22 + 0.3*step81;  // three discrete 1/81 steps
-        ctx.globalAlpha = a;
-        ctx.fillStyle = COLS[Math.floor(i/3)];
-        ctx.shadowColor = COLS[Math.floor(i/3)];
-        ctx.shadowBlur = i < done27 ? 3 : 2 + 2*step81;
-        ctx.fillRect(mx, my, mcs, mcs);
-        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-      } else {
-        ctx.fillStyle = "rgba(255,255,255,0.05)";
-        ctx.fillRect(mx, my, mcs, mcs);
-      }
-    }
-  }
-
-  // the bead: one lap per 1/3 minute
-  if (!idle && !finished){
-    const e = Math.min(2, Math.floor(lapFrac*3));
-    const ef = lapFrac*3 - e;
-    const [a, b] = edges[e];
-    const bx = a.x + (b.x-a.x)*ef, by = a.y + (b.y-a.y)*ef;
-    for (let s = 1; s <= 3; s++){
-      const tf = Math.max(0, ef - s*0.035);
-      ctx.strokeStyle = "rgba(255,255,255," + (0.3 - s*0.09) + ")";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(a.x + (b.x-a.x)*tf, a.y + (b.y-a.y)*tf);
-      ctx.lineTo(bx, by);
-      ctx.stroke();
-    }
-    ctx.fillStyle = "white";
-    ctx.shadowColor = "rgba(255,255,255,0.9)";
-    ctx.shadowBlur = 9;
-    ctx.beginPath(); ctx.arc(bx, by, 4.2*L.k, 0, 2*Math.PI); ctx.fill();
-    ctx.shadowBlur = 0;
-  }
-
-  // corner nodes
-  const r = 13*L.k;
-  for (const c of [L.c0, L.c1, L.c2]){
-    ctx.fillStyle = "black";
-    ctx.strokeStyle = "rgba(0,191,255,0.5)";
-    ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, 2*Math.PI); ctx.fill(); ctx.stroke();
-  }
-  ctx.textAlign = "center";
-  ctx.font = Math.round(12*L.k) + "px monospace";
-  ctx.fillStyle = "rgb(255,160,0)"; ctx.fillText("1", L.c1.x, L.c1.y + 4*L.k);
-  ctx.fillStyle = "rgb(255,70,70)"; ctx.fillText("2", L.c2.x, L.c2.y + 4*L.k);
-  // the top corner is the carry: 0 while the lap runs, 1 as the bead
-  // arrives (the count became 10), then back to 0.
-  const carry = !idle && !finished && (lapFrac > 0.93 || subPiece < 0.6);
-  if (carry){
-    ctx.fillStyle = "rgba(255,255,255,0.95)";
-    ctx.shadowColor = "rgba(0,191,255,0.9)"; ctx.shadowBlur = 10;
-    ctx.fillText("1", L.c0.x, L.c0.y + 4*L.k);
-    ctx.shadowBlur = 0;
-  } else {
-    ctx.fillStyle = idle ? "rgba(160,180,190,0.5)" : "rgba(230,244,248,0.8)";
-    ctx.fillText("0", L.c0.x, L.c0.y + 4*L.k);
-  }
+  // the staff orb
+  const oy = L.orbY + (idle ? 0 : (ticks % 2) * L.S);
+  const glow = idle ? 0.25 : 0.4 + 0.6*launchGlow;
+  ctx.fillStyle = "rgba(174,240,255," + glow + ")";
+  ctx.shadowColor = "rgba(174,240,255," + glow + ")";
+  ctx.shadowBlur = 6 + 14*launchGlow;
+  ctx.fillRect(L.orbX - L.S, oy - L.S, L.S*2, L.S*2);
+  ctx.shadowBlur = 0;
 }
 function drawDream(t){
+  dreamInitArt();
   const L = dreamLayout();
   const idle = !running && !finished && pauseMs === 0;
-  // absolute time: pixel = 1 minute, built from three 1/3-min pieces
-  const PIECE = 20, fallDur = 0.45;
-  const totalPix = Math.min(81, Math.round(totalCycle/60));
-  let pieces = idle ? 0 : finished ? totalPix*3 : Math.min(totalPix*3, Math.floor(t/PIECE));
-  const subPiece = idle || finished ? 999 : t % PIECE;
-  const lapFrac = idle || finished ? 0 : subPiece / PIECE;
-  const falling = !idle && !finished && pieces > 0 && pieces < totalPix*3 + 1 && subPiece < fallDur;
-  const shownPieces = falling ? pieces - 1 : pieces;
-  const shownN = Math.floor(shownPieces / 3);          // whole pixels
-  const partSlices = shownPieces % 3;                  // slices of the pixel being built
+  const totalTicks = Math.min(DREAM_PIX, Math.round(totalCycle/60)*81);
+  const ticks = finished ? totalTicks : idle ? 0 : Math.min(totalTicks, Math.floor(t/DREAM_T81));
+  const sub = idle || finished ? 0 : t % DREAM_T81;
 
-  drawDreamCounter(t, L, shownN, idle);
-  drawDreamTriangle(t, L, lapFrac, subPiece, idle);
+  // spark flight: leaves the orb late in the interval, arrives at the boundary
+  const flightT = Math.min(0.34, DREAM_T81*0.45);
+  const flying = !idle && !finished && ticks < totalTicks && sub > DREAM_T81 - flightT;
+  const flyFrac = flying ? (sub - (DREAM_T81 - flightT))/flightT : 0;
 
-  // the grid: 81 slots; pixels assemble from three slices, bottom-up
-  for (let i = 0; i < 81; i++){
-    const s = dreamSlot(L, i);
-    const ch = DREAM_MASK[Math.floor(i/9)][i%9];
-    if (i < shownN){
-      if (finished && ch === 'O'){
-        const pulse = 0.5 + 0.5*Math.sin(performance.now()/900);
-        ctx.fillStyle = "rgba(235,250,255,0.95)";
-        ctx.shadowColor = "rgba(160,220,255,0.95)";
-        ctx.shadowBlur = 14 + 10*pulse;
-        ctx.fillRect(s.x, s.y, L.cs, L.cs);
-        ctx.shadowBlur = 0;
-        continue;
-      }
-      ctx.fillStyle = dreamRestColor(i);
-      if (i === shownN-1 && partSlices === 0 && !idle && !finished){
-        const age = falling ? 0 : subPiece - fallDur;  // just sealed whole pixel
-        const heat = Math.max(0, 1 - age/1.5);
-        if (heat > 0){
-          ctx.shadowColor = "rgba(207,232,240," + (0.9*heat) + ")";
-          ctx.shadowBlur = 12*heat;
-        }
-      }
-      ctx.fillRect(s.x, s.y, L.cs, L.cs);
-      ctx.shadowBlur = 0;
-    } else {
-      // unbuilt: hairline slot, the figure asleep inside it
-      ctx.strokeStyle = "rgba(0,191,255,0.07)";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(s.x + 0.5, s.y + 0.5, L.cs - 1, L.cs - 1);
-      if (ch !== '.'){
-        ctx.fillStyle = ch === 'O' ? "rgba(0,191,255,0.07)" : "rgba(207,232,240,0.05)";
-        ctx.fillRect(s.x, s.y, L.cs, L.cs);
-      }
-      if (i === shownN && partSlices > 0){
-        // the block being built: landed thirds, bottom-up
-        const sh = L.cs/3;
-        ctx.fillStyle = dreamRestColor(i);
-        ctx.globalAlpha = 0.85;
-        for (let k = 0; k < partSlices; k++)
-          ctx.fillRect(s.x, s.y + L.cs - (k+1)*sh, L.cs, sh - 0.5);
-        ctx.globalAlpha = 1;
-      }
-    }
+  drawDreamCounter(t, L, ticks, idle);
+
+  // the portal and the vision
+  const shimmer = idle ? 0.22 : 0.32 + 0.1*Math.sin(t*1.7);
+  ctx.strokeStyle = finished ? "rgba(255,180,80,0.85)" : "rgba(0,191,255," + shimmer + ")";
+  ctx.lineWidth = finished ? 2.5 : 1.5;
+  if (finished){
+    ctx.shadowColor = "rgba(255,160,60,0.7)";
+    ctx.shadowBlur = 10 + 6*Math.sin(performance.now()/700);
   }
+  ctx.strokeRect(L.portalLeft - 3, L.portalTop - 3, L.portalSize + 6, L.portalSize + 6);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#01030a";
+  ctx.fillRect(L.portalLeft, L.portalTop, L.portalSize, L.portalSize);
+  dreamRevealTo(ticks);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(dreamReveal, L.portalLeft, L.portalTop, L.portalSize, L.portalSize);
+  ctx.imageSmoothingEnabled = true;
 
-  // the falling 1/3-piece: forged at the triangle, landing as a slice
-  if (falling){
-    const fp = pieces - 1;                              // the airborne piece
-    const pix = Math.floor(fp/3), slice = fp % 3;
-    if (pix < 81){
-      const s = dreamSlot(L, pix);
-      const tx = s.x + L.cs/2, ty = s.y + L.cs - slice*L.cs/3 - L.cs/6;
-      const q = subPiece / fallDur, e = q*q;
-      const fx = L.centroid.x + (tx - L.centroid.x)*e;
-      const fy = L.centroid.y + (ty - L.centroid.y)*e;
-      ctx.strokeStyle = "rgba(207,232,240,0.18)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(L.centroid.x + (tx - L.centroid.x)*Math.max(0, e-0.18),
-                 L.centroid.y + (ty - L.centroid.y)*Math.max(0, e-0.18));
-      ctx.lineTo(fx, fy);
-      ctx.stroke();
-      const w = 20*L.k + (L.cs - 20*L.k)*e, h = 9*L.k + (L.cs/3 - 9*L.k)*e;
-      ctx.fillStyle = dreamRestColor(pix);
-      ctx.shadowColor = "rgba(207,232,240,0.85)";
-      ctx.shadowBlur = 10;
-      ctx.fillRect(fx - w/2, fy - h/2, w, h);
+  // the mage, conjuring
+  drawDreamMage(L, t, ticks, idle, flying ? 1 - flyFrac : Math.max(0, 1 - sub/0.3));
+
+  // the spark, arcing from orb to its pixel
+  if (flying){
+    const p = dreamOrder[ticks];
+    const tx = L.portalLeft + (p % 81)*L.ps + L.ps/2;
+    const ty = L.portalTop + Math.floor(p/81)*L.ps + L.ps/2;
+    const mx = (L.orbX + tx)/2 - 60*L.k, my = Math.min(L.orbY, ty) - 70*L.k;
+    const q = flyFrac;
+    const bez = (a, b, c, u) => (1-u)*(1-u)*a + 2*(1-u)*u*b + u*u*c;
+    for (let s = 0; s <= 3; s++){
+      const u = Math.max(0, q - s*0.05);
+      const sx = bez(L.orbX, mx, tx, u), sy = bez(L.orbY, my, ty, u);
+      ctx.fillStyle = "rgba(220,245,255," + (0.9 - s*0.25) + ")";
+      if (s === 0){ ctx.shadowColor = "rgba(174,240,255,0.9)"; ctx.shadowBlur = 8; }
+      ctx.fillRect(sx - 1.5, sy - 1.5, 3, 3);
       ctx.shadowBlur = 0;
     }
   }
@@ -2232,14 +2236,15 @@ function drawDream(t){
   ctx.font = Math.round(9*L.k) + "px monospace";
   ctx.textAlign = "center";
   ctx.fillStyle = "rgba(120,135,145,0.45)";
-  ctx.fillText("♪ Dreams Become Real — Kevin MacLeod (incompetech.com) · CC BY", viewW/2, L.bottom + 20*L.k);
+  ctx.fillText("♪ Dreams Become Real — Kevin MacLeod (incompetech.com) · CC BY", viewW/2, L.portalBottom + 16*L.k);
 }
+
 
 function getTextY(){
   if (viewMode===2){ const L = abacusLayout();  return L.top + L.gridH + 56; }
   if (viewMode===3){ const F = fractalLayout(); return F.topY + F.triH + 52; }
   if (viewMode===6){ const L = septLayout();    return L.fracTop + L.ph + 22 + 42; }
-  if (viewMode===7){ const L = dreamLayout();   return Math.min(viewH - 170, L.bottom + 56); }
+  if (viewMode===7){ const L = dreamLayout();   return Math.min(viewH - 170, L.textY); }
   return viewH/2 - 40;
 }
 
@@ -2263,7 +2268,7 @@ function drawStaticLayer(){
   if (viewMode===4){ needsStaticRedraw = false; return; } // wheels render on the anim layer (spinning)
   if (viewMode===5){ needsStaticRedraw = false; return; } // weave renders on the anim layer (traveler)
   if (viewMode===6){ drawSeptStatic(); needsStaticRedraw = false; return; } // sept panel frames
-  if (viewMode===7){ needsStaticRedraw = false; return; } // dream renders on the anim layer
+  if (viewMode===7){ drawDreamCave(); needsStaticRedraw = false; return; } // the cave is static
   if (viewMode>=8){ needsStaticRedraw = false; return; } // frame/goal render on the anim layer (pannable)
 
   // Star lines - matched to the WEAVE track (thin, faint)
