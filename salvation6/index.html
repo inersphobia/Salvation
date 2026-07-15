@@ -801,6 +801,7 @@ function setFinalTimerText(){
 function startClock(){
   if (running) return;
   if (finished) resetClock();
+  if (pauseMs === 0) dreamVariant = Math.floor(Math.random()*9); // a new dream each session
   startMs = pauseMs>0 ? performance.now()-pauseMs : performance.now();
   running=true;
   getAudio(); // unlock audio within the user gesture
@@ -1957,157 +1958,633 @@ function dreamRng(seed){
 /* ---- the three artworks, 9 tiles wide; height = duration in tiles ---- */
 let dreamArt = { kind: "", rows: 9, data: null };
 let dreamReveal = null, dreamRevealCtx = null, dreamRevealN = 0;
+let dreamVariant = Math.floor(Math.random()*9);
 function dreamPickKind(){
   const m = Math.round(totalCycle/60);
-  return m <= 27 ? "tree" : m <= 54 ? "lake" : "moon";
+  return (m <= 27 ? "s27" : m <= 54 ? "s54" : "s81") + ":" + dreamVariant;
 }
-function dreamBuildArt(kind){
-  const rows = kind === "tree" ? 3 : kind === "lake" ? 6 : 9;
+/* a standing hooded figure, drawn at any scale */
+const DREAM_HOOD = [
+  "...HHHH...",
+  "..HHHHHH..",
+  "..HHffHH..",
+  "..HHffHH..",
+  ".RRRRRRRR.",
+  ".RRRRRRRR.",
+  ".RRRRRRRR.",
+  ".RRRRRRRR.",
+  ".RRRRRRRR.",
+  ".RRRRRRRR.",
+  ".rRRRRRRr.",
+  ".rrRRRRrr.",
+  ".rrrrrrrr.",
+];
+function dreamHood(g, ox, oy, k, pal){
+  for (let y = 0; y < DREAM_HOOD.length; y++)
+    for (let x = 0; x < DREAM_HOOD[y].length; x++){
+      const c = pal[DREAM_HOOD[y][x]];
+      if (c){ g.fillStyle = c; g.fillRect(ox + x*k, oy + y*k, k, k); }
+    }
+}
+const HOOD_DARK = { H: "#221e1a", f: "#120f0c", R: "#2e2a24", r: "#241f1b" };
+function dreamDither(g, y0, y1, a, b){
+  for (let y = y0; y < y1; y++)
+    for (let x = 0; x < 81; x++){
+      g.fillStyle = (x*7 + y*11) % 19 ? a : b;
+      g.fillRect(x, y, 1, 1);
+    }
+}
+function dreamCrow(g, x, y, w, col){
+  g.fillStyle = col;
+  g.fillRect(x, y, w, 1);
+  g.fillRect(x - w, y - 1, w, 1);
+  g.fillRect(x + w, y - 1, w, 1);
+}
+function dreamChalk(g, x, y, w, hh, nc, nr){
+  g.strokeStyle = "rgba(228,226,212,0.7)";
+  g.lineWidth = 0.8;
+  for (let i = 0; i <= nc; i++){
+    g.beginPath(); g.moveTo(x + i*w/nc, y); g.lineTo(x + i*w/nc + 0.4, y + hh); g.stroke();
+  }
+  for (let j = 0; j <= nr; j++){
+    g.beginPath(); g.moveTo(x, y + j*hh/nr); g.lineTo(x + w, y + j*hh/nr - 0.3); g.stroke();
+  }
+}
+function dreamCaduceus(g, cx, top, hgt){
+  g.fillStyle = "#c9a860";
+  g.fillRect(cx, top + 3, 2, hgt - 3);                            // the staff
+  g.beginPath(); g.arc(cx + 1, top + 2, 2, 0, 2*Math.PI); g.fill();
+  g.fillStyle = "#d8cfb8";                                        // wings
+  g.beginPath(); g.moveTo(cx - 1, top + 4); g.lineTo(cx - 9, top); g.lineTo(cx - 3, top + 7); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(cx + 3, top + 4); g.lineTo(cx + 11, top); g.lineTo(cx + 5, top + 7); g.closePath(); g.fill();
+  for (const [col, ph] of [["#5a7a4a", 0], ["#7a5a52", Math.PI]]){ // the snakes
+    g.fillStyle = col;
+    for (let t = 0; t <= 1; t += 0.03){
+      const y = top + 6 + (hgt - 8)*t;
+      const x = cx + 1 + Math.sin(t*Math.PI*3 + ph)*(5 - 2*t);
+      g.fillRect(x - 0.8, y, 1.8, 1.4);
+    }
+    g.fillRect(cx + 1 + Math.sin(ph)*4 - 1.5, top + 5, 3, 2);      // head
+  }
+}
+function dreamArt27(g, v, px, rs){
+  if (v === 0){
+    // THE FEATHER: Hermes is missing from the path
+    for (let y = 0; y < 7; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x + y) % 5 ? "#7d7568" : "#867e70");
+    for (let y = 7; y < 27; y++) for (let x = 0; x < 81; x++){
+      const edge = x < 12 + 3*Math.sin(y/3) || x > 69 - 3*Math.sin(y/4 + 2);
+      px(x, y, edge ? (y % 2 ? "#5e6247" : "#545a40") : ((x*7 + y*5) % 13 ? "#8a7a5e" : "#7b6c50"));
+    }
+    for (let i = 0; i < 10; i++) px(14 + Math.floor(rs()*52), 9 + Math.floor(rs()*16), "#6e6146");
+    for (let t = 0; t <= 1; t += 0.04){
+      const fx = 33 + 15*t, fy = 17 - 5*Math.sin(Math.PI*t);
+      g.fillStyle = "#1a181c"; g.fillRect(fx, fy, 1.6, 1.6);
+      if (t > 0.15 && t < 0.85 && Math.round(t*25) % 2){
+        g.fillRect(fx - 1, fy - 1.6, 1, 1.6);
+        g.fillRect(fx + 1, fy + 1.2, 1, 1.6);
+      }
+    }
+    g.fillStyle = "#3a3630"; g.fillRect(47, 19, 3, 1);
+  } else if (v === 1){
+    // WALKING IN CIRCLES
+    for (let y = 0; y < 5; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*3 + y) % 7 ? "#4a4438" : "#514a3d");
+    for (let y = 5; y < 27; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#5c5546" : "#544d3f");
+    for (const r of [9, 15, 21, 27]){
+      for (let a = 0; a < Math.PI*2; a += 0.02){
+        const rx = 40 + Math.cos(a)*r, ry = 16 + Math.sin(a)*r*0.38;
+        if (rx < 0 || rx > 80 || ry < 5 || ry > 26) continue;
+        px(Math.round(rx), Math.round(ry), a % 0.4 < 0.25 ? "#6e6754" : "#4a4438");
+      }
+    }
+    dreamHood(g, 50, 3, 1.4, { H: "#2c2620", f: "#171410", R: "#38312a", r: "#2a251f" });
+    px(52, 21, "#242019"); px(56, 21, "#242019");
+  } else if (v === 2){
+    // THE VELLUM
+    for (let y = 0; y < 5; y++) for (let x = 0; x < 81; x++) px(x, y, "#3a352c");
+    for (let y = 5; y < 27; y++) for (let x = 0; x < 81; x++)
+      px(x, y, y % 6 === 0 ? "#5e4830" : ((x*3 + y*7) % 17 ? "#6a5238" : "#614a32"));
+    g.fillStyle = "#d8cba8"; g.fillRect(21, 8, 39, 12);
+    g.fillStyle = "#c4b48e"; g.fillRect(21, 18, 39, 2);
+    g.fillStyle = "#e4d9ba"; g.fillRect(18, 8, 3, 12);
+    g.fillStyle = "#b3a37e"; g.fillRect(60, 8, 3, 12);
+    g.fillStyle = "#8a7a5e";
+    for (let ln = 0; ln < 4; ln++){
+      const y = 10 + ln*2.5;
+      let x = 25;
+      while (x < 55){ const w = 2 + Math.floor(rs()*4); g.fillRect(x, y, w, 1); x += w + 2; }
+    }
+    for (let r = 12; r > 4; r -= 2){
+      g.fillStyle = "rgba(240,200,120,0.07)";
+      g.beginPath(); g.arc(74, 6, r, 0, 2*Math.PI); g.fill();
+    }
+  } else if (v === 3){
+    // THE CLOSED EYE
+    for (let y = 0; y < 27; y++) for (let x = 0; x < 81; x++){
+      const t = Math.max(0, 1 - Math.abs(y - 14)/22);
+      const k = Math.round(150 + 30*t);
+      px(x, y, "rgb(" + (k + 25) + "," + Math.round(k*0.84) + "," + Math.round(k*0.62) + ")");
+    }
+    g.strokeStyle = "#6e4a30"; g.lineWidth = 2;                    // the lid
+    g.beginPath(); g.moveTo(14, 15);
+    g.quadraticCurveTo(40, 22, 66, 15); g.stroke();
+    g.strokeStyle = "#8a6242"; g.lineWidth = 1.2;                  // crease above
+    g.beginPath(); g.moveTo(20, 10); g.quadraticCurveTo(40, 14, 60, 10); g.stroke();
+    g.strokeStyle = "#4a3018"; g.lineWidth = 3;                    // the brow
+    g.beginPath(); g.moveTo(14, 6); g.quadraticCurveTo(40, 1, 66, 6); g.stroke();
+    g.strokeStyle = "#5e3c22"; g.lineWidth = 1;                    // lashes
+    for (let i = 0; i < 7; i++){
+      const lx = 20 + i*7;
+      const ly = 15 + 6*Math.sin(Math.PI*(lx - 14)/52) + 1;
+      g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx - 1, ly + 3); g.stroke();
+    }
+  } else if (v === 4){
+    // THE OPEN EYE
+    for (let y = 0; y < 27; y++) for (let x = 0; x < 81; x++){
+      const t = Math.max(0, 1 - Math.abs(y - 14)/22);
+      const k = Math.round(150 + 30*t);
+      px(x, y, "rgb(" + (k + 25) + "," + Math.round(k*0.84) + "," + Math.round(k*0.62) + ")");
+    }
+    g.fillStyle = "#e8e2d4";                                       // the white
+    g.beginPath(); g.ellipse(40, 15, 25, 8, 0, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#8a5a24";
+    g.beginPath(); g.arc(40, 15, 7.5, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#b87a30";
+    g.beginPath(); g.arc(40, 15, 6, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#d9a441";
+    for (let a = 0; a < 12; a++){
+      const ax = 40 + Math.cos(a*Math.PI/6)*4.5, ay = 15 + Math.sin(a*Math.PI/6)*4.5;
+      px(Math.round(ax), Math.round(ay), "#d9a441");
+    }
+    g.fillStyle = "#17130c";
+    g.beginPath(); g.arc(40, 15, 3, 0, 2*Math.PI); g.fill();
+    px(38, 13, "#f6f2e6"); px(39, 13, "#f6f2e6");
+    g.strokeStyle = "#6e4a30"; g.lineWidth = 2;                    // lids
+    g.beginPath(); g.moveTo(15, 15); g.quadraticCurveTo(40, 2, 65, 15); g.stroke();
+    g.beginPath(); g.moveTo(15, 15); g.quadraticCurveTo(40, 26, 65, 15); g.stroke();
+    g.strokeStyle = "#4a3018"; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(14, 5); g.quadraticCurveTo(40, 0, 66, 5); g.stroke();
+  } else if (v === 5){
+    // SEE HERMES: the caduceus
+    dreamDither(g, 0, 27, "#55503f", "#5d5847");
+    g.fillStyle = "#463f2f"; g.fillRect(0, 25, 81, 2);
+    dreamCaduceus(g, 39, 3, 21);
+  } else if (v === 6){
+    // THE CROWS over the field
+    for (let y = 0; y < 19; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*7 + y*11) % 19 ? "#8f8b7c" : "#999585");
+    for (let y = 19; y < 27; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#5e6247" : "#545a40");
+    for (let x = 0; x < 81; x += 3) px(x, 19, "#6a6e52");
+    for (let i = 0; i < 9; i++)
+      dreamCrow(g, 6 + Math.floor(rs()*68), 3 + Math.floor(rs()*12), 2, "#242220");
+    dreamCrow(g, 38, 8, 3, "#17150f");
+  } else if (v === 7){
+    // POINTING FORWARD
+    dreamDither(g, 0, 27, "#4a4438", "#524b3e");
+    g.fillStyle = "#2e2a24";                                       // the sleeve
+    g.beginPath(); g.moveTo(0, 9); g.lineTo(34, 12); g.lineTo(34, 20); g.lineTo(0, 24); g.closePath(); g.fill();
+    g.fillStyle = "#241f1b";
+    g.beginPath(); g.moveTo(0, 9); g.lineTo(34, 12); g.lineTo(34, 14); g.lineTo(0, 12); g.closePath(); g.fill();
+    g.fillStyle = "#c9a582";                                       // the hand
+    g.fillRect(34, 13, 8, 7);
+    g.fillRect(42, 14, 16, 3);                                     // the finger
+    g.fillStyle = "#e0c49a"; g.fillRect(42, 14, 16, 1);
+    g.fillStyle = "#a8875f"; g.fillRect(36, 18, 6, 2);             // curled fingers
+    g.fillStyle = "rgba(230,225,210,0.35)";
+    g.fillRect(62, 15, 4, 1); g.fillRect(68, 15, 3, 1); g.fillRect(73, 15, 2, 1);
+  } else {
+    // PROMETHEUS IS MISSING: the stool and the fallen cloak
+    dreamDither(g, 0, 15, "#4a4438", "#524b3e");
+    for (let y = 15; y < 27; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#3f3a30" : "#463f34");
+    g.fillStyle = "#6a5238";                                       // the stool
+    g.fillRect(48, 10, 14, 3);
+    g.fillRect(49, 13, 2, 9); g.fillRect(59, 13, 2, 9);
+    g.fillRect(53, 13, 2, 7);
+    g.fillStyle = "#7d6247"; g.fillRect(48, 10, 14, 1);
+    g.fillStyle = "#2e2a24";                                       // the cloak, dropped
+    g.beginPath(); g.ellipse(22, 21, 12, 4, 0.15, 0, 2*Math.PI); g.fill();
+    g.beginPath(); g.ellipse(17, 19, 6, 3, -0.2, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#241f1b";
+    g.beginPath(); g.ellipse(24, 22, 7, 2, 0.2, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#38312a"; g.fillRect(14, 17, 3, 1); g.fillRect(28, 19, 4, 1);
+  }
+}
+function dreamArt54(g, v, px, rs){
+  if (v === 0){
+    // THE OWL speaks
+    dreamDither(g, 0, 54, "#55503f", "#5d5847");
+    g.fillStyle = "#463f2f";
+    g.fillRect(0, 0, 81, 3); g.fillRect(0, 0, 3, 54); g.fillRect(78, 0, 3, 54);
+    g.fillStyle = "#6a5238"; g.fillRect(0, 47, 81, 7);
+    g.fillStyle = "#7d6247"; g.fillRect(0, 47, 81, 1);
+    g.fillStyle = "#5e503a";
+    g.beginPath(); g.ellipse(40, 40, 17, 13, 0, 0, 2*Math.PI); g.fill();
+    for (let i = 0; i < 30; i++){
+      const x = 26 + Math.floor(rs()*28), y = 34 + Math.floor(rs()*13);
+      px(x, y, "#4a3f2e"); px(x + 1, y, "#4a3f2e");
+    }
+    g.fillStyle = "#6a5a42";
+    g.beginPath(); g.ellipse(40, 20, 24, 17, 0, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#7d6c50";
+    g.beginPath(); g.arc(28, 20, 11, 0, 2*Math.PI); g.fill();
+    g.beginPath(); g.arc(52, 20, 11, 0, 2*Math.PI); g.fill();
+    for (const ex of [28, 52]){
+      g.fillStyle = "#2a2118"; g.beginPath(); g.arc(ex, 20, 8.5, 0, 2*Math.PI); g.fill();
+      g.fillStyle = "#e8a83c"; g.beginPath(); g.arc(ex, 20, 7, 0, 2*Math.PI); g.fill();
+      g.fillStyle = "#141014"; g.beginPath(); g.arc(ex, 20, 3.4, 0, 2*Math.PI); g.fill();
+      px(ex - 2, 17, "#f6ead0");
+    }
+    g.fillStyle = "#3a3026";
+    g.beginPath(); g.moveTo(37, 24); g.lineTo(43, 24); g.lineTo(40, 31); g.closePath(); g.fill();
+    g.fillStyle = "#6a5a42";
+    g.beginPath(); g.moveTo(18, 10); g.lineTo(24, 2); g.lineTo(28, 9); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(62, 10); g.lineTo(56, 2); g.lineTo(52, 9); g.closePath(); g.fill();
+    g.strokeStyle = "#b8b09a"; g.lineWidth = 1;
+    g.beginPath(); g.arc(11, 50, 2.6, 0, 2*Math.PI); g.stroke();
+    g.beginPath(); g.arc(18, 50, 2.6, 0, 2*Math.PI); g.stroke();
+    g.beginPath(); g.moveTo(13.5, 50); g.lineTo(15.5, 50); g.stroke();
+  } else if (v === 1){
+    // THE TELESCOPE
+    dreamDither(g, 0, 54, "#4a4438", "#524b3e");
+    for (const wx of [8, 46]){
+      g.fillStyle = "#9aa4a8";
+      g.fillRect(wx, 8, 20, 34);
+      g.beginPath(); g.arc(wx + 10, 8, 10, Math.PI, 2*Math.PI); g.fill();
+      g.fillStyle = "#b8c2c4"; g.fillRect(wx + 1, 9, 8, 14);
+      g.fillStyle = "#3a352c";
+      g.fillRect(wx + 9, 0, 2, 42); g.fillRect(wx, 24, 20, 2);
+    }
+    g.fillStyle = "#3f3a30"; g.fillRect(0, 42, 81, 12);
+    g.fillStyle = "rgba(154,164,168,0.25)";
+    g.fillRect(10, 42, 18, 8); g.fillRect(48, 42, 18, 8);
+    dreamHood(g, 30, 16, 2.4, HOOD_DARK);
+    g.strokeStyle = "#4a4238"; g.lineWidth = 2.4;
+    g.beginPath(); g.moveTo(40, 26); g.lineTo(56, 14); g.stroke();
+    g.strokeStyle = "#5e5344";
+    g.beginPath(); g.moveTo(52, 17); g.lineTo(56, 14); g.stroke();
+  } else if (v === 2){
+    // THE MIRROR
+    dreamDither(g, 0, 54, "#55503f", "#5d5847");
+    g.fillStyle = "#463f2f"; g.fillRect(0, 48, 81, 6);
+    g.fillStyle = "#7a6a4a";
+    g.beginPath(); g.arc(40, 25, 19, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#8d7c58";
+    for (let a = 0; a < 8; a++){
+      const bx = 40 + Math.cos(a*Math.PI/4)*19, by = 25 + Math.sin(a*Math.PI/4)*19;
+      g.beginPath(); g.arc(bx, by, 2.2, 0, 2*Math.PI); g.fill();
+    }
+    g.fillStyle = "#2e3236";
+    g.beginPath(); g.arc(40, 25, 15, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#cfc6b0";
+    g.beginPath(); g.arc(40, 22, 8, 0, 2*Math.PI); g.fill();
+    g.fillRect(36, 27, 8, 6);
+    g.fillStyle = "#2e3236";
+    g.fillRect(36, 20, 3, 3); g.fillRect(42, 20, 3, 3);
+    g.fillRect(39.5, 25, 2, 2);
+    for (const tx of [36, 39, 42]) g.fillRect(tx, 31, 1, 2);
+    g.fillStyle = "rgba(120,130,138,0.35)";
+    g.beginPath(); g.moveTo(30, 14); g.lineTo(34, 12); g.lineTo(28, 24); g.lineTo(26, 22); g.closePath(); g.fill();
+    g.fillStyle = "#3a3026"; g.fillRect(12, 40, 3, 8);
+    g.fillStyle = "#e8d9a0"; g.fillRect(12.5, 37, 2, 3);
+    px(13, 35, "#ffb84d");
+  } else if (v === 3){
+    // THE CHALKBOARD is wheeled in
+    dreamDither(g, 0, 44, "#4a4438", "#524b3e");
+    for (let y = 44; y < 54; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#3f3a30" : "#463f34");
+    g.fillStyle = "#6a5238"; g.fillRect(9, 7, 56, 32);             // frame
+    g.fillStyle = "#2e3430"; g.fillRect(12, 10, 50, 26);           // slate
+    dreamChalk(g, 16, 14, 42, 18, 7, 4);
+    g.fillStyle = "rgba(228,226,212,0.8)";
+    g.fillRect(20, 16, 2, 1); g.fillRect(32, 20, 2, 1); g.fillRect(50, 25, 2, 1);
+    g.fillStyle = "#5a4530";                                       // legs + wheels
+    g.fillRect(14, 39, 3, 9); g.fillRect(57, 39, 3, 9);
+    g.fillStyle = "#3a3026";
+    g.beginPath(); g.arc(15.5, 49, 2.4, 0, 2*Math.PI); g.fill();
+    g.beginPath(); g.arc(58.5, 49, 2.4, 0, 2*Math.PI); g.fill();
+    dreamHood(g, 62, 24, 2, HOOD_DARK);
+    g.fillStyle = "#c9a582"; g.fillRect(62, 30, 3, 2);             // the reaching hand
+  } else if (v === 4){
+    // HERMES EXITS through a doorway
+    dreamDither(g, 0, 46, "#4a4438", "#524b3e");
+    for (let y = 46; y < 54; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#3f3a30" : "#463f34");
+    g.fillStyle = "#6a5238"; g.fillRect(28, 4, 26, 44);            // door frame
+    g.fillStyle = "#17150f"; g.fillRect(31, 7, 20, 41);            // the dark beyond
+    g.fillStyle = "rgba(138,128,98,0.3)";                          // spilled light
+    g.beginPath(); g.moveTo(31, 48); g.lineTo(51, 48); g.lineTo(64, 54); g.lineTo(20, 54); g.closePath(); g.fill();
+    dreamHood(g, 40, 16, 2.4, { H: "#2c2620", f: "#171410", R: "#38312a", r: "#2a251f" });
+    g.fillStyle = "#17150f";                                       // half through already
+    g.fillRect(31, 7, 12, 41);
+  } else if (v === 5){
+    // THE CADUCEUS, full
+    dreamDither(g, 0, 54, "#55503f", "#5d5847");
+    g.fillStyle = "#463f2f"; g.fillRect(0, 50, 81, 4);
+    for (let r = 26; r > 10; r -= 4){
+      g.fillStyle = "rgba(216,207,184,0.05)";
+      g.beginPath(); g.arc(40, 24, r, 0, 2*Math.PI); g.fill();
+    }
+    dreamCaduceus(g, 39, 6, 42);
+  } else if (v === 6){
+    // HERMES BEGINS RUNNING
+    for (let y = 0; y < 28; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*7 + y*11) % 19 ? "#8f8b7c" : "#999585");
+    for (let x = 0; x < 81; x++){
+      const y = 28 - Math.round(3*Math.sin(x/17 + 1));
+      for (let yy = y; yy < 34; yy++) px(x, yy, "#6a6a54");
+    }
+    for (let y = 34; y < 54; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#5e6247" : "#545a40");
+    g.fillStyle = "#242019";                                       // the runner
+    g.beginPath(); g.arc(44, 22, 3.4, 0, 2*Math.PI); g.fill();     // head
+    g.beginPath(); g.moveTo(41, 25); g.lineTo(48, 27); g.lineTo(45, 38); g.lineTo(39, 36); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(40, 36); g.lineTo(30, 44); g.lineTo(33, 46); g.lineTo(43, 39); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(44, 38); g.lineTo(52, 46); g.lineTo(55, 43); g.lineTo(46, 36); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(47, 27); g.lineTo(56, 24); g.lineTo(55, 22); g.lineTo(46, 25); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(42, 27); g.lineTo(34, 30); g.lineTo(35, 32); g.lineTo(42, 30); g.closePath(); g.fill();
+    g.fillStyle = "rgba(36,32,25,0.35)";                           // dust behind
+    g.fillRect(22, 42, 6, 1); g.fillRect(16, 44, 4, 1); g.fillRect(26, 45, 5, 1);
+  } else if (v === 7){
+    // THE CROWS gather; someone points
+    dreamDither(g, 0, 44, "#8f8b7c", "#999585");
+    for (let y = 44; y < 54; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#5e6247" : "#545a40");
+    for (let i = 0; i < 15; i++)
+      dreamCrow(g, 5 + Math.floor(rs()*70), 4 + Math.floor(rs()*26), 2, i % 3 ? "#242220" : "#17150f");
+    dreamCrow(g, 30, 12, 3, "#17150f");
+    dreamCrow(g, 52, 18, 3, "#17150f");
+    dreamHood(g, 34, 30, 1.8, { H: "#2c2620", f: "#171410", R: "#38312a", r: "#2a251f" });
+    g.fillStyle = "#38312a";                                       // the raised arm
+    g.beginPath(); g.moveTo(42, 34); g.lineTo(52, 27); g.lineTo(53, 29); g.lineTo(43, 36); g.closePath(); g.fill();
+    g.fillStyle = "#c9a582"; g.fillRect(52, 26, 2, 2);
+  } else {
+    // THE DATE is marked
+    dreamDither(g, 0, 54, "#4a4438", "#524b3e");
+    g.fillStyle = "#d8cba8"; g.fillRect(12, 6, 57, 42);            // the calendar
+    g.fillStyle = "#c4b48e"; g.fillRect(12, 6, 57, 6);
+    px(14, 8, "#3a3026"); px(66, 8, "#3a3026");                    // pins
+    g.strokeStyle = "#8a7a5e"; g.lineWidth = 0.8;
+    for (let i = 0; i <= 7; i++){
+      g.beginPath(); g.moveTo(12 + i*57/7, 14); g.lineTo(12 + i*57/7, 48); g.stroke();
+    }
+    for (let j = 0; j <= 5; j++){
+      g.beginPath(); g.moveTo(12, 14 + j*34/5); g.lineTo(69, 14 + j*34/5); g.stroke();
+    }
+    g.fillStyle = "#8a7a5e";
+    for (let cell = 0; cell < 31; cell++){
+      const cx = 12 + (cell % 7)*57/7 + 2, cy = 14 + Math.floor(cell/7)*34/5 + 2;
+      g.fillRect(cx, cy, 2, 1);
+    }
+    const mx = 12 + 3*57/7 + 57/14, my = 14 + 2*34/5 + 34/10;      // the marked day
+    g.strokeStyle = "#c23b30"; g.lineWidth = 1.4;
+    g.beginPath(); g.arc(mx, my, 4.2, 0, 2*Math.PI); g.stroke();
+    g.beginPath(); g.moveTo(mx - 3, my - 3); g.lineTo(mx + 3, my + 3); g.stroke();
+    g.beginPath(); g.moveTo(mx + 3, my - 3); g.lineTo(mx - 3, my + 3); g.stroke();
+  }
+}
+function dreamArt81(g, v, px, rs){
+  if (v === 0){
+    // SEE PROMETHEUS
+    for (let y = 0; y < 81; y++)
+      for (let x = 0; x < 81; x++){
+        const d = Math.hypot(x - 40, y - 44)/56;
+        const t = Math.max(0, 1 - d);
+        const r2 = Math.round(35 + 20*t), g2 = Math.round(37 + 20*t), b2 = Math.round(46 + 22*t);
+        px(x, y, "rgb(" + r2 + "," + g2 + "," + b2 + ")");
+      }
+    g.fillStyle = "#1c1e24";
+    g.fillRect(0, 0, 7, 81); g.fillRect(74, 0, 7, 81); g.fillRect(0, 0, 81, 5);
+    g.fillStyle = "#141318";
+    g.beginPath(); g.arc(40, 24, 12, Math.PI, 2*Math.PI); g.fill();
+    g.fillRect(28, 24, 24, 8);
+    g.beginPath(); g.moveTo(28, 32); g.lineTo(16, 44); g.lineTo(14, 81); g.lineTo(66, 81);
+    g.lineTo(64, 44); g.lineTo(52, 32); g.closePath(); g.fill();
+    g.fillStyle = "#22242e"; g.fillRect(27, 26, 1, 8);
+    for (const ex of [35, 46]){
+      g.fillStyle = "rgba(80,170,230,0.16)";
+      g.beginPath(); g.arc(ex, 27, 6, 0, 2*Math.PI); g.fill();
+      g.fillStyle = "rgba(110,195,245,0.4)";
+      g.beginPath(); g.arc(ex, 27, 3.4, 0, 2*Math.PI); g.fill();
+      g.fillStyle = "#bfe8ff"; g.fillRect(ex - 1.5, 26, 3, 2);
+      px(ex - 1, 26, "#f2fbff");
+    }
+  } else if (v === 1){
+    // SATURN over the open hand
+    for (let y = 0; y < 81; y++)
+      for (let x = 0; x < 81; x++){
+        const t = Math.max(0, 1 - Math.hypot(x - 40, y - 30)/60);
+        const k2 = Math.round(34 + 26*t);
+        px(x, y, "rgb(" + (k2 + 6) + "," + k2 + "," + Math.round(k2*0.82) + ")");
+      }
+    g.fillStyle = "#a8875f";
+    g.beginPath(); g.moveTo(30, 81); g.lineTo(34, 58); g.lineTo(48, 58); g.lineTo(54, 81); g.closePath(); g.fill();
+    g.fillStyle = "#c9a582";
+    g.beginPath(); g.ellipse(41, 54, 12, 7, -0.1, 0, 2*Math.PI); g.fill();
+    for (let f = 0; f < 4; f++){
+      const fx = 31 + f*6;
+      g.fillStyle = f % 2 ? "#c9a582" : "#bd9873";
+      g.fillRect(fx, 40 - f % 2 * 2, 4, 16);
+      g.fillStyle = "#e0c49a"; g.fillRect(fx, 40 - f % 2 * 2, 4, 2);
+    }
+    g.fillStyle = "#bd9873";
+    g.beginPath(); g.ellipse(54, 52, 3.4, 6, 0.5, 0, 2*Math.PI); g.fill();
+    for (const [r, a] of [[16, 0.05], [11, 0.08], [7, 0.12]]){
+      g.fillStyle = "rgba(190,220,255," + a + ")";
+      g.beginPath(); g.arc(40, 24, r, 0, 2*Math.PI); g.fill();
+    }
+    g.fillStyle = "#f2f6ff";
+    g.fillRect(36, 14, 2, 20);
+    g.fillRect(32, 18, 10, 2);
+    g.fillRect(38, 22, 6, 2); g.fillRect(42, 22, 2, 8);
+    g.fillRect(40, 30, 4, 2);
+    g.fillStyle = "rgba(242,246,255,0.5)"; g.fillRect(35, 13, 4, 1);
+  } else if (v === 2){
+    // HERMES TAKES FLIGHT
+    for (let y = 0; y < 81; y++) for (let x = 0; x < 81; x++){
+      const b = Math.min(2, Math.floor(y/27));
+      px(x, y, (x*11 + y*7) % 23 ? ["#6a685c", "#605e52", "#565448"][b] : "#726f60");
+    }
+    const rs2 = dreamRng(999);
+    for (let i = 0; i < 14; i++){
+      const x = Math.floor(rs2()*76), y = 4 + Math.floor(rs2()*22);
+      px(x, y, "#3a3832"); px(x + 1, y - 1, "#3a3832"); px(x + 2, y, "#3a3832");
+    }
+    g.fillStyle = "#1e1a18";
+    g.beginPath();
+    g.moveTo(40, 36); g.lineTo(6, 16); g.lineTo(2, 30); g.lineTo(14, 32);
+    g.lineTo(8, 44); g.lineTo(22, 42); g.lineTo(18, 52); g.lineTo(38, 44);
+    g.closePath(); g.fill();
+    g.beginPath();
+    g.moveTo(41, 36); g.lineTo(75, 16); g.lineTo(79, 30); g.lineTo(67, 32);
+    g.lineTo(73, 44); g.lineTo(59, 42); g.lineTo(63, 52); g.lineTo(43, 44);
+    g.closePath(); g.fill();
+    g.fillStyle = "#242019";
+    g.beginPath(); g.arc(40, 30, 4, 0, 2*Math.PI); g.fill();
+    g.fillRect(36, 33, 9, 18);
+    g.beginPath(); g.moveTo(36, 51); g.lineTo(34, 66); g.lineTo(38, 66); g.lineTo(40, 52); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(45, 51); g.lineTo(48, 63); g.lineTo(44, 64); g.lineTo(41, 52); g.closePath(); g.fill();
+    g.fillStyle = "#38312a"; g.fillRect(36, 33, 2, 18);
+    for (const [fx, fy] of [[24, 66], [52, 71], [38, 76]]){
+      g.fillStyle = "#1a181c";
+      g.fillRect(fx, fy, 3, 1); g.fillRect(fx + 1, fy - 1, 2, 1);
+    }
+  } else if (v === 3){
+    // THE GREAT EYE
+    for (let y = 0; y < 81; y++)
+      for (let x = 0; x < 81; x++){
+        const t = Math.max(0, 1 - Math.hypot(x - 40, y - 40)/58);
+        const k2 = Math.round(38 + 18*t);
+        px(x, y, "rgb(" + (k2 + 4) + "," + k2 + "," + Math.round(k2*0.86) + ")");
+      }
+    g.strokeStyle = "rgba(216,207,184,0.14)";
+    for (let a = 0; a < 16; a++){
+      g.beginPath();
+      g.moveTo(40 + Math.cos(a*Math.PI/8)*32, 40 + Math.sin(a*Math.PI/8)*32);
+      g.lineTo(40 + Math.cos(a*Math.PI/8)*38, 40 + Math.sin(a*Math.PI/8)*38);
+      g.stroke();
+    }
+    g.fillStyle = "#ded6c2";
+    g.beginPath(); g.ellipse(40, 40, 30, 14, 0, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#8a5a24"; g.beginPath(); g.arc(40, 40, 12, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#b87a30"; g.beginPath(); g.arc(40, 40, 10, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#d9a441";
+    for (let a = 0; a < 20; a++){
+      const ax = 40 + Math.cos(a*Math.PI/10)*7.5, ay = 40 + Math.sin(a*Math.PI/10)*7.5;
+      g.fillRect(ax, ay, 1.2, 1.2);
+    }
+    g.fillStyle = "#17130c"; g.beginPath(); g.arc(40, 40, 5, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#f6f2e6"; g.fillRect(36, 35, 3, 3);
+    g.strokeStyle = "#6e4a30"; g.lineWidth = 2.4;
+    g.beginPath(); g.moveTo(9, 40); g.quadraticCurveTo(40, 18, 71, 40); g.stroke();
+    g.beginPath(); g.moveTo(9, 40); g.quadraticCurveTo(40, 60, 71, 40); g.stroke();
+    g.strokeStyle = "#5e3c22"; g.lineWidth = 1;
+    for (let i = 0; i < 8; i++){
+      const lx = 14 + i*8;
+      const ly = 40 - 9*Math.sin(Math.PI*(lx - 9)/62);
+      g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx - 2, ly - 4); g.stroke();
+    }
+  } else if (v === 4){
+    // THE CALENDAR is drawn on the board
+    dreamDither(g, 0, 62, "#4a4438", "#524b3e");
+    for (let y = 62; y < 81; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#3f3a30" : "#463f34");
+    g.fillStyle = "#9aa4a8"; g.fillRect(62, 8, 14, 26);            // window
+    g.fillStyle = "#3a352c"; g.fillRect(68, 8, 2, 26); g.fillRect(62, 20, 14, 2);
+    g.fillStyle = "rgba(154,164,168,0.2)"; g.fillRect(60, 62, 18, 8);
+    g.fillStyle = "#6a5238"; g.fillRect(6, 10, 50, 40);            // board frame
+    g.fillStyle = "#2e3430"; g.fillRect(9, 13, 44, 34);
+    dreamChalk(g, 13, 18, 36, 24, 7, 5);
+    g.fillStyle = "rgba(228,226,212,0.85)";
+    g.fillRect(18, 21, 2, 1); g.fillRect(29, 26, 2, 1); g.fillRect(44, 31, 2, 1); g.fillRect(23, 36, 2, 1);
+    g.fillStyle = "#5a4530";
+    g.fillRect(10, 50, 3, 12); g.fillRect(49, 50, 3, 12);
+    g.fillStyle = "#3a3026";
+    g.beginPath(); g.arc(11.5, 64, 3, 0, 2*Math.PI); g.fill();
+    g.beginPath(); g.arc(50.5, 64, 3, 0, 2*Math.PI); g.fill();
+    dreamHood(g, 52, 32, 2.8, HOOD_DARK);
+    g.fillStyle = "#c9a582"; g.fillRect(52, 40, 4, 3);
+    g.fillStyle = "#e8e4d6"; g.fillRect(50, 41, 3, 1);             // the chalk
+  } else if (v === 5){
+    // THE OWL REMAINS: perched on the table
+    dreamDither(g, 0, 58, "#55503f", "#5d5847");
+    for (let y = 58; y < 81; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#3f3a30" : "#463f34");
+    g.fillStyle = "#17150f"; g.fillRect(64, 8, 14, 50);            // dark door
+    g.fillStyle = "#6a5238"; g.fillRect(62, 6, 2, 52); g.fillRect(62, 6, 18, 2);
+    g.fillStyle = "#6a5238"; g.fillRect(8, 46, 44, 4);             // the table
+    g.fillStyle = "#7d6247"; g.fillRect(8, 46, 44, 1);
+    g.fillStyle = "#5a4530"; g.fillRect(11, 50, 3, 26); g.fillRect(46, 50, 3, 26);
+    g.fillStyle = "#5e503a";                                       // the owl, small
+    g.beginPath(); g.ellipse(30, 38, 8, 9, 0, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#6a5a42";
+    g.beginPath(); g.ellipse(30, 29, 9, 7, 0, 0, 2*Math.PI); g.fill();
+    for (const ex of [26, 34]){
+      g.fillStyle = "#2a2118"; g.beginPath(); g.arc(ex, 29, 3.4, 0, 2*Math.PI); g.fill();
+      g.fillStyle = "#e8a83c"; g.beginPath(); g.arc(ex, 29, 2.6, 0, 2*Math.PI); g.fill();
+      g.fillStyle = "#141014"; g.beginPath(); g.arc(ex, 29, 1.2, 0, 2*Math.PI); g.fill();
+    }
+    g.fillStyle = "#3a3026";
+    g.beginPath(); g.moveTo(29, 31); g.lineTo(31, 31); g.lineTo(30, 34); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(23, 24); g.lineTo(25, 20); g.lineTo(27, 24); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(37, 24); g.lineTo(35, 20); g.lineTo(33, 24); g.closePath(); g.fill();
+    g.strokeStyle = "#b8b09a"; g.lineWidth = 1;                    // the spectacles
+    g.beginPath(); g.arc(41, 44, 2.4, 0, 2*Math.PI); g.stroke();
+    g.beginPath(); g.arc(47, 44, 2.4, 0, 2*Math.PI); g.stroke();
+    g.beginPath(); g.moveTo(43.4, 44); g.lineTo(44.6, 44); g.stroke();
+  } else if (v === 6){
+    // SEE HERMES
+    for (let y = 0; y < 81; y++)
+      for (let x = 0; x < 81; x++){
+        const t = Math.max(0, 1 - Math.hypot(x - 40, y - 40)/60);
+        const k2 = Math.round(40 + 22*t);
+        px(x, y, "rgb(" + k2 + "," + k2 + "," + Math.round(k2*0.92) + ")");
+      }
+    dreamHood(g, 15, 12, 5, { H: "#3a352c", f: "#1c1914", R: "#4a4438", r: "#38332a" });
+    g.fillStyle = "#8a7a5e"; g.fillRect(34, 30, 12, 3);            // pale mouth-shadow
+    dreamCaduceus(g, 62, 14, 52);
+  } else if (v === 7){
+    // PROMETHEUS IS MISSING FROM THE ROOM
+    dreamDither(g, 0, 58, "#4a4438", "#524b3e");
+    for (let y = 58; y < 81; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#3f3a30" : "#463f34");
+    g.fillStyle = "#b8ae90"; g.fillRect(58, 6, 17, 52);            // the open door, light beyond
+    g.fillStyle = "#cabf9e"; g.fillRect(58, 6, 8, 52);
+    g.fillStyle = "#6a5238";
+    g.fillRect(55, 4, 3, 56); g.fillRect(55, 4, 22, 2);
+    g.fillStyle = "rgba(184,174,144,0.3)";                         // light across the floor
+    g.beginPath(); g.moveTo(58, 58); g.lineTo(75, 58); g.lineTo(60, 78); g.lineTo(30, 72); g.closePath(); g.fill();
+    g.fillStyle = "#5a4530";                                       // the overturned chair
+    g.fillRect(14, 56, 22, 3);
+    g.fillRect(14, 48, 3, 8);
+    g.fillRect(20, 59, 3, 9); g.fillRect(30, 59, 3, 7);
+    g.fillRect(14, 45, 12, 3);
+    g.fillStyle = "#d8cba8";                                       // scattered papers
+    g.fillRect(40, 66, 6, 4); g.fillRect(48, 70, 5, 3); g.fillRect(36, 73, 5, 3);
+    g.fillStyle = "#8a7a5e"; g.fillRect(41, 67, 3, 1); g.fillRect(49, 71, 2, 1);
+  } else {
+    // THE MIRROR looks back
+    dreamDither(g, 0, 62, "#4a4438", "#524b3e");
+    for (let y = 62; y < 81; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#3f3a30" : "#463f34");
+    g.fillStyle = "#7a6a4a";
+    g.beginPath(); g.arc(48, 26, 17, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#8d7c58";
+    for (let a = 0; a < 8; a++){
+      const bx = 48 + Math.cos(a*Math.PI/4)*17, by = 26 + Math.sin(a*Math.PI/4)*17;
+      g.beginPath(); g.arc(bx, by, 2, 0, 2*Math.PI); g.fill();
+    }
+    g.fillStyle = "#2e3236";
+    g.beginPath(); g.arc(48, 26, 13.5, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#cfc6b0";                                       // the face that waits
+    g.beginPath(); g.arc(48, 24, 6.5, 0, 2*Math.PI); g.fill();
+    g.fillRect(45, 28, 6.5, 5);
+    g.fillStyle = "#2e3236";
+    g.fillRect(45, 22, 2.4, 2.4); g.fillRect(50, 22, 2.4, 2.4);
+    g.fillRect(47.5, 26, 1.6, 1.6);
+    for (const tx of [45.5, 48, 50.5]) g.fillRect(tx, 31.5, 1, 1.6);
+    dreamHood(g, 8, 30, 3.8, { H: "#221e1a", f: "#221e1a", R: "#2e2a24", r: "#241f1b" });
+    px(46, 40, "#4aa4e0");                                         // something else, behind
+    px(50, 40, "#4aa4e0");
+  }
+}
+function dreamBuildArt(key){
+  const parts = key.split(":");
+  const size = parts[0], v = +parts[1] || 0;
+  const rows = size === "s27" ? 3 : size === "s54" ? 6 : 9;
   const H = rows*9;
   const c = document.createElement('canvas');
   c.width = 81; c.height = H;
   const g = c.getContext('2d');
   const px = (x, y, col) => { g.fillStyle = col; g.fillRect(x, y, 1, 1); };
-  if (kind === "tree"){
-    // a lone tree on a summer meadow
-    for (let y = 0; y < 27; y++)
-      for (let x = 0; x < 81; x++)
-        px(x, y, (x*7 + y*13) % 23 === 0 ? "#b6d2ee" : y < 9 ? "#8fb8e0" : y < 15 ? "#9cc2e6" : "#a8c8ea");
-    g.fillStyle = "#f5eec8";
-    g.beginPath(); g.arc(68, 6, 5, 0, 2*Math.PI); g.fill();          // sun
-    g.fillStyle = "rgba(245,238,200,0.35)";
-    g.beginPath(); g.arc(68, 6, 7, 0, 2*Math.PI); g.fill();
-    const rs = dreamRng(2727);
-    for (let i = 0; i < 6; i++){                                     // clouds
-      const x = Math.floor(rs()*55), y = 2 + Math.floor(rs()*8), w = 5 + Math.floor(rs()*9);
-      g.fillStyle = "#e8f0f8"; g.fillRect(x, y, w, 2);
-      g.fillStyle = "#d8e6f2"; g.fillRect(x + 1, y + 2, w - 2, 1);
-    }
-    // meadow
-    for (let x = 0; x < 81; x++){
-      const gy = 18 - Math.round(2*Math.sin(x/11 + 1));
-      for (let y = gy; y < 27; y++)
-        px(x, y, y === gy ? "#6db85a" : y < 22 ? "#5aa04a" : "#4a8a3e");
-    }
-    // trunk and boughs
-    g.fillStyle = "#6b4a2e"; g.fillRect(39, 12, 3, 8);
-    g.fillStyle = "#543a22"; g.fillRect(41, 12, 1, 8);
-    g.fillStyle = "#6b4a2e";
-    g.fillRect(37, 10, 2, 2); g.fillRect(43, 10, 2, 2);
-    g.fillRect(38, 18, 5, 3);                                        // root flare
-    // canopy: three shades of leaf
-    const blob = (bx, by, r, col) => { g.fillStyle = col; g.beginPath(); g.arc(bx, by, r, 0, 2*Math.PI); g.fill(); };
-    blob(33, 8, 6.5, "#2f7d3a"); blob(48, 8, 6.5, "#2f7d3a"); blob(40, 5, 7, "#2f7d3a");
-    blob(34, 7, 5.5, "#3fa24c"); blob(46, 7, 5.5, "#3fa24c"); blob(40, 4, 6, "#3fa24c");
-    blob(37, 4, 3.5, "#5cc063"); blob(44, 5, 3, "#5cc063"); blob(41, 2, 2.6, "#5cc063");
-    px(36, 9, "#d94f3a"); px(45, 7, "#d94f3a"); px(41, 10, "#d94f3a"); // apples
-    for (let i = 0; i < 14; i++){                                    // meadow flowers
-      const x = Math.floor(rs()*78) + 1, y = 20 + Math.floor(rs()*6);
-      if (x > 33 && x < 48) continue;
-      px(x, y, ["#f2e6a0", "#e8eef6", "#d98ab0"][i % 3]);
-    }
-  } else if (kind === "lake"){
-    // a mountain lake at morning
-    for (let y = 0; y < 24; y++)
-      for (let x = 0; x < 81; x++)
-        px(x, y, (x*11 + y*7) % 29 === 0 ? "#c2d8ee" : y < 8 ? "#9ec4e8" : y < 16 ? "#aacdec" : "#b6d5ef");
-    g.fillStyle = "#f7f0cc";
-    g.beginPath(); g.arc(20, 7, 4.5, 0, 2*Math.PI); g.fill();        // sun
-    g.fillStyle = "rgba(247,240,204,0.35)";
-    g.beginPath(); g.arc(20, 7, 6.5, 0, 2*Math.PI); g.fill();
-    const rs = dreamRng(5454);
-    for (let i = 0; i < 5; i++){
-      const x = 30 + Math.floor(rs()*45), y = 3 + Math.floor(rs()*8), w = 6 + Math.floor(rs()*8);
-      g.fillStyle = "#e8f0f8"; g.fillRect(x, y, w, 2);
-    }
-    // two mountain ridges with snowcaps
-    const ridge = (amp, base, period, phase, col, snow) => {
-      for (let x = 0; x < 81; x++){
-        const t = (((x + phase) % period) + period) % period / period;
-        const h = 1 - 2*Math.abs(t - 0.5);                     // pointed peaks
-        const y = base - Math.round(amp*h + 1.5*Math.sin(x/23));
-        for (let yy = y; yy < 28; yy++) px(x, yy, col);
-        if (snow && y <= base - amp + 3){ px(x, y, "#eef3f8"); px(x, y + 1, "#dfe8f0"); }
-      }
-    };
-    ridge(11, 21, 34, 6, "#7a92b4", true);
-    ridge(7, 25, 26, 20, "#5a7494", true);
-    // dark pine shore
-    for (let x = 0; x < 81; x++){
-      const y = 26 - ((x*3) % 4 === 0 ? 2 : (x % 3 === 0 ? 1 : 0));
-      for (let yy = y; yy < 29; yy++) px(x, yy, "#2e5c3a");
-    }
-    // the lake, with reflections and sun-glitter
-    for (let y = 29; y < 54; y++)
-      for (let x = 0; x < 81; x++)
-        px(x, y, (x*5 + y*17) % 31 === 0 ? "#6b9ad0" : y < 40 ? "#4a7ab8" : "#3f6aa6");
-    for (let y = 29; y < 40; y++){                                   // mountain reflection, rippled
-      for (let x = 0; x < 81; x++){
-        const sx = x + Math.round(2*Math.sin(y/2 + x/9));
-        if (sx < 0 || sx > 80) continue;
-        const my = 24 - Math.round(6*Math.abs(Math.sin(sx/13 + 2.1)) + 2*Math.sin(sx/29));
-        if (29 + (28 - my) > y) px(x, y, y % 2 ? "#52689a" : "#5a72a4");
-      }
-    }
-    for (let i = 0; i < 22; i++){                                    // glitter path under the sun
-      const y = 30 + Math.floor(rs()*20), x = 17 + Math.floor(rs()*9) - Math.floor((y-30)/4);
-      px(x, y, i % 3 ? "#cfe0f2" : "#f2ecc8");
-    }
-    for (let x = 0; x < 81; x += 2) px(x, 29, "#7ba6d6");            // shoreline shimmer
-  } else {
-    // the full moon, close enough to touch
-    for (let y = 0; y < 81; y++)
-      for (let x = 0; x < 81; x++){
-        const b = Math.min(2, Math.floor(y/27));
-        px(x, y, (x*13 + y*11) % 31 === 0 ? "#33427a" : ["#1e2a54", "#243260", "#2a3a6c"][b]);
-      }
-    const rs = dreamRng(8181);
-    for (let i = 0; i < 70; i++){                                    // star field
-      const x = Math.floor(rs()*81), y = Math.floor(rs()*81);
-      if (Math.hypot(x - 40, y - 40) < 36) continue;
-      const col = i % 4 === 0 ? "#f2f6fc" : i % 4 === 1 ? "#c0d0ec" : "#8fa4d8";
-      px(x, y, col);
-      if (i % 9 === 0){ px(x+1, y, "#5a6ca8"); px(x-1, y, "#5a6ca8"); px(x, y+1, "#5a6ca8"); px(x, y-1, "#5a6ca8"); }
-    }
-    // halo
-    g.fillStyle = "rgba(226,224,204,0.08)";
-    g.beginPath(); g.arc(40, 40, 37, 0, 2*Math.PI); g.fill();
-    g.fillStyle = "rgba(226,224,204,0.12)";
-    g.beginPath(); g.arc(40, 40, 33, 0, 2*Math.PI); g.fill();
-    // the disc: shaded limb, warm face
-    g.fillStyle = "#c9c2a8";
-    g.beginPath(); g.arc(40, 40, 30, 0, 2*Math.PI); g.fill();
-    g.fillStyle = "#ddd6bd";
-    g.beginPath(); g.arc(39, 39, 28.5, 0, 2*Math.PI); g.fill();
-    g.fillStyle = "#eae4cc";
-    g.beginPath(); g.arc(37, 37, 25, 0, 2*Math.PI); g.fill();
-    g.fillStyle = "#f4efdb";
-    g.beginPath(); g.arc(34, 34, 17, 0, 2*Math.PI); g.fill();
-    // maria: the moon's gray seas
-    const sea = (sx, sy, r, col) => { g.fillStyle = col; g.beginPath(); g.arc(sx, sy, r, 0, 2*Math.PI); g.fill(); };
-    sea(31, 30, 8, "#d3ccb2"); sea(45, 27, 6, "#d8d1b7"); sea(50, 44, 9, "#d0c9af");
-    sea(28, 47, 6, "#d6cfb5"); sea(38, 55, 5, "#d3ccb2");
-    // craters, rims lit from the upper left
-    for (let i = 0; i < 12; i++){
-      const a = rs()*2*Math.PI, d = rs()*24;
-      const cx = 40 + Math.cos(a)*d, cy = 40 + Math.sin(a)*d;
-      const r = 1.6 + rs()*3.4;
-      if (Math.hypot(cx - 40, cy - 40) + r > 29) continue;
-      g.fillStyle = "#bdb59a";
-      g.beginPath(); g.arc(cx, cy, r, 0, 2*Math.PI); g.fill();
-      g.fillStyle = "#cfc8ae";
-      g.beginPath(); g.arc(cx - r*0.25, cy - r*0.25, r*0.7, 0, 2*Math.PI); g.fill();
-      px(Math.round(cx - r*0.6), Math.round(cy - r*0.6), "#f6f1de");
-    }
-    // a thin cloud drifting across the lower limb
-    g.fillStyle = "rgba(70,84,130,0.5)";
-    for (let x = 6; x < 76; x++){
-      const y = 60 + Math.round(2*Math.sin(x/9));
-      g.fillRect(x, y, 1, 2);
-      if (x % 3) g.fillRect(x, y + 2, 1, 1);
-    }
-  }
-  return { kind, rows, data: g.getImageData(0, 0, 81, H).data };
+  const rs = dreamRng(1013904223 + v*97 + H);
+  if (size === "s27") dreamArt27(g, v, px, rs);
+  else if (size === "s54") dreamArt54(g, v, px, rs);
+  else dreamArt81(g, v, px, rs);
+  return { kind: key, rows, data: g.getImageData(0, 0, 81, H).data };
 }
 function dreamEnsureArt(){
   const kind = dreamPickKind();
