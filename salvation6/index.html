@@ -2423,7 +2423,12 @@ function drawTimerText(t){
   }
   ctx.font = viewW < 500 ? "32px monospace" : "40px monospace";
 
-  const str = timerStr;
+  let str = timerStr;
+  if (viewMode === 7 && str.indexOf(":") !== -1){
+    // DREAM reads one place deeper: the 1/81-minute digit (81 ticks per minute)
+    const d81 = finished ? 0 : Math.floor(t / (60/81)) % 3;
+    str = str.replace("₃", d81 + "₃");
+  }
 
   // Final value and idle keep a single color
   const idle = !running && !finished && pauseMs === 0;
