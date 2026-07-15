@@ -2629,7 +2629,8 @@ function draw(now){
       for (const d of TONE_DEFS){
         const idx = Math.floor(elapsed / d.interval);
         const sel = toneSel[d.id] || 0;
-        if (!sel){ lastToneIdx[d.id] = idx; continue; }
+        // DREAM belongs to the music: interval tones stay silent there
+        if (!sel || viewMode === 7){ lastToneIdx[d.id] = idx; continue; }
         if (idx > (lastToneIdx[d.id] || 0)){
           lastToneIdx[d.id] = idx;
           const opt = TONE_OPTS[sel];
