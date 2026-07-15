@@ -1,0 +1,44 @@
+{
+  "name": "Salvation 8",
+  "short_name": "Salvation8",
+  "description": "Base-3 heptagram timer",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "27-minute session",
+      "short_name": "27-MIN",
+      "url": "./index.html?mode=27",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "54-minute session",
+      "short_name": "54-MIN",
+      "url": "./index.html?mode=54",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "81-minute session",
+      "short_name": "81-MIN",
+      "url": "./index.html?mode=81",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
