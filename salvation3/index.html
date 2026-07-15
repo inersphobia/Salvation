@@ -321,7 +321,7 @@
 const numDials = 7;
 let timeMode = 0; // 0=27-min, 1=54-min, 2=81-min
 let viewMode = 0; // 0=rings, 1=septagram, 2=abacus, 3=fractal
-const VIEW_NAMES = ["RINGS", "STAR", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "SEPT", "FRAME", "GOAL"];
+const VIEW_NAMES = ["RINGS", "STAR", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "SEPT", "LEDGER", "FRAME", "GOAL"];
 
 const dotsPerEdge = [1,2];
 const baseIntervals = [4860,1620,540,180,60,20,20/3];
@@ -1738,7 +1738,7 @@ const FRAME_DEFS = [
     dots: GOAL_DOTS, edges: GOAL_EDGES, cam: {x:-20, y:40},
     store: 'salvationGoalTexts', title: "Session: Selecting a Goal" },
 ];
-function curFrameIdx(){ return viewMode === 8 ? 1 : 0; }
+function curFrameIdx(){ return viewMode === 9 ? 1 : 0; }
 function CF(){ return FRAME_DEFS[curFrameIdx()]; }
 let frameHintUntil = 0;
 let lastTimerView = 0;
@@ -1892,7 +1892,7 @@ function setFrameBoxText(fi, idx, text, persist){
 
 function drawStatus(){
   if (!frameStatus){
-    if (viewMode < 7){
+    if (viewMode < 8){
       ctx.font = "12px monospace";
       ctx.textAlign = "left";
       ctx.fillStyle = "rgba(0,191,255,0.45)";
@@ -1916,18 +1916,218 @@ function drawStatus(){
   lines.forEach((ln, k) => ctx.fillText(ln, 14, 24 + k*16));
 }
 
+/* ---------- LEDGER: the paradox of positional notation ----------
+   Digits count only sealed structures. The live cell is pre-numeric.
+   Zero is back-filled after the fact; unconjured places show an asterisk.
+   Cell = 1 minute. Row = 3, square = 9, band = 27. */
+function ledgerLayout(){
+  const totalMin = Math.round(totalCycle/60);
+  const bands = Math.max(1, Math.ceil(totalMin/27));
+  const availW = viewW - 2*34 - 26;                 // side margins + label gutter
+  // width in cell units: 3 squares of (3c + 2 gaps) + 2 square-gaps = 10.68c
+  let cs = availW / 10.68;
+  const topY = 168;
+  const hFor = c => bands*(3.26*c) + (bands-1)*0.6*c;
+  const availH = viewH - 210 - topY;
+  if (hFor(cs) > availH) cs = availH / (bands*3.26 + (bands-1)*0.6);
+  const g = cs*0.13, sqGap = cs*0.45, bandGap = 0.6*cs;
+  const gridW = 3*(3*cs + 2*g) + 2*sqGap;
+  const left = (viewW - gridW)/2 + 13;
+  const gridH = hFor(cs);
+  return { totalMin, bands, cs, g, sqGap, bandGap, left, topY, gridH, bottom: topY + gridH };
+}
+function ledgerCellRect(L, idx){
+  const band = Math.floor(idx/27), rem = idx%27;
+  const sq = Math.floor(rem/9), r2 = rem%9;
+  return {
+    x: L.left + sq*(3*L.cs + 2*L.g + L.sqGap) + (r2%3)*(L.cs + L.g),
+    y: L.topY + band*(3*L.cs + 2*L.g + L.bandGap) + Math.floor(r2/3)*(L.cs + L.g),
+  };
+}
+function ledgerRect(x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r); ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);     ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+}
+function drawLedgerMicro(x, y, cs, s){
+  // the live cell's interior: the same ledger, one scale down.
+  // 9 micro-cells = the nine 1/9-minutes; row = which 1/3 (blue/orange/red).
+  const COLS = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"];
+  const pad = cs*0.18, mg = Math.max(1, cs*0.045);
+  const mcs = (cs - 2*pad - 2*mg)/3;
+  const ninth = 60/9;
+  const done = Math.floor(s/ninth);
+  const frac = (s % ninth)/ninth;
+  for (let i=0;i<9;i++){
+    const mx = x + pad + (i%3)*(mcs+mg), my = y + pad + Math.floor(i/3)*(mcs+mg);
+    if (i < done || i === done){
+      const a = i < done ? 0.9 : 0.12 + 0.78*frac;   // the live ninth soaks in
+      ctx.fillStyle = COLS[Math.floor(i/3)];
+      ctx.globalAlpha = a;
+      ctx.shadowColor = COLS[Math.floor(i/3)]; ctx.shadowBlur = i < done ? 4 : 4*frac;
+      ctx.fillRect(mx, my, mcs, mcs);
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    } else {
+      ctx.fillStyle = "rgba(255,255,255,0.06)";
+      ctx.fillRect(mx, my, mcs, mcs);
+    }
+  }
+}
+function drawLedgerNumeral(t, L, idle){
+  // places at completion: enough ternary digits for totalMin
+  let places = 1, v = 3;
+  while (v <= L.totalMin){ places++; v *= 3; }
+  const mDone = finished ? L.totalMin : Math.floor(t/60);
+  const digits = [];
+  for (let p = places-1; p >= 0; p--) digits.push(Math.floor(mDone / Math.pow(3,p)) % 3);
+  const DC = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"];
+  const big = Math.min(44, viewW*0.105), small = big*0.68;
+  const y = 108;
+  // measure
+  const items = [];
+  for (let k = 0; k < places; k++){
+    const p = places-1-k;                                  // power of this column
+    const conj = !idle && mDone >= Math.pow(3, p);
+    items.push(conj ? { ch: String(digits[k]), d: digits[k], p } : { ast: true, p });
+  }
+  ctx.textAlign = "left";
+  let w = 0;
+  for (const it of items){
+    ctx.font = (it.ast ? small : big) + "px monospace";
+    w += ctx.measureText(it.ast ? "*" : it.ch).width + big*0.14;
+  }
+  ctx.font = (big*0.5) + "px monospace";
+  w += ctx.measureText("3").width;
+  let x = viewW/2 - w/2;
+  // unconjured places are always a prefix; the one closest to existence glows more
+  const astPs = items.filter(j => j.ast).map(j => j.p);
+  const nearestP = astPs.length ? Math.min.apply(null, astPs) : -1;
+  for (const it of items){
+    if (it.ast){
+      ctx.font = small + "px monospace";
+      ctx.fillStyle = it.p === nearestP ? "rgba(160,180,190,0.28)" : "rgba(160,180,190,0.13)";
+      ctx.fillText("*", x, y - big*0.22);
+      x += ctx.measureText("*").width + big*0.14;
+    } else {
+      ctx.font = big + "px monospace";
+      let a = 1;
+      if (!finished && running && it.d === 0){
+        // the back-filled zero: ink arriving after the pen
+        const sec = t % (Math.pow(3, it.p) * 60);
+        if (sec < 0.85) a = sec < 0.25 ? 0.08 : 0.08 + ((sec-0.25)/0.6)*0.92;
+      }
+      ctx.globalAlpha = a;
+      ctx.fillStyle = DC[it.d];
+      ctx.fillText(it.ch, x, y);
+      ctx.globalAlpha = 1;
+      x += ctx.measureText(it.ch).width + big*0.14;
+    }
+  }
+  ctx.font = (big*0.5) + "px monospace";
+  const anyConj = items.some(j => !j.ast);
+  ctx.fillStyle = anyConj ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.2)";
+  ctx.fillText("3", x, anyConj ? y + big*0.12 : y - big*0.22);
+}
+function drawLedger(t){
+  const L = ledgerLayout();
+  const idle = !running && !finished && pauseMs === 0;
+  const mDone = finished ? L.totalMin : idle ? 0 : Math.floor(t/60);
+  const liveIdx = (!idle && !finished && mDone < L.totalMin) ? mDone : -1;
+  const s = t % 60;
+  const rr = Math.max(2, L.cs*0.12);
+
+  // band rulings: cumulative minute labels down the left margin
+  ctx.font = Math.max(8, Math.round(L.cs*0.3)) + "px monospace";
+  ctx.textAlign = "right";
+  ctx.fillStyle = "rgba(90,106,117,0.85)";
+  for (let b = 0; b < L.bands; b++){
+    const yb = L.topY + b*(3*L.cs + 2*L.g + L.bandGap) + (3*L.cs + 2*L.g)/2;
+    ctx.fillText(String(Math.min((b+1)*27, L.totalMin)), L.left - 12, yb + 3);
+  }
+
+  for (let i = 0; i < L.totalMin; i++){
+    const c = ledgerCellRect(L, i);
+    if (i === liveIdx){
+      // the live cell: pre-numeric, breathing
+      ctx.strokeStyle = "rgba(255,255,255,0.75)";
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = "rgba(0,191,255,0.8)"; ctx.shadowBlur = 10;
+      ledgerRect(c.x, c.y, L.cs, L.cs, rr); ctx.stroke();
+      ctx.shadowBlur = 0;
+      drawLedgerMicro(c.x, c.y, L.cs, s);
+      continue;
+    }
+    const sealedSquare = (i - i%9) + 9 <= mDone;
+    const isNext = liveIdx >= 0 && i > liveIdx && Math.floor(i/3) === Math.floor(liveIdx/3);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = i < mDone
+      ? (sealedSquare ? "rgba(0,191,255,0.16)" : "rgba(0,191,255,0.30)")
+      : (isNext ? "rgba(0,191,255,0.30)" : "rgba(0,191,255,0.08)");
+    ledgerRect(c.x, c.y, L.cs, L.cs, rr); ctx.stroke();
+    if (i < mDone){
+      // archival x
+      const p = L.cs*0.30;
+      ctx.strokeStyle = sealedSquare ? "rgba(157,196,209,0.30)" : "rgba(157,196,209,0.55)";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(c.x+p, c.y+p);      ctx.lineTo(c.x+L.cs-p, c.y+L.cs-p);
+      ctx.moveTo(c.x+L.cs-p, c.y+p); ctx.lineTo(c.x+p, c.y+L.cs-p);
+      ctx.stroke();
+    } else if (isNext){
+      // the y's: next to be filled, visible but unnumbered
+      ctx.fillStyle = "rgba(0,191,255,0.25)";
+      ctx.beginPath();
+      ctx.arc(c.x+L.cs/2, c.y+L.cs/2, Math.max(2, L.cs*0.08), 0, 2*Math.PI);
+      ctx.fill();
+    }
+  }
+
+  // sealed squares wear both name-tags: corner 0 is corner 3
+  ctx.font = Math.max(7, Math.round(L.cs*0.26)) + "px monospace";
+  ctx.fillStyle = "rgba(0,191,255,0.5)";
+  for (let q = 0; q*9 < L.totalMin; q++){
+    if ((q+1)*9 <= mDone){
+      const a = ledgerCellRect(L, q*9), b = ledgerCellRect(L, q*9+8);
+      ctx.textAlign = "left";  ctx.fillText("0", a.x+2, a.y + L.cs*0.34);
+      ctx.textAlign = "right"; ctx.fillText("3", b.x+L.cs-2, b.y+L.cs-3);
+    }
+  }
+
+  // seal flash: the just-completed row / square / band glows for a beat
+  if (!idle && !finished && mDone > 0 && s < 0.6){
+    const a = 0.55*(1 - s/0.6);
+    let span = 1;
+    if (mDone % 27 === 0) span = 27; else if (mDone % 9 === 0) span = 9; else if (mDone % 3 === 0) span = 3;
+    if (span > 1){
+      const p1 = ledgerCellRect(L, mDone - span), p2 = ledgerCellRect(L, mDone - 1);
+      ctx.strokeStyle = "rgba(255,255,255," + a + ")";
+      ctx.lineWidth = 2;
+      ctx.shadowColor = "rgba(0,191,255," + a + ")"; ctx.shadowBlur = 14;
+      ledgerRect(Math.min(p1.x,p2.x)-3, Math.min(p1.y,p2.y)-3,
+                 Math.abs(p2.x-p1.x)+L.cs+6, Math.abs(p2.y-p1.y)+L.cs+6, rr+2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  drawLedgerNumeral(t, L, idle);
+}
+
 function getTextY(){
   if (viewMode===2){ const L = abacusLayout();  return L.top + L.gridH + 56; }
   if (viewMode===3){ const F = fractalLayout(); return F.topY + F.triH + 52; }
   if (viewMode===6){ const L = septLayout();    return L.fracTop + L.ph + 22 + 42; }
+  if (viewMode===7){ const L = ledgerLayout();  return Math.min(viewH - 170, L.bottom + 56); }
   return viewH/2 - 40;
 }
 
 function gotoView(v){
-  if (viewMode <= 6) lastTimerView = viewMode;
+  if (viewMode <= 7) lastTimerView = viewMode;
   viewMode = v;
   if (viewMode === 3){ fracCam.init = false; fracTrail.length = 0; } // snap camera on entry
-  if (viewMode >= 7) frameHintUntil = performance.now() + 3000;     // hint on entry
+  if (viewMode >= 8) frameHintUntil = performance.now() + 3000;     // hint on entry
   needsStaticRedraw = true;
   try { localStorage.setItem('salvationView', viewMode); } catch(e) {}
 }
@@ -1943,7 +2143,8 @@ function drawStaticLayer(){
   if (viewMode===4){ needsStaticRedraw = false; return; } // wheels render on the anim layer (spinning)
   if (viewMode===5){ needsStaticRedraw = false; return; } // weave renders on the anim layer (traveler)
   if (viewMode===6){ drawSeptStatic(); needsStaticRedraw = false; return; } // sept panel frames
-  if (viewMode>=7){ needsStaticRedraw = false; return; } // frame/goal render on the anim layer (pannable)
+  if (viewMode===7){ needsStaticRedraw = false; return; } // ledger renders on the anim layer (live cell)
+  if (viewMode>=8){ needsStaticRedraw = false; return; } // frame/goal render on the anim layer (pannable)
 
   // Star lines - matched to the WEAVE track (thin, faint)
   ctxStatic.lineWidth = 1.5;
@@ -2210,7 +2411,7 @@ function drawTapHint(){
 function draw(now){
   try {
     // drags need native-rate rendering; the 30fps cap makes them feel laggy
-    const dragging = (viewMode === 7 && framePtr);
+    const dragging = (viewMode === 8 && framePtr);
     if (!dragging && now-lastFrameTime < frameInterval){
       requestAnimationFrame(draw); return;
     }
@@ -2286,10 +2487,12 @@ function draw(now){
     drawWeave(vizT);
   } else if (viewMode===6){
     drawSept(vizT);
+  } else if (viewMode===7){
+    drawLedger(vizT);
   } else {
     drawFrameView();
   }
-  if (viewMode < 7){
+  if (viewMode < 8){
     drawTimerText(vizT);
     drawTapHint();
   }
@@ -2313,7 +2516,7 @@ function toggleClock(){
 // The tap target sits on the icon itself (tap-to-start / pause / play),
 // drawn at (viewW/2, getTextY()+74) - so you tap the visible control.
 canvasAnim.addEventListener("click", (e) => {
-  if (viewMode >= 7) return; // diagram taps select boxes, not the clock
+  if (viewMode >= 8) return; // diagram taps select boxes, not the clock
   const rect = canvasAnim.getBoundingClientRect();
   const dx = (e.clientX - rect.left) - rect.width/2;
   const dy = (e.clientY - rect.top)  - (getTextY() + 74);
@@ -2324,7 +2527,7 @@ canvasAnim.addEventListener("click", (e) => {
 /* ---------- FRAME VIEW: pan (drag dark space) + select (tap a box) ---------- */
 let framePtr = null;
 canvasAnim.addEventListener("pointerdown", (e) => {
-  if (viewMode !== 7 && viewMode !== 8) return;
+  if (viewMode !== 8 && viewMode !== 9) return;
   if (frameEdit.style.display === "block") return; // dialog open
   const rect = canvasAnim.getBoundingClientRect();
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
@@ -2345,7 +2548,7 @@ canvasAnim.addEventListener("pointerdown", (e) => {
   }
 });
 canvasAnim.addEventListener("pointermove", (e) => {
-  if ((viewMode !== 7 && viewMode !== 8) || !framePtr) return;
+  if ((viewMode !== 8 && viewMode !== 9) || !framePtr) return;
   const rect = canvasAnim.getBoundingClientRect();
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
   const dx = cx - framePtr.x, dy = cy - framePtr.y;
@@ -2359,7 +2562,7 @@ canvasAnim.addEventListener("pointermove", (e) => {
 });
 canvasAnim.addEventListener("pointerup", (e) => {
   clearTimeout(framePressTimer);
-  if ((viewMode !== 7 && viewMode !== 8) || !framePtr){ framePtr = null; return; }
+  if ((viewMode !== 8 && viewMode !== 9) || !framePtr){ framePtr = null; return; }
   const rect = canvasAnim.getBoundingClientRect();
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
   if (!framePtr.moved && !framePtr.longFired){
@@ -2641,7 +2844,7 @@ document.getElementById('feCancel').addEventListener('click', () => closeFrameEd
 /* ---------- STATUS long-press: jump timer <-> its diagram ---------- */
 function statusHit(cx, cy){
   if (cx > 250 || cy > 80) return false;
-  return !!frameStatus || viewMode < 7; // placeholder is pressable too
+  return !!frameStatus || viewMode < 8; // placeholder is pressable too
 }
 let statusDown = null, statusPressTimer = null;
 canvasAnim.addEventListener("pointerdown", (e) => {
@@ -2653,9 +2856,9 @@ canvasAnim.addEventListener("pointerdown", (e) => {
   clearTimeout(statusPressTimer);
   statusPressTimer = setTimeout(() => {
     statusDown = null;
-    if (viewMode >= 7) gotoView(lastTimerView);        // diagram -> back to the timer
-    else if (frameStatus) gotoView(7 + (frameSelectedF === 1 ? 1 : 0)); // timer -> status's diagram
-    else gotoView(7);                                   // no status yet -> first diagram
+    if (viewMode >= 8) gotoView(lastTimerView);        // diagram -> back to the timer
+    else if (frameStatus) gotoView(8 + (frameSelectedF === 1 ? 1 : 0)); // timer -> status's diagram
+    else gotoView(8);                                   // no status yet -> first diagram
     haptic('medium');
   }, 500);
 });
@@ -2759,8 +2962,13 @@ try {
 
 // Restore last-used view and selected status
 try {
-  const savedView = parseInt(localStorage.getItem('salvationView'), 10);
-  if (savedView >= 0 && savedView <= 8){
+  let savedView = parseInt(localStorage.getItem('salvationView'), 10);
+  // Migrate: LEDGER slotted in at 7, pushing FRAME/GOAL to 8/9
+  if (!localStorage.getItem('salvationViewMig10')){
+    if (savedView >= 7){ savedView++; localStorage.setItem('salvationView', String(savedView)); }
+    localStorage.setItem('salvationViewMig10', "1");
+  }
+  if (savedView >= 0 && savedView <= 9){
     viewMode = savedView;
   }
   const savedStatus = localStorage.getItem('salvationStatus');
@@ -2770,7 +2978,7 @@ try {
   const savedIdx = parseInt(localStorage.getItem('salvationStatusIdx'), 10);
   if (savedIdx >= 0 && savedIdx < FRAME_DEFS[frameSelectedF].boxes.length) frameSelected = savedIdx;
 } catch(e) {}
-if (viewMode >= 7) frameHintUntil = performance.now() + 3000;
+if (viewMode >= 8) frameHintUntil = performance.now() + 3000;
 
 updateTables();
 setupGeometry();
