@@ -3109,8 +3109,8 @@ function drawGoetia(t){
   if (!idle && !finished){
     const sub60 = t % 60;
     const lapT = 3*T27;                                // one lap = 1/9 minute
-    const sqLit = sub60 < T27 ? 0 : Math.min(9, Math.floor((sub60 - T27)/lapT) + 1);
-    const gather = Math.min(2, Math.floor((((sub60 - T27) % lapT + lapT) % lapT)/T27));
+    const sqLit = Math.min(9, Math.floor(sub60/lapT));
+    const gather = Math.min(2, Math.floor((sub60 % lapT)/T27));
     const cell = 11*L.k;
     for (let r = 0; r < 3; r++)
       for (let cc = 0; cc < 3; cc++){
@@ -3152,7 +3152,7 @@ function drawGoetia(t){
       ctx.globalAlpha = 1;
     };
     const planes = Math.floor(sqLit/3);
-    const sinceSet = sqLit > 0 ? sub60 - (T27 + (sqLit - 1)*lapT) : 99;
+    const sinceSet = sqLit > 0 ? sub60 - sqLit*lapT : 99;
     const rising = sqLit > 0 && sqLit % 3 === 0 && sinceSet >= 0 && sinceSet < 0.4;
     const shown = rising ? planes - 1 : planes;
     for (let pl = 0; pl < shown; pl++) drawLayer(pl, 0.92, 0);
@@ -3188,7 +3188,7 @@ function drawGoetia(t){
     }
   // the scarab paces the triangle, one corner per 1/27 minute
   {
-    const corners = [L.t1, L.t3, L.t2];   // counterclockwise circuit
+    const corners = [L.t3, L.t2, L.t1];   // same circuit, phased so the apex strike = each 1/9 tick
     const ci = idle || finished ? 0 : Math.floor(t/T27) % 3;
     const cf = idle || finished ? 0 : (t % T27)/T27;
     const A = corners[ci], B = corners[(ci + 1) % 3];
@@ -3220,7 +3220,8 @@ function drawGoetia(t){
     ctx.beginPath(); ctx.ellipse(bx - dxn*0.6*kk, by - dyn*0.6*kk, 2.2*kk, 1.4*kk, Math.atan2(dyn, dxn), 0, 2*Math.PI); ctx.fill();
     ctx.fillStyle = "#141d16";                             // the head
     ctx.beginPath(); ctx.arc(bx + dxn*3.4*kk, by + dyn*3.4*kk, 1.3*kk, 0, 2*Math.PI); ctx.fill();
-    ctx.fillStyle = "#9fe8c0";                             // one glint
+    const g81 = idle || finished ? 0 : Math.min(2, Math.floor((t % T27)/(T27/3)));
+    ctx.fillStyle = "rgba(159,232,192," + (0.35 + 0.3*g81) + ")";   // the glint steps at 1/81
     ctx.fillRect(bx - dxn*1.2*kk, by - dyn*1.2*kk, 1.2, 1.2);
   }
 
