@@ -321,7 +321,7 @@
 const numDials = 7;
 let timeMode = 0; // 0=27-min, 1=54-min, 2=81-min
 let viewMode = 0; // 0=rings, 1=septagram, 2=abacus, 3=fractal
-const VIEW_NAMES = ["RINGS", "STAR", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "SEPT", "DREAM", "FRAME", "GOAL"];
+const VIEW_NAMES = ["RINGS", "STAR", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "SEPT", "DREAM", "GOETIA", "FRAME", "GOAL"];
 
 const dotsPerEdge = [1,2];
 const baseIntervals = [4860,1620,540,180,60,20,20/3];
@@ -1739,7 +1739,7 @@ const FRAME_DEFS = [
     dots: GOAL_DOTS, edges: GOAL_EDGES, cam: {x:-20, y:40},
     store: 'salvationGoalTexts', title: "Session: Selecting a Goal" },
 ];
-function curFrameIdx(){ return viewMode === 9 ? 1 : 0; }
+function curFrameIdx(){ return viewMode === 10 ? 1 : 0; }
 function CF(){ return FRAME_DEFS[curFrameIdx()]; }
 let frameHintUntil = 0;
 let lastTimerView = 0;
@@ -1893,7 +1893,7 @@ function setFrameBoxText(fi, idx, text, persist){
 
 function drawStatus(){
   if (!frameStatus){
-    if (viewMode < 8){
+    if (viewMode < 9){
       ctx.font = "12px monospace";
       ctx.textAlign = "left";
       ctx.fillStyle = "rgba(0,191,255,0.45)";
@@ -2836,19 +2836,280 @@ function drawDream(t){
 }
 
 
+/* ---------- GOETIA: Malphas, compelled, builds the temple ----------
+   Point (1/27 min) -> line (1/9) -> plane (1/3) -> cube (1 minute).
+   The cubes are quarried stone; the temple is the sum of the minutes.
+   27 raises a shrine, 54 a temple, 81 the grand temple whose doorway
+   lights from within when the last stone is set. */
+const GOETIA_CROW = [
+  ".....bb........",
+  "...bbbbb.......",
+  "..bbbbbbb......",
+  "qqqqqbEbb......",
+  ".....bbbbb.....",
+  "....Wbbbbb.....",
+  "...WWWrrrWW....",
+  "..WWWrrrrrWW...",
+  ".WWWrrrrrrWW...",
+  ".WWrrrrrrrWW...",
+  ".WWrrrrrrrWW...",
+  "..WrrrrrrrW....",
+  "..Wrrrrrrrr....",
+  "...rrrrrrrr....",
+  "...rrrrrrr.....",
+  "...rrrrrrr.....",
+  "....rrrrr......",
+  "....rr.rr......",
+  "....cc.cc......",
+];
+const GOETIA_PAL = { b:"#241a2e", q:"#8a8274", E:"#ff7030", r:"#1c1420", W:"#2f1f38", c:"#8a8274" };
+function goetiaPlanKind(){
+  const m = Math.round(totalCycle/60);
+  return m <= 27 ? 27 : m <= 54 ? 54 : 81;
+}
+let goetiaPlanCache = { kind: 0, list: null };
+function goetiaPlan(){
+  const kind = goetiaPlanKind();
+  if (goetiaPlanCache.kind === kind) return goetiaPlanCache.list;
+  const L = [];
+  const row = (j, k, x0, x1, skip) => {
+    for (let x = x0; x <= x1; x++){
+      if (skip && skip.indexOf(x) >= 0) continue;
+      L.push([x, j, k]);
+    }
+  };
+  if (kind === 27){
+    row(0,0,0,4); row(1,0,0,4);          // plinth
+    row(0,1,0,4); row(1,1,0,4,[2]);      // walls, the doorway
+    row(1,2,0,4); row(0,2,1,3);          // roof
+  } else if (kind === 54){
+    row(0,0,0,6); row(1,0,0,6);
+    row(0,1,0,6); row(1,1,0,6,[3]);
+    row(0,2,0,6); row(1,2,0,6);
+    row(0,3,1,5); row(1,3,1,5);
+    row(1,4,2,4);                        // the crown
+  } else {
+    row(0,0,0,8); row(1,0,0,8);
+    row(0,1,0,8); row(1,1,0,8,[3,4,5]);  // tall doorway
+    row(0,2,0,8); row(1,2,0,8,[3,4,5]);
+    row(0,3,0,8); row(1,3,0,8);          // lintel course
+    row(1,4,1,7);                        // ziggurat crown
+    row(1,5,2,6);
+    row(1,6,3,5);
+  }
+  goetiaPlanCache = { kind, list: L };
+  return L;
+}
+function goetiaLayout(){
+  const k = Math.max(0.8, Math.min(viewW/412, 1.25));
+  const kind = goetiaPlanKind();
+  const u = Math.round((kind === 81 ? 15 : kind === 54 ? 18 : 22)*k);
+  const hh = Math.round(u*1.15);
+  const w = kind === 81 ? 9 : kind === 54 ? 7 : 5;
+  return {
+    k, u, hh, kind,
+    cx: Math.round(viewW/2 - ((w - 2)/2)*u),
+    baseY: Math.round(360*k),
+    fx: Math.round(viewW*0.27), fy: Math.round(586*k), fr: Math.round(54*k),
+    t1: [Math.round(viewW*0.56), Math.round(652*k)],
+    t2: [Math.round(viewW*0.94), Math.round(652*k)],
+    t3: [Math.round(viewW*0.75), Math.round(528*k)],
+    demonX: Math.round(viewW*0.62), demonY: Math.round(558*k),
+    textY: Math.round(706*k),
+  };
+}
+function goetiaPos(L, i, j, k){
+  return [L.cx + (i - j)*L.u, L.baseY + (i + j)*L.u/2 - k*L.hh];
+}
+function goetiaPoly(pts, col){
+  ctx.fillStyle = col;
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let n = 1; n < pts.length; n++) ctx.lineTo(pts[n][0], pts[n][1]);
+  ctx.closePath(); ctx.fill();
+}
+function goetiaCube(L, sx, sy, shade, alpha){
+  const u = L.u, hh = L.hh;
+  ctx.globalAlpha = alpha === undefined ? 1 : alpha;
+  const c = (base, d) => "rgb(" + (base+d) + "," + (base+d+3) + "," + (base+d+7) + ")";
+  goetiaPoly([[sx, sy-u/2],[sx+u, sy],[sx, sy+u/2],[sx-u, sy]], c(140, shade));
+  goetiaPoly([[sx-u, sy],[sx, sy+u/2],[sx, sy+u/2+hh],[sx-u, sy+hh]], c(96, shade));
+  goetiaPoly([[sx+u, sy],[sx, sy+u/2],[sx, sy+u/2+hh],[sx+u, sy+hh]], c(66, shade));
+  ctx.strokeStyle = "rgba(16,18,24,0.45)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(sx-u, sy); ctx.lineTo(sx, sy-u/2); ctx.lineTo(sx+u, sy);
+  ctx.lineTo(sx+u, sy+hh); ctx.lineTo(sx, sy+u/2+hh); ctx.lineTo(sx-u, sy+hh);
+  ctx.closePath(); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(sx-u, sy); ctx.lineTo(sx, sy+u/2); ctx.lineTo(sx+u, sy);
+  ctx.moveTo(sx, sy+u/2); ctx.lineTo(sx, sy+u/2+hh);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+function goetiaShade(idx){
+  let h = (idx*2654435761) >>> 0;                 // mottled masonry, stable per stone
+  return (h % 25) - 12;
+}
+function drawGoetiaStatic(){
+  const L = goetiaLayout();
+  // the chamber gloom
+  for (let y = 0; y < viewH; y += 4)
+    for (let x = 0; x < viewW; x += 4){
+      const t = Math.max(0, 1 - Math.hypot(x - viewW/2, y - 400*L.k)/(640*L.k));
+      const g2 = Math.round(11 + 15*t);
+      ctxStatic.fillStyle = "rgb(" + (g2+3) + "," + g2 + "," + (g2+6) + ")";
+      ctxStatic.fillRect(x, y, 4, 4);
+    }
+  // the chalk circle of the forge
+  ctxStatic.strokeStyle = "rgba(216,210,192,0.5)";
+  ctxStatic.lineWidth = 1.5;
+  ctxStatic.beginPath(); ctxStatic.arc(L.fx, L.fy, L.fr, 0, 2*Math.PI); ctxStatic.stroke();
+  ctxStatic.beginPath(); ctxStatic.arc(L.fx, L.fy, L.fr - 7*L.k, 0, 2*Math.PI); ctxStatic.stroke();
+  // the triangle of art
+  ctxStatic.beginPath();
+  ctxStatic.moveTo(L.t1[0], L.t1[1]); ctxStatic.lineTo(L.t2[0], L.t2[1]); ctxStatic.lineTo(L.t3[0], L.t3[1]);
+  ctxStatic.closePath(); ctxStatic.stroke();
+  for (const p of [L.t1, L.t2, L.t3]){
+    ctxStatic.beginPath(); ctxStatic.arc(p[0], p[1], 4*L.k, 0, 2*Math.PI); ctxStatic.stroke();
+  }
+}
+function drawGoetia(t){
+  const L = goetiaLayout();
+  const plan = goetiaPlan();
+  const idle = !running && !finished && pauseMs === 0;
+  const totalMin = Math.round(totalCycle/60);
+  const N = Math.min(totalMin, plan.length);
+  const m = finished ? N : idle ? 0 : Math.min(N, Math.floor(t/60));
+  const T27 = 60/27;
+  const flyDur = 0.6;
+  const flying = !idle && !finished && m > 0 && (t % 60) < flyDur;
+  const placed = flying ? m - 1 : m;
+
+  // the character ring, slowly turning
+  ctx.strokeStyle = "rgba(216,210,192,0.4)";
+  ctx.lineWidth = 1;
+  for (let a = 0; a < 24; a++){
+    const ang = a*Math.PI/12 + (idle ? 0 : t*0.04);
+    ctx.beginPath();
+    ctx.arc(L.fx + Math.cos(ang)*(L.fr - 3.5*L.k), L.fy + Math.sin(ang)*(L.fr - 3.5*L.k), 1, 0, 2*Math.PI);
+    ctx.stroke();
+  }
+
+  // the ghost plan: the temple as promise
+  for (let i = 0; i < N; i++){
+    const p = goetiaPos(L, plan[i][0], plan[i][1], plan[i][2]);
+    goetiaCube(L, p[0], p[1], 0, 0.05);
+  }
+  // the placed stones, painter order
+  const sorted = [];
+  for (let i = 0; i < placed; i++) sorted.push([plan[i], i]);
+  sorted.sort((a, b) => ((a[0][0] + a[0][1])*100 + a[0][2]) - ((b[0][0] + b[0][1])*100 + b[0][2]));
+  for (const [cell, i] of sorted){
+    const p = goetiaPos(L, cell[0], cell[1], cell[2]);
+    goetiaCube(L, p[0], p[1], goetiaShade(i));
+  }
+  // the stone in flight
+  if (flying){
+    const cell = plan[m - 1];
+    const tp = goetiaPos(L, cell[0], cell[1], cell[2]);
+    const q = (t % 60)/flyDur, e = q*q*(3 - 2*q);
+    const sx = L.fx + (tp[0] - L.fx)*e;
+    const sy = (L.fy - 44*L.k) + (tp[1] - (L.fy - 44*L.k))*e - 30*L.k*Math.sin(Math.PI*e);
+    goetiaCube(L, sx, sy, goetiaShade(m - 1));
+  }
+  // land flash
+  if (!idle && !finished && m > 0){
+    const age = (t % 60) - flyDur;
+    if (age >= 0 && age < 0.4){
+      const cell = plan[m - 1];
+      const p = goetiaPos(L, cell[0], cell[1], cell[2]);
+      ctx.strokeStyle = "rgba(230,240,255," + (0.7*(1 - age/0.4)) + ")";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(p[0]-L.u, p[1]); ctx.lineTo(p[0], p[1]-L.u/2); ctx.lineTo(p[0]+L.u, p[1]);
+      ctx.lineTo(p[0]+L.u, p[1]+L.hh); ctx.lineTo(p[0], p[1]+L.u/2+L.hh); ctx.lineTo(p[0]-L.u, p[1]+L.hh);
+      ctx.closePath(); ctx.stroke();
+    }
+  }
+  // the finished temple: the doorway lights from within
+  if (finished){
+    const doorX = L.kind === 27 ? 2 : L.kind === 54 ? 3 : 4;
+    const dp = goetiaPos(L, doorX, 1, L.kind === 81 ? 1.5 : 1);
+    const pulse = 0.5 + 0.5*Math.sin(performance.now()/800);
+    ctx.fillStyle = "rgba(255,190,90," + (0.35 + 0.3*pulse) + ")";
+    ctx.shadowColor = "rgba(255,170,60,0.9)";
+    ctx.shadowBlur = 12 + 8*pulse;
+    ctx.fillRect(dp[0] - L.u*0.55, dp[1] - (L.kind === 81 ? L.hh*1.4 : L.hh*0.5), L.u*1.1, L.kind === 81 ? L.hh*2.2 : L.hh*1.2);
+    ctx.shadowBlur = 0;
+  }
+
+  // ---- the forge: the cascade inside the circle ----
+  if (!idle && !finished){
+    const pts = Math.floor((t % 60)/T27);              // points laid this minute
+    const frac = (t % T27)/T27;                        // the infinitesimal, gathering
+    const planes = Math.floor(pts/9);
+    const cell = 11*L.k;
+    for (let r = 0; r < 3; r++)
+      for (let cc = 0; cc < 3; cc++){
+        const n = r*3 + cc;
+        const gx = L.fx - 16*L.k + cc*cell, gy = L.fy - 12*L.k + r*cell;
+        if (n < pts % 9){
+          ctx.shadowColor = "rgba(120,200,255,0.9)"; ctx.shadowBlur = 5;
+          ctx.fillStyle = "#bfe8ff";
+          ctx.fillRect(gx, gy, 8*L.k, 8*L.k);
+          ctx.shadowBlur = 0;
+        } else if (n === pts % 9){
+          ctx.fillStyle = "rgba(191,232,255," + (0.1 + 0.75*frac) + ")";
+          ctx.fillRect(gx, gy, 8*L.k, 8*L.k);
+        } else {
+          ctx.strokeStyle = "rgba(191,232,255,0.18)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(gx + 0.5, gy + 0.5, 8*L.k - 1, 8*L.k - 1);
+        }
+      }
+    for (let p = 0; p < planes; p++){                  // folded planes hover, waiting
+      const py = L.fy - 30*L.k - p*8*L.k;
+      goetiaPoly([[L.fx, py - 7*L.k],[L.fx + 15*L.k, py],[L.fx, py + 7*L.k],[L.fx - 15*L.k, py]],
+                 "rgba(160,215,255,0.55)");
+    }
+  }
+
+  // ---- Malphas, bound in the triangle ----
+  const S = Math.max(3, Math.round(3.6*L.k));
+  const flap = flying ? -S : 0;
+  for (let y = 0; y < GOETIA_CROW.length; y++)
+    for (let x = 0; x < GOETIA_CROW[y].length; x++){
+      const ch = GOETIA_CROW[y][x];
+      const col = GOETIA_PAL[ch];
+      if (!col) continue;
+      const dy = ch === 'W' ? flap : 0;
+      ctx.fillStyle = col;
+      ctx.fillRect(L.demonX + x*S, L.demonY + y*S + dy, S, S);
+    }
+  // the ember eye gathers with each point
+  const glow = idle || finished ? 0.3 : 0.25 + 0.7*((t % T27)/T27);
+  ctx.shadowColor = "rgba(255,112,48," + glow + ")";
+  ctx.shadowBlur = 7;
+  ctx.fillStyle = "#ff9a50";
+  ctx.fillRect(L.demonX + 6*S, L.demonY + 3*S, S, S);
+  ctx.shadowBlur = 0;
+}
+
 function getTextY(){
   if (viewMode===2){ const L = abacusLayout();  return L.top + L.gridH + 56; }
   if (viewMode===3){ const F = fractalLayout(); return F.topY + F.triH + 52; }
   if (viewMode===6){ const L = septLayout();    return L.fracTop + L.ph + 22 + 42; }
   if (viewMode===7){ const L = dreamLayout();   return Math.min(viewH - 170, L.textY); }
+  if (viewMode===8){ const L = goetiaLayout();  return Math.min(viewH - 170, L.textY); }
   return viewH/2 - 40;
 }
 
 function gotoView(v){
-  if (viewMode <= 7) lastTimerView = viewMode;
+  if (viewMode <= 8) lastTimerView = viewMode;
   viewMode = v;
   if (viewMode === 3){ fracCam.init = false; fracTrail.length = 0; } // snap camera on entry
-  if (viewMode >= 8) frameHintUntil = performance.now() + 3000;     // hint on entry
+  if (viewMode >= 9) frameHintUntil = performance.now() + 3000;     // hint on entry
   needsStaticRedraw = true;
   try { localStorage.setItem('salvationView', viewMode); } catch(e) {}
 }
@@ -2865,7 +3126,8 @@ function drawStaticLayer(){
   if (viewMode===5){ needsStaticRedraw = false; return; } // weave renders on the anim layer (traveler)
   if (viewMode===6){ drawSeptStatic(); needsStaticRedraw = false; return; } // sept panel frames
   if (viewMode===7){ drawDreamDungeon(); needsStaticRedraw = false; return; } // the dungeon is static
-  if (viewMode>=8){ needsStaticRedraw = false; return; } // frame/goal render on the anim layer (pannable)
+  if (viewMode===8){ drawGoetiaStatic(); needsStaticRedraw = false; return; }   // the chamber is static
+  if (viewMode>=9){ needsStaticRedraw = false; return; } // frame/goal render on the anim layer (pannable)
 
   // Star lines - matched to the WEAVE track (thin, faint)
   ctxStatic.lineWidth = 1.5;
@@ -3137,7 +3399,7 @@ function drawTapHint(){
 function draw(now){
   try {
     // drags need native-rate rendering; the 30fps cap makes them feel laggy
-    const dragging = (viewMode === 8 && framePtr);
+    const dragging = (viewMode === 9 && framePtr);
     if (!dragging && now-lastFrameTime < frameInterval){
       requestAnimationFrame(draw); return;
     }
@@ -3216,10 +3478,12 @@ function draw(now){
     drawSept(vizT);
   } else if (viewMode===7){
     drawDream(vizT);
+  } else if (viewMode===8){
+    drawGoetia(vizT);
   } else {
     drawFrameView();
   }
-  if (viewMode < 8){
+  if (viewMode < 9){
     drawTimerText(vizT);
     drawTapHint();
   }
@@ -3244,7 +3508,7 @@ function toggleClock(){
 // The tap target sits on the icon itself (tap-to-start / pause / play),
 // drawn at (viewW/2, getTextY()+74) - so you tap the visible control.
 canvasAnim.addEventListener("click", (e) => {
-  if (viewMode >= 8) return; // diagram taps select boxes, not the clock
+  if (viewMode >= 9) return; // diagram taps select boxes, not the clock
   const rect = canvasAnim.getBoundingClientRect();
   const dx = (e.clientX - rect.left) - rect.width/2;
   const dy = (e.clientY - rect.top)  - (getTextY() + 74);
@@ -3255,7 +3519,7 @@ canvasAnim.addEventListener("click", (e) => {
 /* ---------- FRAME VIEW: pan (drag dark space) + select (tap a box) ---------- */
 let framePtr = null;
 canvasAnim.addEventListener("pointerdown", (e) => {
-  if (viewMode !== 8 && viewMode !== 9) return;
+  if (viewMode !== 9 && viewMode !== 10) return;
   if (frameEdit.style.display === "block") return; // dialog open
   const rect = canvasAnim.getBoundingClientRect();
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
@@ -3276,7 +3540,7 @@ canvasAnim.addEventListener("pointerdown", (e) => {
   }
 });
 canvasAnim.addEventListener("pointermove", (e) => {
-  if ((viewMode !== 8 && viewMode !== 9) || !framePtr) return;
+  if ((viewMode !== 9 && viewMode !== 10) || !framePtr) return;
   const rect = canvasAnim.getBoundingClientRect();
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
   const dx = cx - framePtr.x, dy = cy - framePtr.y;
@@ -3290,7 +3554,7 @@ canvasAnim.addEventListener("pointermove", (e) => {
 });
 canvasAnim.addEventListener("pointerup", (e) => {
   clearTimeout(framePressTimer);
-  if ((viewMode !== 8 && viewMode !== 9) || !framePtr){ framePtr = null; return; }
+  if ((viewMode !== 9 && viewMode !== 10) || !framePtr){ framePtr = null; return; }
   const rect = canvasAnim.getBoundingClientRect();
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
   if (!framePtr.moved && !framePtr.longFired){
@@ -3572,7 +3836,7 @@ document.getElementById('feCancel').addEventListener('click', () => closeFrameEd
 /* ---------- STATUS long-press: jump timer <-> its diagram ---------- */
 function statusHit(cx, cy){
   if (cx > 250 || cy > 80) return false;
-  return !!frameStatus || viewMode < 8; // placeholder is pressable too
+  return !!frameStatus || viewMode < 9; // placeholder is pressable too
 }
 let statusDown = null, statusPressTimer = null;
 canvasAnim.addEventListener("pointerdown", (e) => {
@@ -3584,9 +3848,9 @@ canvasAnim.addEventListener("pointerdown", (e) => {
   clearTimeout(statusPressTimer);
   statusPressTimer = setTimeout(() => {
     statusDown = null;
-    if (viewMode >= 8) gotoView(lastTimerView);        // diagram -> back to the timer
-    else if (frameStatus) gotoView(8 + (frameSelectedF === 1 ? 1 : 0)); // timer -> status's diagram
-    else gotoView(8);                                   // no status yet -> first diagram
+    if (viewMode >= 9) gotoView(lastTimerView);        // diagram -> back to the timer
+    else if (frameStatus) gotoView(9 + (frameSelectedF === 1 ? 1 : 0)); // timer -> status's diagram
+    else gotoView(9);                                   // no status yet -> first diagram
     haptic('medium');
   }, 500);
 });
@@ -3696,7 +3960,12 @@ try {
     if (savedView >= 7){ savedView++; localStorage.setItem('salvationView', String(savedView)); }
     localStorage.setItem('salvationViewMig10', "1");
   }
-  if (savedView >= 0 && savedView <= 9){
+  // Migrate: GOETIA slotted in at 8, pushing FRAME/GOAL to 9/10
+  if (!localStorage.getItem('salvationViewMig11')){
+    if (savedView >= 8){ savedView++; localStorage.setItem('salvationView', String(savedView)); }
+    localStorage.setItem('salvationViewMig11', "1");
+  }
+  if (savedView >= 0 && savedView <= 10){
     viewMode = savedView;
   }
   const savedStatus = localStorage.getItem('salvationStatus');
@@ -3706,7 +3975,7 @@ try {
   const savedIdx = parseInt(localStorage.getItem('salvationStatusIdx'), 10);
   if (savedIdx >= 0 && savedIdx < FRAME_DEFS[frameSelectedF].boxes.length) frameSelected = savedIdx;
 } catch(e) {}
-if (viewMode >= 8) frameHintUntil = performance.now() + 3000;
+if (viewMode >= 9) frameHintUntil = performance.now() + 3000;
 
 updateTables();
 setupGeometry();
