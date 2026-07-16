@@ -3102,6 +3102,38 @@ function drawGoetia(t){
     ctx.shadowBlur = 0;
   }
 
+  // ---- chamber ambience: dust adrift, embers off the forge, a stray
+  //      glimmer wandering the laid stones (all stateless, ~cost-free) ----
+  if (!idle){
+    for (let i = 0; i < 8; i++){
+      const mx = ((i*173 + 37) % viewW) + Math.sin(t*0.13 + i*0.77)*18*L.k;
+      const my = (i*271 + t*(2.5 + (i % 3))) % (viewH*0.8);
+      ctx.fillStyle = "rgba(200,205,215,0.10)";
+      ctx.fillRect(mx, viewH*0.82 - my, 1.6, 1.6);
+    }
+    if (!finished)
+      for (let i = 0; i < 5; i++){
+        const life = (t*(0.3 + i*0.08) + i*0.617) % 1;
+        const ex = L.fx + Math.sin(t*0.8 + i*2.1)*10*L.k*life;
+        const ey = L.fy - 16*L.k - life*44*L.k;
+        ctx.fillStyle = "rgba(150,220,255," + (0.3*(1 - life)) + ")";
+        ctx.fillRect(ex, ey, 1.8, 1.8);
+      }
+    if (placed > 0){
+      const gi = Math.floor(t/2.7) % placed;
+      const gfr = (t % 2.7)/2.7;
+      if (gfr < 0.5){
+        const gc = plan[gi];
+        const gp = goetiaPos(L, gc[0], gc[1], gc[2]);
+        ctx.strokeStyle = "rgba(230,240,255," + (0.35*Math.sin(Math.PI*gfr*2)) + ")";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(gp[0] - L.u, gp[1]); ctx.lineTo(gp[0], gp[1] - L.u/2); ctx.lineTo(gp[0] + L.u, gp[1]);
+        ctx.stroke();
+      }
+    }
+  }
+
   // ---- the circle: one FACE of the stone ----
   // block = 1/27 (set as the scarab reaches each corner), row = 1/9
   // (completed at each apex strike), full face = 1/3 (rises to the pad),
@@ -3170,15 +3202,13 @@ function drawGoetia(t){
   // Six beats per circuit: wings mantle at each corner, a foot lifts
   // between corners. He never leaves his place.
   const S = Math.max(3, Math.round(3.2*L.k));
-  const half = T27/2;
-  const beat = Math.floor(t/half);
-  const phase = idle || finished ? -1 : beat % 6;
-  const spread = !idle && !finished && (flying || phase % 2 === 0);
-  const footSide = (beat >> 1) % 2;                                // alternates each foot-beat
+  const subT = t % T27;
+  const spread = !idle && !finished && (flying || subT < 0.45);    // mantle AT the corner, fold promptly
+  const liftFeet = !idle && !finished && !spread && Math.abs(subT - T27/2) < 0.3;  // a step at the midpoint
+  const footSide = Math.floor(t/T27) % 2;
   const map = spread ? GOETIA_CROW_OPEN : GOETIA_CROW;
   const oxOff = spread ? -7*S : 0;                                 // eyes align across poses
   const midCol = spread ? 13 : 6;
-  const liftFeet = !idle && !finished && !spread && phase >= 0 && phase % 2 === 1;
   for (let y = 0; y < map.length; y++)
     for (let x = 0; x < map[y].length; x++){
       const ch = map[y][x];
@@ -3205,27 +3235,39 @@ function drawGoetia(t){
     ctx.strokeStyle = "#1a2a1e";
     ctx.lineWidth = 1;
     for (let leg = -1; leg <= 1; leg++){
-      const lx = bx + dxn*leg*2.4*kk, ly = by + dyn*leg*2.4*kk;
+      const lx = bx + dxn*leg*3.2*kk, ly = by + dyn*leg*3.2*kk;
       const side = (leg + step) % 2 ? 1 : -1;
       ctx.beginPath();
       ctx.moveTo(lx, ly);
-      ctx.lineTo(lx + pxn*side*3.4*kk, ly + pyn*side*3.4*kk);
+      ctx.lineTo(lx + pxn*side*4.6*kk, ly + pyn*side*4.6*kk);
       ctx.stroke();
       ctx.beginPath();
       ctx.moveTo(lx, ly);
-      ctx.lineTo(lx - pxn*side*3.4*kk, ly - pyn*side*3.4*kk);
+      ctx.lineTo(lx - pxn*side*4.6*kk, ly - pyn*side*4.6*kk);
       ctx.stroke();
     }
     // carapace: iridescent green-black
     ctx.fillStyle = "#22392a";
-    ctx.beginPath(); ctx.ellipse(bx, by, 3.4*kk, 2.4*kk, Math.atan2(dyn, dxn), 0, 2*Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(bx, by, 4.8*kk, 3.4*kk, Math.atan2(dyn, dxn), 0, 2*Math.PI); ctx.fill();
     ctx.fillStyle = "#3a5c44";
-    ctx.beginPath(); ctx.ellipse(bx - dxn*0.6*kk, by - dyn*0.6*kk, 2.2*kk, 1.4*kk, Math.atan2(dyn, dxn), 0, 2*Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(bx - dxn*0.8*kk, by - dyn*0.8*kk, 3.1*kk, 2*kk, Math.atan2(dyn, dxn), 0, 2*Math.PI); ctx.fill();
     ctx.fillStyle = "#141d16";                             // the head
-    ctx.beginPath(); ctx.arc(bx + dxn*3.4*kk, by + dyn*3.4*kk, 1.3*kk, 0, 2*Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(bx + dxn*4.8*kk, by + dyn*4.8*kk, 1.9*kk, 0, 2*Math.PI); ctx.fill();
     const g81 = idle || finished ? 0 : Math.min(2, Math.floor((t % T27)/(T27/3)));
     ctx.fillStyle = "rgba(159,232,192," + (0.35 + 0.3*g81) + ")";   // the glint steps at 1/81
-    ctx.fillRect(bx - dxn*1.2*kk, by - dyn*1.2*kk, 1.2, 1.2);
+    ctx.fillRect(bx - dxn*1.6*kk, by - dyn*1.6*kk, 1.8, 1.8);
+  }
+
+  // when the whole stone is produced, magic bursts from the conjurer
+  if (flying){
+    const q = (t % 60)/0.6;
+    const cxd = L.demonX + oxOff + (spread ? 13 : 8.5)*S, cyd = L.demonY + 8*S;
+    ctx.strokeStyle = "rgba(210,190,255," + (0.55*(1 - q)) + ")";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cxd, cyd, (14 + 48*q)*L.k, 0, 2*Math.PI); ctx.stroke();
+    ctx.strokeStyle = "rgba(191,232,255," + (0.4*(1 - q)) + ")";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(cxd, cyd, (6 + 30*q)*L.k, 0, 2*Math.PI); ctx.stroke();
   }
 
   // the eye gathers with each point, and FLASHES as each one lands
