@@ -23,6 +23,7 @@
     position: absolute;
     top: 0;
     left: 0;
+    touch-action: none; /* we own all gestures; stops browser drag-hijack/pointercancel */
   }
   #canvasStatic { z-index: 1; }
   #canvasAnim { z-index: 2; }
@@ -45,16 +46,16 @@
   .ui-row {
     display: flex;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
   }
 
   /* 48dp minimum touch targets (Material guidelines) */
   #ui button {
-    min-width: 48px;
+    min-width: 46px;
     min-height: 48px;
-    padding: 12px 20px;
-    font-size: 16px;
+    padding: 12px 13px;
+    font-size: 15px;
     font-weight: 600;
     border-radius: 8px;
     border: none;
@@ -70,7 +71,8 @@
 
   /* BUTTON COLORS */
   #btnReset  { background:#e03131; }
-  #btnMode   { background:#5b3fd6; }
+  #btnMenu   { background:#008b8b; }
+  #btnPlay   { background:#0074ff; min-width: 110px; }
 
   #ui button.pulse {
     box-shadow: 0 0 16px rgba(255,255,255,0.6);
@@ -92,6 +94,154 @@
     display: none;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   }
+  /* Menu panel */
+  #menu {
+    position: fixed;
+    top: 46%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(340px, 90vw);
+    max-height: 76vh;
+    overflow-y: auto;
+    background: #0a0f14;
+    border: 1.5px solid rgba(0,191,255,0.6);
+    border-radius: 12px;
+    padding: 16px;
+    z-index: 40;
+    display: none;
+    font-family: monospace;
+    color: #c7d3da;
+  }
+  #menu .set-title { font-size: 12px; letter-spacing: 0.3em; color: rgba(0,191,255,0.7); margin: 10px 0; text-align: center; }
+  .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .menu-grid button {
+    background: #15222c; border: 1px solid rgba(0,191,255,0.3); color: #c7d3da;
+    border-radius: 8px; padding: 10px 2px; font-size: 13px; font-family: monospace;
+    min-height: 44px; cursor: pointer;
+  }
+  .menu-grid button.active { background: #008b8b; color: white; border-color: transparent; }
+  .menu-grid button.disabled { opacity: 0.35; }
+  #menu .set-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 14px; padding: 8px 2px; cursor: pointer;
+  }
+  #menu input[type="checkbox"] { width: 22px; height: 22px; accent-color: #008b8b; }
+  #menu .tone-btn {
+    background: #15222c; border: 1px solid rgba(0,191,255,0.3); color: #c7d3da;
+    border-radius: 8px; padding: 8px 6px; min-width: 66px; min-height: 40px;
+    font-family: monospace; font-size: 12px; cursor: pointer;
+  }
+  #menu .tone-btn.on { background: #008b8b; color: white; border-color: transparent; }
+  #menu .fe-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+  #menu .fe-row button { border: none; border-radius: 8px; padding: 10px 18px;
+    font-weight: 600; color: white; min-height: 44px; cursor: pointer; background: #008b8b; }
+  #menuDefault { background: #555 !important; }
+
+  /* Custom duration row: CUSTOM button + minute stepper */
+  .custom-row { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-bottom: 14px; }
+  #btnCustom { background: #15222c; border: 1px solid rgba(0,191,255,0.3); color: #c7d3da;
+    border-radius: 8px; padding: 10px 2px; font-size: 13px; font-family: monospace;
+    min-height: 44px; cursor: pointer; }
+  #btnCustom.active { background: #008b8b; color: white; border-color: transparent; }
+  #btnCustom.disabled { opacity: 0.35; }
+  .stepper { display: flex; border: 1px solid rgba(0,191,255,0.3); border-radius: 8px;
+    overflow: hidden; background: #0e161d; }
+  .stepper button { width: 52px; border: none; background: #15222c; color: #9fd8ea;
+    font-size: 20px; font-family: monospace; cursor: pointer; }
+  .stepper .val { flex: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 15px; color: white; cursor: pointer; }
+  .stepper.dim { opacity: 0.45; }
+
+  /* Sound: mute bar + volume grid */
+  #muteBar { display: flex; width: 100%; align-items: center; justify-content: center; gap: 10px;
+    min-height: 46px; border-radius: 8px; margin-bottom: 8px; box-sizing: border-box;
+    border: 1px solid rgba(0,191,255,0.3); background: #15222c; color: #c7d3da;
+    font-size: 13px; letter-spacing: 0.15em; font-family: monospace; cursor: pointer; }
+  #muteBar.on { background: #7a4a00; border-color: rgba(255,180,60,0.8); color: #ffd9a0;
+    box-shadow: 0 0 12px rgba(255,160,0,0.35); }
+  #menuTones.muted .set-row { opacity: 0.35; }
+
+  /* Custom time keypad */
+  #custPad { position: fixed; top: 44%; left: 50%; transform: translate(-50%, -50%);
+    width: min(300px, 86vw); background: #0a0f14; border: 1.5px solid rgba(0,191,255,0.6);
+    border-radius: 12px; padding: 18px; z-index: 60; display: none;
+    font-family: monospace; color: #c7d3da; }
+  #custPad .cp-val { text-align: center; font-size: 42px; color: white; min-height: 50px; }
+  #custPad .cp-val span { font-size: 16px; color: #7c8a94; }
+  #custPad .cp-stop { text-align: center; font-size: 14px; margin: 4px 0 14px; color: #7c8a94; }
+  #custPad .cp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  #custPad .cp-grid button { background: #15222c; border: 1px solid rgba(0,191,255,0.3);
+    color: #c7d3da; border-radius: 8px; min-height: 50px; font-size: 20px;
+    font-family: monospace; cursor: pointer; }
+  #custPad .cp-grid button.fn { font-size: 14px; color: #9fd8ea; }
+  #custPad .fe-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  #custPad .fe-row button { border: none; border-radius: 8px; padding: 10px 18px;
+    font-weight: 600; color: white; min-height: 44px; cursor: pointer; font-family: monospace; }
+  #cpSet { background: #008b8b; } #cpSet.dim { opacity: 0.4; }
+  #cpCancel { background: #555; }
+  #custPad .cp-hint { text-align: center; font-size: 11px; color: #5a6a75; margin-top: 10px; }
+
+  /* Tone settings dialog (unused shell kept minimal) */
+  #settings {
+    position: fixed;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(300px, 84vw);
+    background: #0a0f14;
+    border: 1.5px solid rgba(0,191,255,0.6);
+    border-radius: 12px;
+    padding: 16px;
+    z-index: 40;
+    display: none;
+    font-family: monospace;
+    color: #c7d3da;
+  }
+  #settings .set-title { font-size: 12px; letter-spacing: 0.3em; color: rgba(0,191,255,0.7); margin-bottom: 12px; text-align: center; }
+  #settings .set-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 14px; padding: 10px 2px; cursor: pointer;
+  }
+  #settings input[type="checkbox"] { width: 22px; height: 22px; accent-color: #008b8b; }
+  #settings .fe-row { display: flex; justify-content: flex-end; margin-top: 10px; }
+  #settings button { border: none; border-radius: 8px; padding: 10px 18px;
+    font-weight: 600; color: white; min-height: 44px; cursor: pointer; background: #008b8b; }
+
+  /* FRAME box text editor */
+  #frameEdit {
+    position: fixed;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(320px, 86vw);
+    background: #0a0f14;
+    border: 1.5px solid rgba(0,191,255,0.6);
+    border-radius: 12px;
+    padding: 14px;
+    z-index: 40;
+    display: none;
+    font-family: monospace;
+  }
+  #frameEdit textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background: black;
+    color: #c7d3da;
+    border: 1px solid rgba(0,191,255,0.35);
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 14px;
+    padding: 8px;
+    resize: none;
+  }
+  #frameEdit .fe-row { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; }
+  #frameEdit button {
+    border: none; border-radius: 8px; padding: 10px 18px;
+    font-weight: 600; color: white; min-height: 44px; cursor: pointer;
+  }
+  #feSave { background: #008b8b; }
+  #feCancel { background: #555; }
+
   #installPrompt button {
     background: white;
     color: #0074ff;
@@ -115,10 +265,54 @@
   <button id="dismissBtn" style="background:#666;">Not now</button>
 </div>
 
+<div id="menu">
+  <div class="set-title">T I M E R</div>
+  <div class="menu-grid" id="menuViews"></div>
+  <div class="set-title">D U R A T I O N</div>
+  <div class="menu-grid" id="menuDur" style="margin-bottom:8px"></div>
+  <div class="custom-row">
+    <button id="btnCustom">CUSTOM</button>
+    <div class="stepper" id="custStep">
+      <button id="custMinus">&minus;</button>
+      <div class="val" id="custVal">20 MIN</div>
+      <button id="custPlus">+</button>
+    </div>
+  </div>
+  <div class="set-title">S O U N D</div>
+  <button id="muteBar">&#128266;&nbsp; MUTE</button>
+  <div class="menu-grid" id="menuVol"></div>
+  <div class="set-title">T O N E S</div>
+  <div id="menuTones"></div>
+  <div class="fe-row"><button id="menuDefault">DEFAULT</button><button id="menuClose">CLOSE</button></div>
+</div>
+
+<div id="frameEdit">
+  <textarea id="frameEditText" rows="3" maxlength="140"></textarea>
+  <div class="fe-row">
+    <button id="feCancel">CANCEL</button>
+    <button id="feSave">SAVE</button>
+  </div>
+</div>
+
+<div id="custPad">
+  <div class="set-title">C U S T O M &nbsp; T I M E</div>
+  <div class="cp-val"><span id="cpNum">20</span> <span>MIN</span></div>
+  <div class="cp-stop" id="cpStop"></div>
+  <div class="cp-grid" id="cpGrid">
+    <button>1</button><button>2</button><button>3</button>
+    <button>4</button><button>5</button><button>6</button>
+    <button>7</button><button>8</button><button>9</button>
+    <button class="fn" id="cpClr">CLR</button><button>0</button><button class="fn" id="cpBack">&#9003;</button>
+  </div>
+  <div class="fe-row"><button id="cpCancel">CANCEL</button><button id="cpSet">SET</button></div>
+  <div class="cp-hint">1 &ndash; 243 minutes</div>
+</div>
+
 <div id="ui">
   <div class="ui-row" id="uiPrimary">
+    <button id="btnMenu">MENU</button>
+    <button id="btnPlay">START</button>
     <button id="btnReset">RESET</button>
-    <button id="btnMode">27-MIN</button>
   </div>
 </div>
 
@@ -126,6 +320,8 @@
 /* ---------- CONFIG ---------- */
 const numDials = 7;
 let timeMode = 0; // 0=27-min, 1=54-min, 2=81-min
+let viewMode = 0; // 0=rings, 1=septagram, 2=abacus, 3=fractal
+const VIEW_NAMES = ["RINGS", "STAR", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "SEPT", "DREAM", "GOETIA", "FRAME", "GOAL"];
 
 const dotsPerEdge = [1,2];
 const baseIntervals = [4860,1620,540,180,60,20,20/3];
@@ -144,7 +340,45 @@ let centerColor=[], centerSize=[], glowAlpha=[];
 let running=false, finished=false;
 let startMs=0, pauseMs=0;
 let lastBeepMinute = 0;
+let lastToneIdx = {};
+const TONE_DEFS = [
+  { id: 't1620', label: '27',   interval: 1620 },
+  { id: 't540',  label: '9',    interval: 540 },
+  { id: 't180',  label: '3',    interval: 180 },
+  { id: 't60',   label: '1',    interval: 60 },
+  { id: 't20',   label: '1/3',  interval: 20 },
+  { id: 't6',    label: '1/9',  interval: 60/9 },
+  { id: 't2',    label: '1/27', interval: 60/27 },
+];
+const TONE_OPTS = [
+  { name: 'OFF' },
+  { name: 'LOW',  freq: 330 },
+  { name: 'MID',  freq: 440 },
+  { name: 'HIGH', freq: 660 },
+  { name: 'L>M',   seq: [330, 440] },
+  { name: 'M>H',   seq: [440, 660] },
+  { name: 'L>M>H', seq: [330, 440, 660] },
+  { name: 'L~M',   steps: [330, 440] },
+  { name: 'M~H',   steps: [440, 660] },
+  { name: 'L~M~H', steps: [330, 440, 660] },
+];
+let toneSel = { t180: 2 }; // default: the classic 3-minute mid tone
+let toneVoice = {};         // per interval: 0 bell / 1 marimba / 2 organ
 let timerStr="0000:000₃";
+let overtimeStr="";
+
+/* Sound + custom duration state */
+let muted = false;                    // salvationMute: silence everything, settings kept
+let volSel = 2;                       // salvationVol: 0 LOW / 1 MED / 2 HIGH
+const VOL_LEVELS = [0.3, 0.6, 1.0];
+let customMins = 20;                  // salvationCustom: minutes for timeMode 3
+try {
+  muted = localStorage.getItem('salvationMute') === "1";
+  const v = parseInt(localStorage.getItem('salvationVol'), 10);
+  if (v >= 0 && v <= 2) volSel = v;
+  const c = parseInt(localStorage.getItem('salvationCustom'), 10);
+  if (c >= 1 && c <= 243) customMins = c;
+} catch(e) {}
 let overtimeStart=0; // When overtime counting began
 
 /* Wake Lock */
@@ -163,7 +397,8 @@ let lastFrameTime=0;
 
 /* BUTTONS */
 const btnReset=document.getElementById("btnReset");
-const btnMode=document.getElementById("btnMode");
+const btnMenu=document.getElementById("btnMenu");
+const btnPlay=document.getElementById("btnPlay");
 
 /* ---------- HAPTICS (Material-style patterns) ---------- */
 const HAPTIC_PATTERNS = {
@@ -245,47 +480,138 @@ function clearTimerNotification(){
   });
 }
 
-/* ---------- BEEP ---------- */
-function playBeep(){
+/* ---------- AUDIO (one shared context; browsers cap live contexts) ---------- */
+let audioCtx = null, audioBus = null, masterVol = null;
+function getAudio(){
   try {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    if (!audioCtx){
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      audioBus = audioCtx.createDynamicsCompressor(); // headroom for chords
+      masterVol = audioCtx.createGain();              // LOW / MED / HIGH
+      masterVol.gain.value = VOL_LEVELS[volSel];
+      audioBus.connect(masterVol);
+      masterVol.connect(audioCtx.destination);
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  } catch (err) { return null; }
+}
+function setVolume(v){
+  volSel = v;
+  try { localStorage.setItem('salvationVol', String(v)); } catch(e) {}
+  if (masterVol) masterVol.gain.setTargetAtTime(VOL_LEVELS[v], audioCtx.currentTime, 0.03);
+}
+
+/* ---------- VOICES: bell / marimba / organ, additive synthesis ---------- */
+const VOICES = ["BELL", "MARIMBA", "ORGAN", "E.PIANO"];
+function playVoice(freq, soft, voice){
+  if (muted) return;
+  try {
+    const ctx = getAudio();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const base = soft ? 0.09 : 0.18;
+    const strike = (f, g, dur) => {
+      const o = ctx.createOscillator(), gn = ctx.createGain();
+      o.connect(gn); gn.connect(audioBus);
+      o.type = 'sine'; o.frequency.value = f;
+      gn.gain.setValueAtTime(0.0001, now);
+      gn.gain.exponentialRampToValueAtTime(g, now + 0.012);
+      gn.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+      gn.gain.linearRampToValueAtTime(0, now + dur + 0.02);
+      o.start(now); o.stop(now + dur + 0.06);
+    };
+    if (voice === 1){          // MARIMBA: woody strike, 1:4 partial, short
+      const dur = soft ? 0.15 : 0.3;
+      strike(freq,      base,       dur);
+      strike(freq*4,    base*0.35,  dur*0.45);
+      strike(freq*9.2,  base*0.1,   0.06);
+    } else if (voice === 2){   // ORGAN: sustained drawbars, soft release
+      const dur = soft ? 0.22 : 0.5;
+      [[freq,1],[freq*2,0.45],[freq*3,0.25]].forEach(([f,m]) => {
+        const o = ctx.createOscillator(), gn = ctx.createGain();
+        o.connect(gn); gn.connect(audioBus);
+        o.type = 'sine'; o.frequency.value = f;
+        gn.gain.setValueAtTime(0.0001, now);
+        gn.gain.exponentialRampToValueAtTime(base*m, now + 0.04);
+        gn.gain.setValueAtTime(base*m, now + dur - 0.08);
+        gn.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+        gn.gain.linearRampToValueAtTime(0, now + dur + 0.02);
+        o.start(now); o.stop(now + dur + 0.06);
+      });
+    } else if (voice === 3){   // E.PIANO: round warm body (recipe A) - no tine
+      const k = soft ? 0.4 : 1;
+      const ep = (ratio, g, atk, half, out, det) => {
+        const o = ctx.createOscillator(), gn = ctx.createGain();
+        o.connect(gn); gn.connect(audioBus);
+        o.type = 'sine'; o.frequency.value = freq * ratio * (det || 1);
+        gn.gain.setValueAtTime(0.0001, now);
+        gn.gain.exponentialRampToValueAtTime(g, now + atk);          // slow bloom, no pluck
+        gn.gain.exponentialRampToValueAtTime(g * 0.08, now + half);  // warm ring-down
+        gn.gain.exponentialRampToValueAtTime(0.0001, now + out);     // fade to silence
+        gn.gain.linearRampToValueAtTime(0, now + out + 0.02);
+        o.start(now); o.stop(now + out + 0.06);
+      };
+      ep(1, base,        0.020, 1.4*k, 1.9*k, 1);       // body
+      ep(1, base*0.45,   0.025, 1.4*k, 1.9*k, 1.0025);  // detuned pair -> chorus warmth
+      ep(2, base*0.13,   0.030, 0.7*k, 1.0*k, 1);       // soft 2nd harmonic
+    } else {                   // BELL: fundamental + octave + shimmer, long tail
+      const dur = soft ? 0.3 : 0.7;
+      strike(freq,       base,      dur);
+      strike(freq*2,     base*0.4,  dur*0.6);
+      strike(freq*2.76,  base*0.14, dur*0.4);
+    }
+  } catch (err) {}
+}
+
+/* ---------- BEEP ---------- */
+function playBeep(freq, soft){
+  if (muted) return;
+  try {
+    const audioContext = getAudio();
+    if (!audioContext) return;
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();
     osc.connect(gain);
-    gain.connect(audioContext.destination);
-    osc.frequency.value = 440;
+    gain.connect(audioBus);
+    osc.frequency.value = freq || 440;
     osc.type = 'sine';
     const now = audioContext.currentTime;
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.2, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+    const g = soft ? 0.1 : 0.2, dur = soft ? 0.12 : 0.3;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(g, now + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    gain.gain.linearRampToValueAtTime(0, now + dur + 0.02);
     osc.start(now);
-    osc.stop(now + 0.3);
+    osc.stop(now + dur + 0.06);
   } catch(err) {}
 }
 
 /* ---------- COMPLETION TONE ---------- */
 function playCompletionTone(){
+  if (muted) return;
   try {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const audioContext = getAudio();
+    if (!audioContext) return;
     
     // Create a pleasant two-tone chime
     const playTone = (freq, startTime, duration) => {
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
-      
+
       oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
+      gainNode.connect(audioBus);
+
       oscillator.frequency.value = freq;
       oscillator.type = 'sine';
-      
-      gainNode.gain.setValueAtTime(0, startTime);
-      gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.01);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-      
+
+      gainNode.gain.setValueAtTime(0.0001, startTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.3, startTime + 0.015);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+      gainNode.gain.linearRampToValueAtTime(0, startTime + duration + 0.02);
+
       oscillator.start(startTime);
-      oscillator.stop(startTime + duration);
+      oscillator.stop(startTime + duration + 0.06);
     };
     
     const now = audioContext.currentTime;
@@ -300,19 +626,30 @@ function playCompletionTone(){
 
 /* ---------- RESPONSIVE SCALING ---------- */
 let needsStaticRedraw = true;
+let viewW = window.innerWidth, viewH = window.innerHeight; // logical (CSS px)
 
 function resizeCanvas(){
   const w = window.innerWidth;
   const h = window.innerHeight;
-  
-  canvasStatic.width = canvasAnim.width = w;
-  canvasStatic.height = canvasAnim.height = h;
+  viewW = w; viewH = h;
+
+  // Render the backing buffer at device resolution so the figure stays
+  // crisp on high-DPI screens (the pixelation seen during pans); keep all
+  // drawing math in CSS pixels via a base DPR transform. Capped at 2 to
+  // bound fill cost at 30fps.
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvasStatic.width  = canvasAnim.width  = Math.round(w * dpr);
+  canvasStatic.height = canvasAnim.height = Math.round(h * dpr);
+  canvasStatic.style.width  = canvasAnim.style.width  = w + "px";
+  canvasStatic.style.height = canvasAnim.style.height = h + "px";
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctxStatic.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   scaleF = Math.min(
-    (h * 0.37) / WORLD_RADIUS,
-    (w * 0.48) / WORLD_RADIUS
+    (h * 0.33) / WORLD_RADIUS,
+    (w * 0.45) / WORLD_RADIUS
   );
-  
+
   needsStaticRedraw = true;
 }
 window.addEventListener("resize", resizeCanvas);
@@ -323,14 +660,15 @@ function updateTables(){
   const m = timeMode === 0 ? 3 : 1;
   intervals = baseIntervals.map(v=>v/m);
   ticks     = baseTicks.map(v=>v/m);
-  totalCycle = [27*60, 54*60, 81*60][timeMode];
+  // timeMode 3 = custom: same ladder as 54/81, the stop line moves
+  totalCycle = timeMode === 3 ? customMins*60 : [27*60, 54*60, 81*60][timeMode];
 }
 
 /* ---------- UTILS ---------- */
 function worldToScreen(x,y){
   return {
-    x: x*scaleF + canvasAnim.width/2,
-    y: -y*scaleF + canvasAnim.height/2 - 40
+    x: x*scaleF + viewW/2,
+    y: -y*scaleF + viewH/2 - 40
   };
 }
 
@@ -371,7 +709,7 @@ function setupGeometry(){
 
 function setupTriangles(){
   triVerts=[];
-  const h=1.35, w=0.82; // slender blades pointing outward, not squat wedges
+  const h=1.0, w=1.15;
 
   for (let i=0;i<numDials;i++){
     const C=dialPos[i];
@@ -446,19 +784,31 @@ function updateOvertimeText(el){
   // Fixed overtime tick rates (same for both modes)
   const overtimeTicks = [81*60, 27*60, 9*60, 3*60, 60]; // 81min, 27min, 9min, 3min, 1min
   const digits = overtimeTicks.map(T => Math.floor(el/T) % 3).join("");
-  timerStr = "+" + digits + "₃";
+  overtimeStr = "+" + digits + "₃";
+}
+
+function setFinalTimerText(){
+  // On completion the readout rolls over to the true ternary of the
+  // whole cycle: 27 -> 1000, 54 -> 2000, 81 -> 10000.
+  let mins = Math.round(totalCycle / 60), m = "";
+  while (mins > 0){ m = (mins % 3) + m; mins = Math.floor(mins / 3); }
+  const width = timeMode === 0 ? 3 : 4;
+  while (m.length < width) m = "0" + m;
+  timerStr = m + ":000₃";
 }
 
 /* ---------- CLOCK CONTROL ---------- */
 function startClock(){
   if (running) return;
   if (finished) resetClock();
+  if (pauseMs === 0) dreamVariant = Math.floor(Math.random()*9); // a new dream each session
   startMs = pauseMs>0 ? performance.now()-pauseMs : performance.now();
   running=true;
+  getAudio(); // unlock audio within the user gesture
   requestWakeLock();
   showTimerNotification(
     'Salvation timer running',
-    ["27", "54", "81"][timeMode] + '-minute cycle in progress',
+    (timeMode === 3 ? customMins : [27, 54, 81][timeMode]) + '-minute cycle in progress',
     [{action:'pause', title:'Pause'}, {action:'reset', title:'Reset'}]
   );
 }
@@ -476,10 +826,10 @@ function pauseClock(){
 function resetClock(){
   running=false; finished=false;
   pauseMs=0; startMs=performance.now();
-  overtimeStart=0; lastBeepMinute=0;
+  overtimeStart=0; lastBeepMinute=0; lastToneIdx={}; overtimeStr="";
   buildLedPaths();
   centerColor=Array(numDials).fill("white");
-  centerSize =Array(numDials).fill(6);
+  centerSize =Array(numDials).fill(8);
   glowAlpha =Array(numDials).fill(0);
   updateTimerText(0);
   needsStaticRedraw = true;
@@ -490,7 +840,7 @@ function finishClock(){
   finished=true;
   running=false;
   overtimeStart = startMs + totalCycle * 1000;
-  updateTimerText(totalCycle);
+  setFinalTimerText();
   playCompletionTone();
   haptic('heavy');
   releaseWakeLock();
@@ -501,46 +851,2433 @@ function finishClock(){
   );
 }
 
-function toggleMode(){
-  if (running || finished) return;
-  timeMode = (timeMode + 1) % 3;
-  btnMode.textContent = ["27-MIN", "54-MIN", "81-MIN"][timeMode];
+function setDuration(m){
+  if (running || finished || pauseMs > 0) return false; // must RESET first
+  timeMode = m;
   updateTables();
   resetClock();
   needsStaticRedraw = true;
+  return true;
+}
+
+
+/* ---------- ALTERNATE VIEWS (rings / abacus / fractal) ---------- */
+/* All views read the same engine: posIndex(i,t) is digit i (1..3), dial 0 slowest. */
+
+const RING_OUTER = 6, RING_STEP = 0.45;
+
+function digitColor(pos){
+  if (!running && !finished && pauseMs === 0) return "white"; // idle, like the star view
+  return pos===1 ? "rgb(0,120,255)" :
+         pos===2 ? "rgb(255,160,0)" :
+                   "rgb(255,70,70)";
+}
+
+/* --- rings: ternary orrery, outer ring = slowest digit --- */
+function drawRingsStatic(){
+  const c = worldToScreen(0,0);
+  // rings are drawn on the anim layer now (their color shifts continuously);
+  // only the third-boundary spokes stay static
+  // third boundaries, each colored as the third it opens: blue / orange / red
+  ctxStatic.lineWidth = 2;
+  const rIn = (RING_OUTER - (ringCount()-1)*RING_STEP)*scaleF;
+  const rOut = (RING_OUTER + 0.25)*scaleF;
+  for (let k=0;k<3;k++){
+    const ang = Math.PI/2 - k*2*Math.PI/3;
+    ctxStatic.strokeStyle = withA(WEAVE_COL[k], "0.6");
+    ctxStatic.beginPath();
+    ctxStatic.moveTo(c.x + Math.cos(ang)*rIn,  c.y - Math.sin(ang)*rIn);
+    ctxStatic.lineTo(c.x + Math.cos(ang)*rOut, c.y - Math.sin(ang)*rOut);
+    ctxStatic.stroke();
+  }
+}
+
+// state colors in HSL so transitions travel the hue wheel, not through gray
+const RING_HSL = [[212,100,50],[38,100,50],[0,100,64]]; // blue, orange, red
+function ringLerp(pos, frac){
+  const a = RING_HSL[pos-1], b = RING_HSL[pos % 3];
+  let dh = b[0] - a[0];
+  if (dh > 180) dh -= 360;
+  if (dh < -180) dh += 360;
+  const h = (a[0] + dh*frac + 360) % 360;
+  const sPct = a[1] + (b[1]-a[1])*frac;
+  const l = a[2] + (b[2]-a[2])*frac;
+  return `hsl(${h.toFixed(1)},${sPct.toFixed(1)}%,${l.toFixed(1)}%)`;
+}
+
+function ringCount(){
+  // 27-min mode drops the 1/81 ring so rings pair 1:1 with the digits
+  return timeMode === 0 ? numDials - 1 : numDials;
+}
+
+function drawRingDots(t){
+  const c = worldToScreen(0,0);
+  const idle = !running && !finished && pauseMs === 0;
+  for (let i=0;i<ringCount();i++){
+    const T = ticks[i];
+    const pos = posIndex(i,t);
+    const frac = (t % T) / T;
+    const col = idle ? "white" : ringLerp(pos, frac);
+    const r = (RING_OUTER - i*RING_STEP)*scaleF;
+    // the ring itself carries the same gradually-shifting color
+    ctx.strokeStyle = idle ? "rgba(0,191,255,0.85)" : col;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI*2); ctx.stroke();
+    const total = ((pos-1) + frac) / 3;       // 0..1 around the ring, clockwise from top
+    const ang = Math.PI/2 - total*2*Math.PI;
+    const dx = c.x + Math.cos(ang)*r, dy = c.y - Math.sin(ang)*r;
+    // burst: a brief white-cored glow the instant the dot enters a new
+    // third (i.e. changes color), like the WEAVE traveler
+    const pulse = running ? Math.max(0, 1 - frac/0.2) : 0;
+    if (pulse > 0.01){
+      const gc = WEAVE_COL[pos-1];
+      const R = 7 + 22*pulse;
+      const g = ctx.createRadialGradient(dx,dy,0, dx,dy, R);
+      g.addColorStop(0,   `rgba(255,255,255,${(0.9*pulse).toFixed(3)})`);
+      g.addColorStop(0.4, withA(gc, (0.5*pulse).toFixed(3)));
+      g.addColorStop(1,   withA(gc, "0"));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(dx,dy, R, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(dx,dy, 6, 0, Math.PI*2); ctx.fill();
+    if (pulse > 0.01){
+      ctx.fillStyle = `rgba(255,255,255,${pulse.toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(dx,dy, 3, 0, Math.PI*2); ctx.fill();
+    }
+  }
+}
+
+/* --- abacus: 7 rows of 3 cells, top row = slowest digit --- */
+const ABACUS_ROWS = 7;   // fixed register: 27/9/3/1 minutes + 1/3, 1/9, 1/27
+const ABACUS_LABELS = ["27","9","3","1","1/3","1/9","1/27"];
+function abacusMinRows(){ return 4; }
+function abacusRowDial(i){ // -1 = the 27s place in 27-min mode (rests at 0)
+  return timeMode === 0 ? (i === 0 ? -1 : i - 1) : i;
+}
+function abacusLayout(){
+  const w = viewW, h = viewH;
+  const gap = 6, sectionGap = 40;
+  const R = ABACUS_ROWS;
+  const cell = Math.max(18, Math.min(44,
+    Math.floor(Math.min((w*0.7 - 2*gap)/3, (h - 330 - (R-1)*gap - sectionGap)/R))));
+  const gridW = 3*cell + 2*gap;
+  const gridH = R*cell + (R-1)*gap + sectionGap;
+  return { cell, gap, sectionGap, gridW, gridH, rows: R,
+           left: (w - gridW)/2,
+           sideX: (w - gridW)/2 + gridW + 48,
+           top: Math.max(48, (h - 230 - gridH)/2) };
+}
+function abacusRowY(L, i){
+  return L.top + i*(L.cell + L.gap) + (i >= abacusMinRows() ? L.sectionGap : 0);
+}
+function abacusSideY(L, k){
+  return L.top + L.gridH/2 + (k - 1) * 46;
+}
+
+function drawAbacusStatic(){
+  const L = abacusLayout();
+  const mr = abacusMinRows();
+  const bx0 = L.left - 46, bx1 = L.left + L.gridW + 92;
+  const by0 = L.top - 44, by1 = L.top + L.gridH + 14;
+  // faint scanlines over the register area (CRT hint)
+  ctxStatic.strokeStyle = "rgba(0,191,255,0.035)";
+  ctxStatic.lineWidth = 1;
+  for (let sy = by0 + 4; sy < by1; sy += 3){
+    ctxStatic.beginPath();
+    ctxStatic.moveTo(bx0 + 4, sy);
+    ctxStatic.lineTo(bx1 - 4, sy);
+    ctxStatic.stroke();
+  }
+  // recessed instrument slots + row labels
+  for (let i=0;i<L.rows;i++){
+    const y = abacusRowY(L, i);
+    for (let k=0;k<3;k++){
+      const x = L.left + k*(L.cell + L.gap);
+      const cx = x + L.cell/2, cy = y + L.cell/2;
+      ctxStatic.fillStyle = "rgba(0,191,255,0.04)";
+      ctxStatic.strokeStyle = "rgba(0,191,255,0.28)";
+      ctxStatic.lineWidth = 1;
+      ctxStatic.beginPath();
+      ctxStatic.arc(cx, cy, L.cell*0.42, 0, Math.PI*2);
+      ctxStatic.fill(); ctxStatic.stroke();
+    }
+    ctxStatic.fillStyle = "rgba(0,191,255,0.5)";
+    ctxStatic.font = "10px monospace";
+    ctxStatic.textAlign = "right";
+    ctxStatic.fillText(ABACUS_LABELS[i], L.left - 10, y + L.cell/2 + 3);
+  }
+  // section captions + column key
+  ctxStatic.textAlign = "center";
+  ctxStatic.fillStyle = "rgba(120,150,170,0.5)";
+  ctxStatic.font = "11px monospace";
+  ctxStatic.fillText("M I N U T E S", viewW/2, L.top - 12);
+  ctxStatic.fillText("F R A C T I O N S", viewW/2, abacusRowY(L, mr) - 12);
+  ctxStatic.fillStyle = "rgba(0,191,255,0.4)";
+  ctxStatic.font = "10px monospace";
+  for (let k=0;k<3;k++){
+    ctxStatic.fillText(String(k), L.left + k*(L.cell+L.gap) + L.cell/2, L.top - 30);
+  }
+  // mode completion lamps off to the side: 27 / 54 / 81
+  const MODE_LABELS = ["27","54","81"];
+  for (let k=0;k<3;k++){
+    const cy = abacusSideY(L, k);
+    ctxStatic.strokeStyle = "rgba(0,191,255,0.28)";
+    ctxStatic.lineWidth = 1;
+    ctxStatic.beginPath();
+    ctxStatic.arc(L.sideX, cy, 9, 0, Math.PI*2);
+    ctxStatic.stroke();
+    ctxStatic.fillStyle = "rgba(0,191,255,0.5)";
+    ctxStatic.font = "10px monospace";
+    ctxStatic.textAlign = "left";
+    ctxStatic.fillText(MODE_LABELS[k], L.sideX + 15, cy + 3);
+  }
+  ctxStatic.textAlign = "center";
+  // corner brackets framing the register
+  ctxStatic.strokeStyle = "rgba(0,191,255,0.5)";
+  ctxStatic.lineWidth = 1.5;
+  const B = 14;
+  const bracket = (x, y, dx, dy) => {
+    ctxStatic.beginPath();
+    ctxStatic.moveTo(x + dx*B, y);
+    ctxStatic.lineTo(x, y);
+    ctxStatic.lineTo(x, y + dy*B);
+    ctxStatic.stroke();
+  };
+  bracket(bx0, by0, 1, 1); bracket(bx1, by0, -1, 1);
+  bracket(bx0, by1, 1, -1); bracket(bx1, by1, -1, -1);
+}
+
+// Jewel-lamp palette (Nostromo-style): stark white / amber / deep red
+const ABACUS_COL = ["rgb(245,242,228)", "rgb(255,170,50)", "rgb(205,36,48)"];
+function lampMix(rgb, u){ // u>0 mixes toward white (hot core); u<0 darkens (rim)
+  const m = rgb.match(/\d+/g).map(Number);
+  const f = v => Math.max(0, Math.min(255, Math.round(u >= 0 ? v+(255-v)*u : v*(1+u))));
+  return `rgb(${f(m[0])},${f(m[1])},${f(m[2])})`;
+}
+
+function drawAbacusDots(t){
+  const L = abacusLayout();
+  const idle = !running && !finished && pauseMs === 0;
+  const T27 = 60/27; // every flash decays at the 1/27-minute rate
+  const lamp = (col, row, pos, frac, still, T) => {
+    const x = L.left + col*(L.cell + L.gap), y = abacusRowY(L, row);
+    const cx = x + L.cell/2, cy = y + L.cell/2;
+    const base = idle ? "rgb(215,220,225)" : ABACUS_COL[pos-1];
+    const pulse = (running && !still) ? Math.max(0, 1 - (frac*T)/T27) : 0;
+    // generous halo around the lit lamp
+    const R = L.cell * (1.25 + 0.55*pulse);
+    const g = ctx.createRadialGradient(cx,cy,0, cx,cy,R);
+    g.addColorStop(0, withA(base, (0.4 + 0.3*pulse).toFixed(3)));
+    g.addColorStop(0.5, withA(base, (0.12 + 0.1*pulse).toFixed(3)));
+    g.addColorStop(1, withA(base, "0"));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.fill();
+    // the bulb: lit from within - hot filament center, glass rim, glint
+    const lr = L.cell * 0.34;
+    const lg = ctx.createRadialGradient(cx, cy, 0, cx, cy, lr);
+    lg.addColorStop(0,    lampMix(base, 0.92));
+    lg.addColorStop(0.35, lampMix(base, 0.5 + 0.2*pulse));
+    lg.addColorStop(0.75, base);
+    lg.addColorStop(1,    lampMix(base, -0.4));
+    ctx.fillStyle = lg;
+    ctx.beginPath(); ctx.arc(cx, cy, lr, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = lampMix(base, -0.5);
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, lr, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.beginPath();
+    ctx.ellipse(cx - lr*0.35, cy - lr*0.42, lr*0.17, lr*0.1, -0.6, 0, Math.PI*2);
+    ctx.fill();
+    // dwell arc: creeps around the bezel, a countdown to the hop
+    if (running){
+      ctx.strokeStyle = "rgba(255,255,255,0.3)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, L.cell*0.46, -Math.PI/2, -Math.PI/2 + frac*Math.PI*2);
+      ctx.stroke();
+    }
+  };
+  for (let i=0;i<ABACUS_ROWS;i++){
+    const dial = abacusRowDial(i);
+    let pos, frac;
+    if (dial < 0){
+      pos = 1;                                     // 27s place rests at 0
+      frac = Math.min(1, (finished ? totalCycle : t) / totalCycle);
+    } else {
+      pos = posIndex(dial, t);
+      frac = (t % ticks[dial]) / ticks[dial];
+    }
+    lamp(pos-1, i, pos, frac, dial < 0, dial < 0 ? totalCycle : ticks[dial]);
+  }
+  // milestone lamps: each lights the moment its mark is hit, and stays lit
+  const eNow = finished ? totalCycle : t;
+  for (let k=0;k<3;k++){
+    if (eNow < (k+1)*27*60) break;
+    const cy = abacusSideY(L, k);
+    const g = ctx.createRadialGradient(L.sideX, cy, 0, L.sideX, cy, 26);
+    g.addColorStop(0, "rgba(255,149,0,0.6)");
+    g.addColorStop(1, "rgba(255,149,0,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(L.sideX, cy, 26, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#ff9500";
+    ctx.beginPath(); ctx.arc(L.sideX, cy, 8, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+/* --- fractal: Sierpinski descent, each digit picks a sub-triangle --- */
+function fractalLayout(){
+  const w = viewW, h = viewH;
+  const S = Math.min(w*0.88, (h - 300)/0.866);
+  const triH = S*0.866;
+  const topY = Math.max(16, (h - 230 - triH)/2);
+  return {
+    A: {x: w/2,        y: topY},
+    B: {x: w/2 + S/2,  y: topY + triH},
+    C: {x: w/2 - S/2,  y: topY + triH},
+    triH, topY
+  };
+}
+
+function fractalFillColor(pos){
+  if (!running && !finished && pauseMs === 0) return "rgba(255,255,255,0.08)";
+  return pos===1 ? "rgba(0,120,255,0.16)" :
+         pos===2 ? "rgba(255,160,0,0.16)" :
+                   "rgba(255,70,70,0.16)";
+}
+
+/* Camera: starts zoomed in on the action, zooms out over the session */
+const FRACTAL_Z0 = 16; // starting zoom (frames roughly a level-4 cell)
+let fracCam = {x:0, y:0, init:false};
+let fracTrail = []; // recent leaf positions (world coords) for the motion trail
+
+function drawFractalView(t){
+  const F = fractalLayout();
+
+  // Descend the address, keeping every level
+  const levels = [];
+  let a=F.A, b=F.B, c=F.C;
+  for (let i=0;i<numDials;i++){
+    const pos = posIndex(i,t);
+    const mAB={x:(a.x+b.x)/2, y:(a.y+b.y)/2};
+    const mBC={x:(b.x+c.x)/2, y:(b.y+c.y)/2};
+    const mCA={x:(c.x+a.x)/2, y:(c.y+a.y)/2};
+    if (pos===1)      { b=mAB; c=mCA; }   // apex sub-triangle
+    else if (pos===2) { a=mAB; c=mBC; }   // right sub-triangle
+    else              { a=mCA; b=mBC; }   // left sub-triangle
+    levels.push({a,b,c,pos});
+  }
+  const leaf = {x:(a.x+b.x+c.x)/3, y:(a.y+b.y+c.y)/3};
+  const cen  = {x:(F.A.x+F.B.x+F.C.x)/3, y:(F.A.y+F.B.y+F.C.y)/3};
+
+  // Zoom out over the session, but linger deep through the middle and
+  // late regions (the bottom thirds arrive late and deserve the same
+  // close framing the top got); the full pull-back to 1x happens in the
+  // final stretch, landing exactly at cycle end
+  const f = Math.min(1, Math.max(0, t/totalCycle));
+  const Z = Math.pow(FRACTAL_Z0, Math.pow(1-f, 0.55));
+
+  // Anchor the camera to the ancestor cell that fills the view, NOT the
+  // leaf: it holds still while the dot wanders inside the frame, and
+  // glides only when that cell's digit prefix changes (a rare,
+  // deliberate scene change instead of constant leaf-chasing)
+  // ceil, not floor: the framed cell must be AT MOST screen-sized, or its
+  // apex (where the dot lives early in a cycle) gets pushed off the top
+  const k = Math.max(0, Math.min(numDials, Math.ceil(Math.log2(Z))));
+  const anc = k === 0 ? null : levels[k-1];
+  const target = anc
+    ? {x:(anc.a.x+anc.b.x+anc.c.x)/3, y:(anc.a.y+anc.b.y+anc.c.y)/3}
+    : cen;
+  if (!fracCam.init){ fracCam.x=target.x; fracCam.y=target.y; fracCam.init=true; }
+  fracCam.x += (target.x - fracCam.x)*0.05;
+  fracCam.y += (target.y - fracCam.y)*0.05;
+  const X = p => ({x:(p.x-fracCam.x)*Z + cen.x, y:(p.y-fracCam.y)*Z + cen.y});
+
+  // Address fills, big -> small, so tints stack toward "now"
+  for (const L of levels){
+    const ta=X(L.a), tb=X(L.b), tc=X(L.c);
+    ctx.fillStyle = fractalFillColor(L.pos);
+    ctx.beginPath();
+    ctx.moveTo(ta.x,ta.y); ctx.lineTo(tb.x,tb.y); ctx.lineTo(tc.x,tc.y);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // Cardinal hole: the central inverted triangle of the FRAMED region
+  // (the cell the camera is focused on, dead center). It counts how many
+  // of its three sub-regions are filled - black -> blue -> orange -> red -
+  // going red exactly as the last fills and the camera pans to the next
+  // section. anc's children are selected by posIndex(k); one full cycle
+  // of that digit == exactly how long this region stays framed.
+  const ancCell = anc || {a:F.A, b:F.B, c:F.C};
+  const posK  = posIndex(k, t);
+  const fracK = (t % ticks[k]) / ticks[k];
+  // Advance the color the instant the dot ENTERS the last (deepest) cell
+  // of the current sub-region - not when the region completes. That last
+  // cell lasts ticks[deepest]; entering it is "the last dot hitting the
+  // last triangle", so the change lands exactly there for all three.
+  const lastFrac = 1 - ticks[numDials-1] / ticks[k];
+  const stage = (posK - 1) + (fracK >= lastFrac ? 1 : 0); // 0..3
+  const holeCol = ["rgb(0,0,0)", "rgba(0,120,255,0.85)",
+                   "rgba(255,160,0,0.85)", "rgba(255,70,70,0.95)"][stage];
+  if (holeCol){
+    const hAB=X({x:(ancCell.a.x+ancCell.b.x)/2, y:(ancCell.a.y+ancCell.b.y)/2});
+    const hBC=X({x:(ancCell.b.x+ancCell.c.x)/2, y:(ancCell.b.y+ancCell.c.y)/2});
+    const hCA=X({x:(ancCell.c.x+ancCell.a.x)/2, y:(ancCell.c.y+ancCell.a.y)/2});
+    ctx.fillStyle = holeCol;
+    ctx.beginPath();
+    ctx.moveTo(hAB.x,hAB.y); ctx.lineTo(hBC.x,hBC.y); ctx.lineTo(hCA.x,hCA.y);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // Adaptive grid: subdivide only what is on-screen and big enough to see
+  const w=viewW, h=viewH;
+  const grid = (pa,pb,pc,depth) => {
+    const ta=X(pa), tb=X(pb), tc=X(pc);
+    const minX=Math.min(ta.x,tb.x,tc.x), maxX=Math.max(ta.x,tb.x,tc.x);
+    const minY=Math.min(ta.y,tb.y,tc.y), maxY=Math.max(ta.y,tb.y,tc.y);
+    if (maxX<0 || minX>w || maxY<0 || minY>h) return;
+    ctx.lineWidth = depth===0 ? 2 : 1;
+    ctx.strokeStyle = `rgba(0,191,255,${Math.max(0.12, 0.4 - depth*0.05)})`;
+    ctx.beginPath();
+    ctx.moveTo(ta.x,ta.y); ctx.lineTo(tb.x,tb.y); ctx.lineTo(tc.x,tc.y);
+    ctx.closePath(); ctx.stroke();
+    if (depth>=numDials || (maxX-minX) < 80) return;
+    const mAB={x:(pa.x+pb.x)/2, y:(pa.y+pb.y)/2};
+    const mBC={x:(pb.x+pc.x)/2, y:(pb.y+pc.y)/2};
+    const mCA={x:(pc.x+pa.x)/2, y:(pc.y+pa.y)/2};
+    grid(pa,mAB,mCA,depth+1); grid(mAB,pb,mBC,depth+1); grid(mCA,mBC,pc,depth+1);
+  };
+  grid(F.A, F.B, F.C, 0);
+
+  // Bursting traveler (WEAVE-style: bright white core + colored glow) that
+  // teleports and pulses at each stop. 27-min: hops cell-centers, colored by
+  // the cell's value. 54/81: hops the three corners of each cell in turn -
+  // top (blue), bottom-right (orange), bottom-left (red) - then the next
+  // cell's top; no separate center dot. Both hop about every 0.74s.
+  let px, py, col;
+  if (timeMode === 0){
+    const p = X(leaf);
+    px = p.x; py = p.y;
+    col = WEAVE_COL[posIndex(numDials-1, t) - 1];
+  } else {
+    const mc = X(leaf);
+    const subVal = Math.floor(t / (ticks[numDials-1]/3)) % 3;   // 0/1/2 corner
+    const raw = [X(a), X(b), X(c)][subVal];
+    // push the corner out to a minimum radius so each hop is visible
+    const MIN = 26, dx = raw.x-mc.x, dy = raw.y-mc.y, d = Math.hypot(dx,dy)||1, s = Math.max(1, MIN/d);
+    px = mc.x + dx*s; py = mc.y + dy*s;
+    col = WEAVE_COL[subVal];
+  }
+  // burst: brightest and biggest right after each teleport, easing down
+  const hopRate = timeMode === 0 ? ticks[numDials-1] : ticks[numDials-1]/3;
+  const pulse = 1 - (t % hopRate) / hopRate;          // 1 at arrival -> 0 before next hop
+  const R = 10 + 16*pulse;
+  const gr = ctx.createRadialGradient(px,py,0, px,py, R);
+  gr.addColorStop(0,   "rgba(255,255,255,0.95)");
+  gr.addColorStop(0.4, withA(col, (0.15 + 0.5*pulse).toFixed(3)));
+  gr.addColorStop(1,   withA(col, "0"));
+  ctx.fillStyle = gr;
+  ctx.beginPath(); ctx.arc(px,py, R, 0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = "white";
+  ctx.beginPath(); ctx.arc(px,py, 4.5, 0,Math.PI*2); ctx.fill();
+
+  // Mini-map (top right): the whole triangle, the framed region, and you.
+  // This is what makes the zoom legible despite the fractal's self-similarity.
+  const mmW = Math.min(112, viewW*0.25);
+  const mmX = viewW - mmW - 14, mmY = 16;
+  const sx = mmW / (F.B.x - F.C.x);
+  const M = p => ({x: mmX + (p.x - F.C.x)*sx, y: mmY + (p.y - F.topY)*sx});
+  // Inverted key map: an opaque red field with a black hole where the
+  // timer currently works. Darkening steps toward the hole preserve the
+  // three-digit hierarchy (third -> level-2 -> level-3 black).
+  const mmFill = (L, style) => {
+    const p=[M(L.a),M(L.b),M(L.c)];
+    ctx.fillStyle = style;
+    ctx.beginPath();
+    ctx.moveTo(p[0].x,p[0].y); ctx.lineTo(p[1].x,p[1].y); ctx.lineTo(p[2].x,p[2].y);
+    ctx.closePath(); ctx.fill();
+  };
+  mmFill({a:F.A, b:F.B, c:F.C}, "rgb(0,0,0)"); // opaque black field
+  // The active cell is a live digit: while the timer works inside it,
+  // it steps blue -> orange -> red (the next level's three sub-steps),
+  // then the cell moves on
+  mmFill(levels[2], digitColor(posIndex(3, t)));
+
+  // Dim red division lines over the field, down to active-cell size
+  const mmGrid = (pa,pb,pc,depth) => {
+    const ga=M(pa), gb=M(pb), gc=M(pc);
+    if (depth > 0){
+      ctx.strokeStyle = depth === 3 ? "rgba(224,72,72,0.3)" : "rgba(224,72,72,0.55)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(ga.x,ga.y); ctx.lineTo(gb.x,gb.y); ctx.lineTo(gc.x,gc.y);
+      ctx.closePath(); ctx.stroke();
+    }
+    if (depth >= 3) return;
+    const gAB={x:(pa.x+pb.x)/2, y:(pa.y+pb.y)/2};
+    const gBC={x:(pb.x+pc.x)/2, y:(pb.y+pc.y)/2};
+    const gCA={x:(pc.x+pa.x)/2, y:(pc.y+pa.y)/2};
+    mmGrid(pa,gAB,gCA,depth+1); mmGrid(gAB,pb,gBC,depth+1); mmGrid(gCA,gBC,pc,depth+1);
+  };
+  mmGrid(F.A, F.B, F.C, 0);
+
+  // Thick red frame so the black hole never merges with the page
+  // background when the active cell sits against the map's edge
+  const ma=M(F.A), mb=M(F.B), mc=M(F.C);
+  ctx.strokeStyle = "rgb(224,72,72)";
+  ctx.lineWidth = 4;
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(ma.x,ma.y); ctx.lineTo(mb.x,mb.y); ctx.lineTo(mc.x,mc.y);
+  ctx.closePath(); ctx.stroke();
+  ctx.lineJoin = "miter";
+}
+
+/* --- shared layout: where the timer text sits in each view --- */
+/* --- WHEELS: rings at the septagram vertices. Each is a rotating sweep
+   (one turn per tick, like the original wheels) whose color graduates
+   along the RINGS hue path: the sweep head is the dial's current blend,
+   and trailing behind it is the recent history of that color journey.
+   27-min mode shows six wheels (the 1/81 dial is dropped, like RINGS). --- */
+function hueAtPhase(ph){ // continuous position in the 3-state cycle, [0,3)
+  ph = ((ph % 3) + 3) % 3;
+  const idx = Math.floor(ph);
+  return ringLerp(idx + 1, ph - idx);
+}
+
+function drawSevenRings(t){
+  const idle = !running && !finished && pauseMs === 0;
+  const n = ringCount();
+  for (let i=0;i<n;i++){
+    // full septagram in 54/81; an even hexagon in 27-min (six wheels),
+    // fastest wheel at the top like the septagram's
+    let c;
+    if (n === numDials){
+      c = worldToScreen(dialPos[i].x, dialPos[i].y);
+    } else {
+      const ang = Math.PI/2 + (i+1)*2*Math.PI/n;
+      c = worldToScreen(4.5*Math.cos(ang), 4.5*Math.sin(ang));
+    }
+    const R = 1.25 * scaleF;
+    ctx.lineWidth = 0.16 * scaleF;
+    const T = ticks[i];
+    const pos = posIndex(i, t);
+    const frac = (t % T) / T;
+    if (idle){
+      ctx.strokeStyle = "rgba(0,191,255,0.85)";
+    } else if (ctx.createConicGradient){
+      // Paint-and-freeze sweep: each point of the ring keeps the color the
+      // head deposited when it passed (a gradient laid down along the arc),
+      // static until the head comes around again. The only change is AT
+      // the head, where the new color meets last tick's paint (hard edge).
+      const g = ctx.createConicGradient(-Math.PI/2, c.x, c.y); // fixed at top
+      const seg = (from, to, phOff) => {
+        const steps = Math.max(1, Math.ceil((to - from) * 8));
+        for (let k = 0; k <= steps; k++){
+          const th = from + (to - from) * k / steps;
+          g.addColorStop(Math.min(1, Math.max(0, th)),
+                         hueAtPhase((pos - 1) + th + phOff));
+        }
+      };
+      if (frac > 0.002) seg(0, frac - 0.001, 0); // swept this tick
+      seg(frac, 1, -1);                          // last tick's paint, untouched
+      ctx.strokeStyle = g;
+    } else {
+      ctx.strokeStyle = ringLerp(pos, frac);        // fallback: solid blend
+    }
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, R, 0, Math.PI*2);
+    ctx.stroke();
+  }
+}
+
+/* --- WEAVE: a traveler ravels the unicursal heptagram, visiting all seven
+   sites (0->2->4->6->1->3->5->0) one edge per fastest tick. Each site
+   snapshots its dial's state color when visited; crossed edges glow and
+   fade into a woven comet trail. 7 sites vs base-3 states are coprime, so
+   the color pattern precesses and never quite repeats. --- */
+const WEAVE_COL = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"]; // 1,2,3
+const withA = (c, a) => c.replace("rgb", "rgba").replace(")", `,${a})`);
+function weaveSite(v){
+  const ang = ((v+1)%7) * 2*Math.PI/7 + Math.PI/2;
+  return worldToScreen(6*Math.cos(ang), 6*Math.sin(ang));
+}
+function drawWeave(t){
+  // One leg per tick of the smallest DISPLAYED counter (1/27 of a minute),
+  // in every mode - the traveler arrives at each site exactly as that
+  // counter ticks. (1/27 min is dial 5 in 27-min mode, dial 6 in 54/81.)
+  const beat = ticks[timeMode===0 ? 5 : 6];
+  const Eg = Math.floor(t / beat);             // global edge (leg) index
+  const p  = (t / beat) - Eg;                  // 0..1 along the current leg
+  const vtx = k => (2*(((k%7)+7)%7)) % 7;      // loop position -> vertex index
+  // the carried color advances one step per leg = the 1/27 counter counting
+  const legColor = eg => WEAVE_COL[(((eg%3)+3)%3)];
+  const S = [];
+  for (let v=0; v<7; v++) S[v] = weaveSite(v);
+
+  // 1. Faint unlit track: the whole heptagram loop
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "rgba(0,191,255,0.16)";
+  for (let k=0;k<7;k++){
+    const a=S[vtx(k)], b=S[vtx(k+1)];
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+  }
+
+  // 2. Comet trail: recent legs, tinted by the site just left, fading back
+  const TRAIL = 7;
+  for (let kk=TRAIL; kk>=0; kk--){
+    const eg = Eg - kk;
+    if (eg < 0) continue;
+    const k = ((eg%7)+7)%7;
+    const a=S[vtx(k)], b=S[vtx(k+1)];
+    // each leg keeps the color the traveler carried across it
+    const col = legColor(eg);
+    const fade = 1 - kk/(TRAIL+1);
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = withA(col, (0.55*fade).toFixed(3));
+    ctx.beginPath(); ctx.moveTo(a.x,a.y);
+    if (kk===0) ctx.lineTo(a.x+(b.x-a.x)*p, a.y+(b.y-a.y)*p);
+    else        ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+
+  // 3. Sites: snapshot color at last visit; brightness trails the traveler
+  for (let v=0; v<7; v++){
+    const posK = (4*v)%7;                            // loop position of vertex v
+    const Eprime = Eg - ((((Eg-posK)%7)+7)%7);       // most recent arrival leg
+    const arrivalT = Math.max(0, Eprime*beat);
+    const age = t - arrivalT;
+    const bright = 0.32 + 0.68*Math.max(0, 1 - age/(7*beat));
+    const pulse  = Math.max(0, 1 - age/(beat*0.7));
+    const col = legColor(Eprime);   // color the traveler deposited when it last struck this corner
+    const rr = (0.13 + 0.07*pulse) * scaleF;
+    const g = ctx.createRadialGradient(S[v].x,S[v].y,0, S[v].x,S[v].y, rr*2.4);
+    g.addColorStop(0, withA(col, (0.4*bright).toFixed(3)));
+    g.addColorStop(1, withA(col, "0"));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(S[v].x,S[v].y, rr*2.4, 0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha = bright;
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(S[v].x,S[v].y, rr, 0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // 4. The traveler - white core, halo in the color it currently carries
+  const A=S[vtx(Eg)], B=S[vtx(Eg+1)];
+  const tx=A.x+(B.x-A.x)*p, ty=A.y+(B.y-A.y)*p;
+  const legCol = legColor(Eg);
+  const gr = ctx.createRadialGradient(tx,ty,0, tx,ty, 0.35*scaleF);
+  gr.addColorStop(0, "rgba(255,255,255,0.95)");
+  gr.addColorStop(0.5, withA(legCol, "0.5"));
+  gr.addColorStop(1, withA(legCol, "0"));
+  ctx.fillStyle = gr;
+  ctx.beginPath(); ctx.arc(tx,ty, 0.35*scaleF, 0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = "white";
+  ctx.beginPath(); ctx.arc(tx,ty, 0.07*scaleF, 0,Math.PI*2); ctx.fill();
+}
+
+/* --- SEPT: instrument panel of base-3 batteries. One panel per digit,
+   each a stack of three lines (0 bottom, 1 middle, 2 top); the lit line
+   is the digit's value in the app colors. Minutes row (27/9/3/1 as the
+   mode provides) with a standalone 81 lamp that lights at completion;
+   fractions row (1/3, 1/9, 1/27). The 1/27 blinks with each 1/81
+   sub-tick - three blinks, then it changes. --- */
+function septLayout(){
+  const minDials  = timeMode===0 ? [0,1,2] : [0,1,2,3];
+  const minLabels = timeMode===0 ? ["9","3","1"] : ["27","9","3","1"];
+  const fracDials = timeMode===0 ? [3,4,5] : [4,5,6];
+  const fracLabels = ["1/3","1/9","1/27"];
+  const pw=64, gap=14, lampR=11, lineH=12, lineGap=7, padX=8, padY=8;
+  const ph = padY*2 + lineH*3 + lineGap*2;
+  const rowGap = 74;
+  const minW = lampR*2 + gap + minDials.length*pw + (minDials.length-1)*gap;
+  const fracW = 3*pw + 2*gap;
+  const blockH = ph + 22 + rowGap + ph + 22;
+  const top = Math.max(70, (viewH - 250 - blockH)/2);
+  return { minDials, minLabels, fracDials, fracLabels, pw, gap, lampR,
+           lineH, lineGap, padX, padY, ph, rowGap,
+           minX:  (viewW - minW)/2 + lampR*2 + gap,
+           lampX: (viewW - minW)/2 + lampR,
+           fracX: (viewW - fracW)/2,
+           top, fracTop: top + ph + 22 + rowGap, blockH };
+}
+
+function septRect(c, x, y, w, h, r){
+  c.beginPath();
+  if (c.roundRect) c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h);
+}
+
+function drawSeptStatic(){
+  const L = septLayout();
+  ctxStatic.lineWidth = 1.5;
+  ctxStatic.strokeStyle = "rgba(0,191,255,0.5)";
+  ctxStatic.fillStyle = "rgba(0,191,255,0.8)";
+  ctxStatic.font = "13px monospace";
+  ctxStatic.textAlign = "center";
+  const frame = (x, y, label) => {
+    septRect(ctxStatic, x, y, L.pw, L.ph, 8);
+    ctxStatic.stroke();
+    ctxStatic.fillText(label, x + L.pw/2, y + L.ph + 16);
+  };
+  L.minLabels.forEach((lab,k)=> frame(L.minX + k*(L.pw+L.gap), L.top, lab));
+  L.fracLabels.forEach((lab,k)=> frame(L.fracX + k*(L.pw+L.gap), L.fracTop, lab));
+  ctxStatic.beginPath();
+  ctxStatic.arc(L.lampX, L.top + L.ph/2, L.lampR, 0, Math.PI*2);
+  ctxStatic.stroke();
+  ctxStatic.fillText("81", L.lampX, L.top + L.ph + 16);
+  ctxStatic.fillStyle = "rgba(120,150,170,0.5)";
+  ctxStatic.font = "11px monospace";
+  ctxStatic.fillText("M I N U T E S", viewW/2, L.top - 14);
+  ctxStatic.fillText("F R A C T I O N S", viewW/2, L.fracTop - 14);
+  // 0/1/2 key beside the fractions row
+  ctxStatic.font = "10px monospace";
+  ctxStatic.textAlign = "right";
+  for (let v=0; v<3; v++){
+    const y = L.fracTop + L.padY + (2-v)*(L.lineH+L.lineGap) + L.lineH - 2;
+    ctxStatic.fillText(String(v), L.fracX - 6, y);
+  }
+  ctxStatic.textAlign = "left";
+}
+
+function drawSept(t){
+  const L = septLayout();
+  const panel = (x, y, dial, blink) => {
+    const pos = posIndex(dial, t);
+    for (let v=0; v<3; v++){
+      const ly = y + L.padY + (2-v)*(L.lineH + L.lineGap);
+      const lit = (v === pos-1);
+      septRect(ctx, x + L.padX, ly, L.pw - L.padX*2, L.lineH, 6);
+      if (!lit){
+        ctx.fillStyle = "rgba(120,150,170,0.13)";
+        ctx.fill();
+        continue;
+      }
+      ctx.fillStyle = digitColor(pos);
+      ctx.fill();
+      if (blink && running){
+        // three blinks per dwell: one white pulse at each 1/81 sub-tick
+        const subT = ticks[dial] / 3;
+        const sf = (t % subT) / subT;
+        const pulse = Math.max(0, 1 - sf/0.35);
+        if (pulse > 0.01){
+          ctx.fillStyle = `rgba(255,255,255,${(0.75*pulse).toFixed(3)})`;
+          ctx.fill();
+        }
+      }
+    }
+  };
+  L.minDials.forEach((d,k)=> panel(L.minX + k*(L.pw+L.gap), L.top, d, false));
+  L.fracDials.forEach((d,k)=> panel(L.fracX + k*(L.pw+L.gap), L.fracTop, d, k===2));
+  // 81 lamp: dark all session, lights at completion
+  const lx = L.lampX, lyc = L.top + L.ph/2;
+  if (finished){
+    const g = ctx.createRadialGradient(lx,lyc,0, lx,lyc, L.lampR*2.6);
+    g.addColorStop(0, "rgba(255,149,0,0.6)");
+    g.addColorStop(1, "rgba(255,149,0,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(lx,lyc,L.lampR*2.6,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#ff9500";
+  } else {
+    ctx.fillStyle = "rgba(120,150,170,0.10)";
+  }
+  ctx.beginPath(); ctx.arc(lx,lyc,L.lampR,0,Math.PI*2); ctx.fill();
+}
+
+/* --- FRAME: the practice flowchart as an interactive status board. Drag
+   the dark space to pan; tap a rectangle to make it the current status,
+   which then shows top-left on every view. --- */
+const FRAME_S = 0.8, FRAME_W = 2400, FRAME_H = 1180;
+const FRAME_BOXES = [
+  {x:255,  y:605,  w:170, h:110, lines:["Hold a mental","image of the goal"]},
+  {x:600,  y:745,  w:170, h:110, lines:["Hold a mental","image of the","process"]},
+  {x:872,  y:880,  w:170, h:110, lines:["Hold a mental","image of the","next step"]},
+  {x:1168, y:1005, w:195, h:115, lines:["Hold a mental model","of the structure of","the process"]},
+  {x:612, y:372, w:160, h:92,  lines:["Struggle to","hold it."]},
+  {x:612, y:222, w:160, h:92,  lines:["Write notes"]},
+  {x:612, y:72,  w:160, h:92,  lines:["Take a walk"]},
+  {x:818, y:72,  w:160, h:92,  lines:["Reset the","counter to (0,3]"]},
+  {x:1257, y:372, w:160, h:92,  lines:["Struggle to","hold it."]},
+  {x:1257, y:222, w:160, h:92,  lines:["Write notes"]},
+  {x:1257, y:72,  w:160, h:92,  lines:["Take a walk"]},
+  {x:1463, y:72,  w:160, h:92,  lines:["Reset the","counter to (0,3]"]},
+  {x:1902, y:372, w:160, h:92,  lines:["Struggle to","hold it."]},
+  {x:1902, y:222, w:160, h:92,  lines:["Write notes"]},
+  {x:1902, y:72,  w:160, h:92,  lines:["Take a walk"]},
+  {x:2108, y:72,  w:160, h:92,  lines:["Reset the","counter to (0,3]"]},
+];
+const FRAME_CIRCLES = [
+  {x:505, y:660, r:22, t:"<n>"}, {x:830, y:800, r:22, t:"<n>"}, {x:1122, y:935, r:22, t:"<n>"},
+  {x:505, y:418, r:27, t:"(0,3]"}, {x:505, y:267, r:27, t:"[4,6]"}, {x:505, y:117, r:27, t:"[7]"},
+  {x:1150, y:418, r:27, t:"(0,3]"}, {x:1150, y:267, r:27, t:"[4,6]"}, {x:1150, y:117, r:27, t:"[7]"},
+  {x:1795, y:418, r:27, t:"(0,3]"}, {x:1795, y:267, r:27, t:"[4,6]"}, {x:1795, y:117, r:27, t:"[7]"},
+];
+const FRAME_DOTS = [
+  {x:218, y:660, t:"0"},
+  {x:505, y:538, t:"1"}, {x:1032, y:267, t:"0"},
+  {x:1150, y:538, t:"2"}, {x:1677, y:267, t:"0"},
+  {x:1795, y:538, t:"3"}, {x:2322, y:267, t:"0"},
+];
+const FRAME_EDGES = [
+  {c:"w", p:[[231,660],[249,660]]}, {c:"w", p:[[425,660],[478,660]]},
+  {c:"w", p:[[770,800],[803,800]]}, {c:"w", p:[[1042,935],[1095,935]]},
+  {c:"b", p:[[505,682],[505,800],[594,800]], l:"Y", lx:514, ly:735},
+  {c:"b", p:[[830,822],[830,935],[866,935]], l:"Y", lx:839, ly:878},
+  {c:"b", p:[[1122,957],[1122,1062],[1162,1062]], l:"Y", lx:1131, ly:1010},
+  {c:"r", p:[[505,638],[505,556]], l:"N", lx:514, ly:600},
+  {c:"r", p:[[830,778],[830,655],[1150,655],[1150,556]], l:"N", lx:839, ly:715},
+  {c:"r", p:[[1122,913],[1122,700],[1795,700],[1795,556]], l:"N", lx:1131, ly:848},
+  {c:"w", p:[[505,525],[505,452]]},
+  {c:"b", p:[[532,418],[606,418]], l:"Y", lx:556, ly:407},
+  {c:"b", p:[[532,267],[606,267]], l:"Y", lx:556, ly:256},
+  {c:"b", p:[[532,117],[606,117]]},
+  {c:"r", p:[[505,391],[505,299]], l:"N", lx:514, ly:349},
+  {c:"r", p:[[505,240],[505,149]], l:"N", lx:514, ly:198},
+  {c:"w", p:[[772,418],[1032,418],[1032,286]]},
+  {c:"w", p:[[772,267],[1013,267]]},
+  {c:"w", p:[[772,117],[812,117]]},
+  {c:"w", p:[[978,117],[1032,117],[1032,248]]},
+  {c:"w", p:[[1150,525],[1150,452]]},
+  {c:"b", p:[[1177,418],[1251,418]], l:"Y", lx:1201, ly:407},
+  {c:"b", p:[[1177,267],[1251,267]], l:"Y", lx:1201, ly:256},
+  {c:"b", p:[[1177,117],[1251,117]]},
+  {c:"r", p:[[1150,391],[1150,299]], l:"N", lx:1159, ly:349},
+  {c:"r", p:[[1150,240],[1150,149]], l:"N", lx:1159, ly:198},
+  {c:"w", p:[[1417,418],[1677,418],[1677,286]]},
+  {c:"w", p:[[1417,267],[1658,267]]},
+  {c:"w", p:[[1417,117],[1457,117]]},
+  {c:"w", p:[[1623,117],[1677,117],[1677,248]]},
+  {c:"w", p:[[1795,525],[1795,452]]},
+  {c:"b", p:[[1822,418],[1896,418]], l:"Y", lx:1846, ly:407},
+  {c:"b", p:[[1822,267],[1896,267]], l:"Y", lx:1846, ly:256},
+  {c:"b", p:[[1822,117],[1896,117]]},
+  {c:"r", p:[[1795,391],[1795,299]], l:"N", lx:1804, ly:349},
+  {c:"r", p:[[1795,240],[1795,149]], l:"N", lx:1804, ly:198},
+  {c:"w", p:[[2062,418],[2322,418],[2322,286]]},
+  {c:"w", p:[[2062,267],[2303,267]]},
+  {c:"w", p:[[2062,117],[2102,117]]},
+  {c:"w", p:[[2268,117],[2322,117],[2322,248]]},
+];
+const FRAME_EDGE_COL = { w:"rgba(255,255,255,0.55)", b:"rgb(0,120,255)", r:"rgb(255,70,70)" };
+/* Second diagram: "Session: Selecting a Goal" (from Seth_3.pdf) */
+const GOAL_BOXES = [
+  {x:80,   y:415, w:150, h:110, lines:["Think about","motivation"]},
+  {x:283,  y:415, w:150, h:110, lines:["Identify","motivation"]},
+  {x:568,  y:415, w:150, h:110, lines:["Start a","session"]},
+  {x:771,  y:415, w:150, h:110, lines:["Write down","a goal"]},
+  {x:1043, y:170, w:160, h:95,  lines:["Focus on","the goal"]},
+  {x:1384, y:45,  w:150, h:85,  lines:["Goal","attained"]},
+  {x:1384, y:155, w:150, h:85,  lines:["End of","session"]},
+  {x:1043, y:530, w:170, h:110, lines:["Write notes","[to understand","the obstacle]"]},
+  {x:1335, y:455, w:160, h:90,  lines:["Abandon the","session"]},
+  {x:1335, y:635, w:160, h:95,  lines:["Understand","the obstacle"]},
+  {x:1600, y:632, w:160, h:95,  lines:["Deploy","counter-","measures"]},
+  {x:1852, y:515, w:160, h:90,  lines:["Disable the","obstacles"]},
+  {x:1880, y:815, w:120, h:90,  lines:["Reason"]},
+  {x:2056, y:715, w:190, h:95,  lines:["Low confidence","in the","counter-measure"]},
+  {x:2056, y:915, w:160, h:80,  lines:["Low","motivation"]},
+  {x:1700, y:60,  w:130, h:80,  lines:["Outcome"]},
+];
+const GOAL_CIRCLES = [
+  {x:475,  y:470, r:22, t:"<n>"}, {x:963,  y:470, r:22, t:"<3>"},
+  {x:1245, y:215, r:22, t:"<n>"}, {x:1315, y:120, r:22, t:"<n>"},
+  {x:1255, y:585, r:22, t:"<3>"}, {x:1537, y:680, r:22, t:"<5>"},
+  {x:1802, y:680, r:22, t:"<5>"}, {x:2054, y:560, r:22, t:"<5>"},
+  {x:2040, y:860, r:22, t:"<5>"},
+];
+const GOAL_DOTS = [
+  {x:55,   y:470, t:"-3"}, {x:258, y:470, t:"-2"}, {x:543, y:470, t:"-1"},
+  {x:746,  y:470, t:"0"},  {x:533, y:585, t:"-3"}, {x:1018, y:215, t:"2"},
+  {x:1300, y:310, t:"1"},  {x:1620, y:120, t:"-3"}, {x:1018, y:585, t:"1"},
+  {x:1310, y:500, t:"3"},  {x:1310, y:680, t:"4"},  {x:1590, y:800, t:"1"},
+  {x:2126, y:505, t:"0"},  {x:2126, y:615, t:"1"},  {x:1855, y:860, t:"5"},
+  {x:2298, y:762, t:"1"},  {x:2268, y:955, t:"-3"}, {x:1870, y:100, t:"6"},
+];
+const GOAL_EDGES = [
+  {c:"w", p:[[68,470],[74,470]]},    {c:"w", p:[[230,470],[245,470]]},
+  {c:"w", p:[[271,470],[277,470]]},  {c:"w", p:[[433,470],[447,470]]},
+  {c:"b", p:[[497,470],[524,470]], l:"Y", lx:503, ly:460},
+  {c:"w", p:[[556,470],[562,470]]},  {c:"w", p:[[718,470],[727,470]]},
+  {c:"w", p:[[759,470],[765,470]]},  {c:"w", p:[[921,470],[935,470]]},
+  {c:"r", p:[[475,492],[475,585],[514,585]], l:"N", lx:483, ly:545},
+  {c:"b", p:[[963,448],[963,215],[999,215]], l:"Y", lx:971, ly:340},
+  {c:"w", p:[[1031,215],[1037,215]]},
+  {c:"w", p:[[1203,215],[1217,215]]},
+  {c:"b", p:[[1245,193],[1245,120],[1287,120]], l:"Y", lx:1253, ly:158},
+  {c:"r", p:[[1245,237],[1245,310],[1281,310]], l:"N", lx:1253, ly:278},
+  {c:"w", p:[[1315,98],[1315,87],[1378,87]]},
+  {c:"w", p:[[1315,142],[1315,197],[1378,197]]},
+  {c:"w", p:[[1534,87],[1620,87],[1620,101]]},
+  {c:"w", p:[[1534,197],[1620,197],[1620,139]]},
+  {c:"r", p:[[963,492],[963,585],[999,585]], l:"N", lx:971, ly:545},
+  {c:"w", p:[[1031,585],[1037,585]]},
+  {c:"w", p:[[1213,585],[1227,585]]},
+  {c:"r", p:[[1255,563],[1255,500],[1291,500]], l:"N", lx:1263, ly:538},
+  {c:"w", p:[[1323,500],[1329,500]]},
+  {c:"b", p:[[1255,607],[1255,680],[1291,680]], l:"Y", lx:1263, ly:650},
+  {c:"w", p:[[1323,680],[1329,680]]},
+  {c:"w", p:[[1495,680],[1509,680]]},
+  {c:"b", p:[[1559,680],[1594,680]], l:"Y", lx:1565, ly:670},
+  {c:"r", p:[[1537,702],[1537,800],[1571,800]], l:"N", lx:1545, ly:760},
+  {c:"w", p:[[1760,680],[1774,680]]},
+  {c:"b", p:[[1802,658],[1802,560],[1846,560]], l:"Y", lx:1810, ly:618},
+  {c:"w", p:[[2012,560],[2026,560]]},
+  {c:"b", p:[[2054,538],[2054,505],[2107,505]], l:"Y", lx:2062, ly:528},
+  {c:"r", p:[[2054,582],[2054,615],[2107,615]], l:"N", lx:2062, ly:608},
+  {c:"r", p:[[1802,702],[1802,860],[1836,860]], l:"N", lx:1810, ly:790},
+  {c:"w", p:[[1868,860],[1874,860]]},
+  {c:"w", p:[[2000,860],[2012,860]]},
+  {c:"w", p:[[2040,838],[2040,762],[2050,762]]},
+  {c:"w", p:[[2040,882],[2040,955],[2050,955]]},
+  {c:"w", p:[[2246,762],[2279,762]]},
+  {c:"w", p:[[2216,955],[2249,955]]},
+];
+const FRAME_DEFS = [
+  { W: FRAME_W, H: FRAME_H, boxes: FRAME_BOXES, circles: FRAME_CIRCLES,
+    dots: FRAME_DOTS, edges: FRAME_EDGES, cam: {x:-60, y:-15},
+    store: 'salvationFrameTexts', title: null },
+  { W: 2360, H: 1060, boxes: GOAL_BOXES, circles: GOAL_CIRCLES,
+    dots: GOAL_DOTS, edges: GOAL_EDGES, cam: {x:-20, y:40},
+    store: 'salvationGoalTexts', title: "Session: Selecting a Goal" },
+];
+function curFrameIdx(){ return viewMode === 10 ? 1 : 0; }
+function CF(){ return FRAME_DEFS[curFrameIdx()]; }
+let frameHintUntil = 0;
+let lastTimerView = 0;
+let frameStatus = null;
+let frameSelected = -1;
+let frameSelectedF = 0;
+
+function clampFrameCam(){
+  CF().cam.x = Math.max(Math.min(20, viewW - CF().W*FRAME_S - 20), Math.min(20, CF().cam.x));
+  CF().cam.y = Math.max(Math.min(20, viewH - CF().H*FRAME_S - 20), Math.min(20, CF().cam.y));
+}
+
+function drawFrameView(){
+  clampFrameCam();
+  const s = FRAME_S, ox = CF().cam.x, oy = CF().cam.y;
+  const X = x => x*s + ox, Y = y => y*s + oy;
+  // edges
+  if (CF().title){
+    ctx.fillStyle = "rgba(0,191,255,0.7)";
+    ctx.font = "14px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(CF().title, viewW/2, 28);
+  }
+  for (const e of CF().edges){
+    ctx.strokeStyle = FRAME_EDGE_COL[e.c];
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(X(e.p[0][0]), Y(e.p[0][1]));
+    for (let i=1;i<e.p.length;i++) ctx.lineTo(X(e.p[i][0]), Y(e.p[i][1]));
+    ctx.stroke();
+    // arrowhead along the final segment
+    const [x1,y1] = e.p[e.p.length-2], [x2,y2] = e.p[e.p.length-1];
+    const ang = Math.atan2(Y(y2)-Y(y1), X(x2)-X(x1));
+    ctx.fillStyle = FRAME_EDGE_COL[e.c];
+    ctx.beginPath();
+    ctx.moveTo(X(x2), Y(y2));
+    ctx.lineTo(X(x2)-9*Math.cos(ang-0.42), Y(y2)-9*Math.sin(ang-0.42));
+    ctx.lineTo(X(x2)-9*Math.cos(ang+0.42), Y(y2)-9*Math.sin(ang+0.42));
+    ctx.closePath(); ctx.fill();
+    if (e.l){
+      ctx.fillStyle = FRAME_EDGE_COL[e.c];
+      ctx.font = "bold 12px monospace";
+      ctx.textAlign = "left";
+      ctx.fillText(e.l, X(e.lx), Y(e.ly));
+    }
+  }
+  // boxes
+  CF().boxes.forEach((b, i) => {
+    const sel = (frameSelectedF === curFrameIdx() && i === frameSelected);
+    ctx.setLineDash(b.empty ? [5,5] : []);
+    ctx.strokeStyle = sel ? "rgba(255,255,255,0.95)"
+                          : b.empty ? "rgba(0,191,255,0.3)" : "rgba(0,191,255,0.55)";
+    ctx.lineWidth = sel ? 2.5 : 1.5;
+    ctx.fillStyle = sel ? "rgba(0,191,255,0.16)" : "rgba(0,191,255,0.06)";
+    septRect(ctx, X(b.x), Y(b.y), b.w*s, b.h*s, 9);
+    ctx.fill(); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = sel ? "#ffffff" : "#c7d3da";
+    ctx.font = "12px monospace";
+    ctx.textAlign = "left";
+    b.lines.forEach((ln, k) => ctx.fillText(ln, X(b.x+13), Y(b.y+34+k*20)));
+  });
+  // circles
+  ctx.textAlign = "center";
+  for (const c of CF().circles){
+    ctx.strokeStyle = "rgba(0,191,255,0.7)";
+    ctx.lineWidth = 1.5;
+    ctx.fillStyle = "black";
+    ctx.beginPath(); ctx.arc(X(c.x), Y(c.y), c.r*s, 0, Math.PI*2);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#9fd8ea";
+    ctx.font = "12px monospace";
+    ctx.fillText(c.t, X(c.x), Y(c.y)+4);
+  }
+  // LED junction dots
+  for (const d of CF().dots){
+    const dx = X(d.x), dy = Y(d.y);
+    const g = ctx.createRadialGradient(dx,dy,0, dx,dy, 22);
+    g.addColorStop(0, "rgba(255,255,255,0.5)");
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(dx,dy,22,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = "white";
+    ctx.beginPath(); ctx.arc(dx,dy,10,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = "black";
+    ctx.font = "bold 12px monospace";
+    ctx.fillText(d.t, dx, dy+4);
+  }
+  // hint: shows for 3s after entering the view, then fades away
+  const hintLeft = frameHintUntil - performance.now();
+  if (hintLeft > 0){
+    ctx.globalAlpha = Math.min(1, hintLeft/500);
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.font = "12px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("drag dark space to pan - tap a box to set status", viewW/2, viewH - 148);
+    ctx.fillText("long press to modify content", viewW/2, viewH - 130);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function frameBoxAt(cx, cy, includeEmpty){
+  const wx = (cx - CF().cam.x)/FRAME_S, wy = (cy - CF().cam.y)/FRAME_S;
+  for (let i=0;i<CF().boxes.length;i++){
+    const b = CF().boxes[i];
+    if ((includeEmpty || !b.empty) && wx>=b.x && wx<=b.x+b.w && wy>=b.y && wy<=b.y+b.h) return i;
+  }
+  return -1;
+}
+
+/* --- FRAME box text editing (long-press a box to open) --- */
+function setFrameBoxText(fi, idx, text, persist){
+  const b = FRAME_DEFS[fi].boxes[idx];
+  text = text.trim().replace(/\s+/g, " ");
+  if (!text){
+    b.lines = []; b.empty = true;
+  } else {
+    b.empty = false;
+    const maxChars = Math.max(8, Math.floor((b.w*FRAME_S - 12)/7.2));
+    const maxLines = Math.max(1, Math.floor((b.h - 42)/20) + 1);
+    const lines = [];
+    let cur = "";
+    for (let word of text.split(" ")){
+      while (word.length > maxChars){
+        if (cur){ lines.push(cur); cur = ""; }
+        lines.push(word.slice(0, maxChars));
+        word = word.slice(maxChars);
+      }
+      if (!word) continue;
+      if (!cur) cur = word;
+      else if ((cur + " " + word).length <= maxChars) cur += " " + word;
+      else { lines.push(cur); cur = word; }
+      if (lines.length >= maxLines) { cur = ""; break; }
+    }
+    if (cur && lines.length < maxLines) lines.push(cur);
+    b.lines = lines;
+  }
+  if (frameSelectedF === fi && frameSelected === idx){
+    frameStatus = b.empty ? null : b.lines.join(" ");
+    if (b.empty) frameSelected = -1;
+    try { localStorage.setItem('salvationStatus', frameStatus || ""); } catch(err) {}
+  }
+  if (persist){
+    try {
+      const map = JSON.parse(localStorage.getItem(FRAME_DEFS[fi].store) || "{}");
+      map[idx] = text;
+      localStorage.setItem(FRAME_DEFS[fi].store, JSON.stringify(map));
+    } catch(err) {}
+  }
+}
+
+function drawStatus(){
+  if (!frameStatus){
+    if (viewMode < 9){
+      ctx.font = "12px monospace";
+      ctx.textAlign = "left";
+      ctx.fillStyle = "rgba(0,191,255,0.45)";
+      ctx.fillText("Go to diagram", 14, 24);
+    }
+    return;
+  }
+  ctx.font = "12px monospace";
+  ctx.textAlign = "left";
+  ctx.fillStyle = "rgba(0,191,255,0.85)";
+  // wrap to at most three short lines
+  const words = frameStatus.split(" ");
+  const lines = [];
+  let cur = "";
+  for (const w of words){
+    if ((cur + " " + w).trim().length > 26){ lines.push(cur.trim()); cur = w; }
+    else cur += " " + w;
+    if (lines.length === 3) break;
+  }
+  if (lines.length < 3 && cur.trim()) lines.push(cur.trim());
+  lines.forEach((ln, k) => ctx.fillText(ln, 14, 24 + k*16));
+}
+
+/* ---------- DREAM: a mage in a dungeon paints the dream in tiles ----------
+   Each 1/81-minute tick lays one pixel; 81 ticks complete a 9x9 TILE = one
+   minute. The fresco on the dungeon wall is tiled minutes: 27-min sessions
+   paint a chalice (27 tiles), 54 a sword in the stone (54), 81 the castle
+   (81). The staff orb's glow is the infinitesimal fraction building toward
+   each 1/81. Music: "Dreams Become Real" Kevin MacLeod (incompetech) CC BY */
+const DREAM_T81 = 60/81;
+const DREAM_AUDIO_SRC = (/\/salvation\d/i.test(location.pathname) ? "../" : "./") + "audio/dreams-become-real.mp3";
+let dreamAudio = null, dreamAudioDead = false, dreamAudioTry = 0;
+function syncDreamAudio(){
+  const want = viewMode === 7 && (running || finished) && !muted && !dreamAudioDead;
+  if (want && !dreamAudio){
+    try {
+      dreamAudio = new Audio(DREAM_AUDIO_SRC);
+      dreamAudio.loop = true;
+      dreamAudio.addEventListener('error', () => { dreamAudioDead = true; });
+    } catch(e){ dreamAudioDead = true; return; }
+  }
+  if (!dreamAudio) return;
+  try {
+    dreamAudio.volume = VOL_LEVELS[volSel] * 0.9;
+    if (want && dreamAudio.paused){
+      const nowMs = performance.now();
+      if (nowMs - dreamAudioTry > 1500){
+        dreamAudioTry = nowMs;
+        const pr = dreamAudio.play();
+        if (pr && pr.catch) pr.catch(() => {});
+      }
+    } else if (!want && !dreamAudio.paused){
+      dreamAudio.pause();
+    }
+  } catch(e) {}
+}
+function dreamRng(seed){
+  let s = seed >>> 0;
+  return () => { s = (s * 1103515245 + 12345) >>> 0; return s / 4294967296; };
+}
+
+/* ---- the three artworks, 9 tiles wide; height = duration in tiles ---- */
+let dreamArt = { kind: "", rows: 9, data: null };
+let dreamReveal = null, dreamRevealCtx = null, dreamRevealN = 0;
+let dreamVariant = Math.floor(Math.random()*9);
+function dreamPickKind(){
+  const m = Math.round(totalCycle/60);
+  return (m <= 27 ? "s27" : m <= 54 ? "s54" : "s81") + ":" + dreamVariant;
+}
+/* a standing hooded figure, drawn at any scale */
+const DREAM_HOOD = [
+  "...HHHH...",
+  "..HHHHHH..",
+  "..HHffHH..",
+  "..HHffHH..",
+  ".RRRRRRRR.",
+  ".RRRRRRRR.",
+  ".RRRRRRRR.",
+  ".RRRRRRRR.",
+  ".RRRRRRRR.",
+  ".RRRRRRRR.",
+  ".rRRRRRRr.",
+  ".rrRRRRrr.",
+  ".rrrrrrrr.",
+];
+function dreamHood(g, ox, oy, k, pal){
+  for (let y = 0; y < DREAM_HOOD.length; y++)
+    for (let x = 0; x < DREAM_HOOD[y].length; x++){
+      const c = pal[DREAM_HOOD[y][x]];
+      if (c){ g.fillStyle = c; g.fillRect(ox + x*k, oy + y*k, k, k); }
+    }
+}
+const HOOD_DARK = { H: "#221e1a", f: "#120f0c", R: "#2e2a24", r: "#241f1b" };
+function dreamDither(g, y0, y1, a, b){
+  for (let y = y0; y < y1; y++)
+    for (let x = 0; x < 81; x++){
+      g.fillStyle = (x*7 + y*11) % 19 ? a : b;
+      g.fillRect(x, y, 1, 1);
+    }
+}
+function dreamCrow(g, x, y, w, col){
+  g.fillStyle = col;
+  g.fillRect(x, y, w, 1);
+  g.fillRect(x - w, y - 1, w, 1);
+  g.fillRect(x + w, y - 1, w, 1);
+}
+function dreamChalk(g, x, y, w, hh, nc, nr){
+  g.strokeStyle = "rgba(228,226,212,0.7)";
+  g.lineWidth = 0.8;
+  for (let i = 0; i <= nc; i++){
+    g.beginPath(); g.moveTo(x + i*w/nc, y); g.lineTo(x + i*w/nc + 0.4, y + hh); g.stroke();
+  }
+  for (let j = 0; j <= nr; j++){
+    g.beginPath(); g.moveTo(x, y + j*hh/nr); g.lineTo(x + w, y + j*hh/nr - 0.3); g.stroke();
+  }
+}
+function dreamCaduceus(g, cx, top, hgt){
+  g.fillStyle = "#c9a860";
+  g.fillRect(cx, top + 3, 2, hgt - 3);                            // the staff
+  g.beginPath(); g.arc(cx + 1, top + 2, 2, 0, 2*Math.PI); g.fill();
+  g.fillStyle = "#d8cfb8";                                        // wings
+  g.beginPath(); g.moveTo(cx - 1, top + 4); g.lineTo(cx - 9, top); g.lineTo(cx - 3, top + 7); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(cx + 3, top + 4); g.lineTo(cx + 11, top); g.lineTo(cx + 5, top + 7); g.closePath(); g.fill();
+  for (const [col, ph] of [["#5a7a4a", 0], ["#7a5a52", Math.PI]]){ // the snakes
+    g.fillStyle = col;
+    for (let t = 0; t <= 1; t += 0.03){
+      const y = top + 6 + (hgt - 8)*t;
+      const x = cx + 1 + Math.sin(t*Math.PI*3 + ph)*(5 - 2*t);
+      g.fillRect(x - 0.8, y, 1.8, 1.4);
+    }
+    g.fillRect(cx + 1 + Math.sin(ph)*4 - 1.5, top + 5, 3, 2);      // head
+  }
+}
+function dreamArt27(g, v, px, rs){
+  if (v === 0){
+    // THE FEATHER: Hermes is missing from the path
+    for (let y = 0; y < 7; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x + y) % 5 ? "#7d7568" : "#867e70");
+    for (let y = 7; y < 27; y++) for (let x = 0; x < 81; x++){
+      const edge = x < 12 + 3*Math.sin(y/3) || x > 69 - 3*Math.sin(y/4 + 2);
+      px(x, y, edge ? (y % 2 ? "#5e6247" : "#545a40") : ((x*7 + y*5) % 13 ? "#8a7a5e" : "#7b6c50"));
+    }
+    for (let i = 0; i < 10; i++) px(14 + Math.floor(rs()*52), 9 + Math.floor(rs()*16), "#6e6146");
+    for (let t = 0; t <= 1; t += 0.04){
+      const fx = 33 + 15*t, fy = 17 - 5*Math.sin(Math.PI*t);
+      g.fillStyle = "#1a181c"; g.fillRect(fx, fy, 1.6, 1.6);
+      if (t > 0.15 && t < 0.85 && Math.round(t*25) % 2){
+        g.fillRect(fx - 1, fy - 1.6, 1, 1.6);
+        g.fillRect(fx + 1, fy + 1.2, 1, 1.6);
+      }
+    }
+    g.fillStyle = "#3a3630"; g.fillRect(47, 19, 3, 1);
+  } else if (v === 1){
+    // WALKING IN CIRCLES
+    for (let y = 0; y < 5; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*3 + y) % 7 ? "#4a4438" : "#514a3d");
+    for (let y = 5; y < 27; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#5c5546" : "#544d3f");
+    for (const r of [9, 15, 21, 27]){
+      for (let a = 0; a < Math.PI*2; a += 0.02){
+        const rx = 40 + Math.cos(a)*r, ry = 16 + Math.sin(a)*r*0.38;
+        if (rx < 0 || rx > 80 || ry < 5 || ry > 26) continue;
+        px(Math.round(rx), Math.round(ry), a % 0.4 < 0.25 ? "#6e6754" : "#4a4438");
+      }
+    }
+    dreamHood(g, 50, 3, 1.4, { H: "#2c2620", f: "#171410", R: "#38312a", r: "#2a251f" });
+    px(52, 21, "#242019"); px(56, 21, "#242019");
+  } else if (v === 2){
+    // THE VELLUM
+    for (let y = 0; y < 5; y++) for (let x = 0; x < 81; x++) px(x, y, "#3a352c");
+    for (let y = 5; y < 27; y++) for (let x = 0; x < 81; x++)
+      px(x, y, y % 6 === 0 ? "#5e4830" : ((x*3 + y*7) % 17 ? "#6a5238" : "#614a32"));
+    g.fillStyle = "#d8cba8"; g.fillRect(21, 8, 39, 12);
+    g.fillStyle = "#c4b48e"; g.fillRect(21, 18, 39, 2);
+    g.fillStyle = "#e4d9ba"; g.fillRect(18, 8, 3, 12);
+    g.fillStyle = "#b3a37e"; g.fillRect(60, 8, 3, 12);
+    g.fillStyle = "#8a7a5e";
+    for (let ln = 0; ln < 4; ln++){
+      const y = 10 + ln*2.5;
+      let x = 25;
+      while (x < 55){ const w = 2 + Math.floor(rs()*4); g.fillRect(x, y, w, 1); x += w + 2; }
+    }
+    for (let r = 12; r > 4; r -= 2){
+      g.fillStyle = "rgba(240,200,120,0.07)";
+      g.beginPath(); g.arc(74, 6, r, 0, 2*Math.PI); g.fill();
+    }
+  } else if (v === 3){
+    // THE CLOSED EYE
+    for (let y = 0; y < 27; y++) for (let x = 0; x < 81; x++){
+      const t = Math.max(0, 1 - Math.abs(y - 14)/22);
+      const k = Math.round(150 + 30*t);
+      px(x, y, "rgb(" + (k + 25) + "," + Math.round(k*0.84) + "," + Math.round(k*0.62) + ")");
+    }
+    g.strokeStyle = "#6e4a30"; g.lineWidth = 2;                    // the lid
+    g.beginPath(); g.moveTo(14, 15);
+    g.quadraticCurveTo(40, 22, 66, 15); g.stroke();
+    g.strokeStyle = "#8a6242"; g.lineWidth = 1.2;                  // crease above
+    g.beginPath(); g.moveTo(20, 10); g.quadraticCurveTo(40, 14, 60, 10); g.stroke();
+    g.strokeStyle = "#4a3018"; g.lineWidth = 3;                    // the brow
+    g.beginPath(); g.moveTo(14, 6); g.quadraticCurveTo(40, 1, 66, 6); g.stroke();
+    g.strokeStyle = "#5e3c22"; g.lineWidth = 1;                    // lashes
+    for (let i = 0; i < 7; i++){
+      const lx = 20 + i*7;
+      const ly = 15 + 6*Math.sin(Math.PI*(lx - 14)/52) + 1;
+      g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx - 1, ly + 3); g.stroke();
+    }
+  } else if (v === 4){
+    // THE OPEN EYE
+    for (let y = 0; y < 27; y++) for (let x = 0; x < 81; x++){
+      const t = Math.max(0, 1 - Math.abs(y - 14)/22);
+      const k = Math.round(150 + 30*t);
+      px(x, y, "rgb(" + (k + 25) + "," + Math.round(k*0.84) + "," + Math.round(k*0.62) + ")");
+    }
+    g.fillStyle = "#e8e2d4";                                       // the white
+    g.beginPath(); g.ellipse(40, 15, 25, 8, 0, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#8a5a24";
+    g.beginPath(); g.arc(40, 15, 7.5, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#b87a30";
+    g.beginPath(); g.arc(40, 15, 6, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#d9a441";
+    for (let a = 0; a < 12; a++){
+      const ax = 40 + Math.cos(a*Math.PI/6)*4.5, ay = 15 + Math.sin(a*Math.PI/6)*4.5;
+      px(Math.round(ax), Math.round(ay), "#d9a441");
+    }
+    g.fillStyle = "#17130c";
+    g.beginPath(); g.arc(40, 15, 3, 0, 2*Math.PI); g.fill();
+    px(38, 13, "#f6f2e6"); px(39, 13, "#f6f2e6");
+    g.strokeStyle = "#6e4a30"; g.lineWidth = 2;                    // lids
+    g.beginPath(); g.moveTo(15, 15); g.quadraticCurveTo(40, 2, 65, 15); g.stroke();
+    g.beginPath(); g.moveTo(15, 15); g.quadraticCurveTo(40, 26, 65, 15); g.stroke();
+    g.strokeStyle = "#4a3018"; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(14, 5); g.quadraticCurveTo(40, 0, 66, 5); g.stroke();
+  } else if (v === 5){
+    // SEE HERMES: the caduceus
+    dreamDither(g, 0, 27, "#55503f", "#5d5847");
+    g.fillStyle = "#463f2f"; g.fillRect(0, 25, 81, 2);
+    dreamCaduceus(g, 39, 3, 21);
+  } else if (v === 6){
+    // THE CROWS over the field
+    for (let y = 0; y < 19; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*7 + y*11) % 19 ? "#8f8b7c" : "#999585");
+    for (let y = 19; y < 27; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#5e6247" : "#545a40");
+    for (let x = 0; x < 81; x += 3) px(x, 19, "#6a6e52");
+    for (let i = 0; i < 9; i++)
+      dreamCrow(g, 6 + Math.floor(rs()*68), 3 + Math.floor(rs()*12), 2, "#242220");
+    dreamCrow(g, 38, 8, 3, "#17150f");
+  } else if (v === 7){
+    // POINTING FORWARD
+    dreamDither(g, 0, 27, "#4a4438", "#524b3e");
+    g.fillStyle = "#2e2a24";                                       // the sleeve
+    g.beginPath(); g.moveTo(0, 9); g.lineTo(34, 12); g.lineTo(34, 20); g.lineTo(0, 24); g.closePath(); g.fill();
+    g.fillStyle = "#241f1b";
+    g.beginPath(); g.moveTo(0, 9); g.lineTo(34, 12); g.lineTo(34, 14); g.lineTo(0, 12); g.closePath(); g.fill();
+    g.fillStyle = "#c9a582";                                       // the hand
+    g.fillRect(34, 13, 8, 7);
+    g.fillRect(42, 14, 16, 3);                                     // the finger
+    g.fillStyle = "#e0c49a"; g.fillRect(42, 14, 16, 1);
+    g.fillStyle = "#a8875f"; g.fillRect(36, 18, 6, 2);             // curled fingers
+    g.fillStyle = "rgba(230,225,210,0.35)";
+    g.fillRect(62, 15, 4, 1); g.fillRect(68, 15, 3, 1); g.fillRect(73, 15, 2, 1);
+  } else {
+    // PROMETHEUS IS MISSING: the stool and the fallen cloak
+    dreamDither(g, 0, 15, "#4a4438", "#524b3e");
+    for (let y = 15; y < 27; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#3f3a30" : "#463f34");
+    g.fillStyle = "#6a5238";                                       // the stool
+    g.fillRect(48, 10, 14, 3);
+    g.fillRect(49, 13, 2, 9); g.fillRect(59, 13, 2, 9);
+    g.fillRect(53, 13, 2, 7);
+    g.fillStyle = "#7d6247"; g.fillRect(48, 10, 14, 1);
+    g.fillStyle = "#2e2a24";                                       // the cloak, dropped
+    g.beginPath(); g.ellipse(22, 21, 12, 4, 0.15, 0, 2*Math.PI); g.fill();
+    g.beginPath(); g.ellipse(17, 19, 6, 3, -0.2, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#241f1b";
+    g.beginPath(); g.ellipse(24, 22, 7, 2, 0.2, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#38312a"; g.fillRect(14, 17, 3, 1); g.fillRect(28, 19, 4, 1);
+  }
+}
+function dreamArt54(g, v, px, rs){
+  if (v === 0){
+    // THE OWL speaks
+    dreamDither(g, 0, 54, "#55503f", "#5d5847");
+    g.fillStyle = "#463f2f";
+    g.fillRect(0, 0, 81, 3); g.fillRect(0, 0, 3, 54); g.fillRect(78, 0, 3, 54);
+    g.fillStyle = "#6a5238"; g.fillRect(0, 47, 81, 7);
+    g.fillStyle = "#7d6247"; g.fillRect(0, 47, 81, 1);
+    g.fillStyle = "#5e503a";
+    g.beginPath(); g.ellipse(40, 40, 17, 13, 0, 0, 2*Math.PI); g.fill();
+    for (let i = 0; i < 30; i++){
+      const x = 26 + Math.floor(rs()*28), y = 34 + Math.floor(rs()*13);
+      px(x, y, "#4a3f2e"); px(x + 1, y, "#4a3f2e");
+    }
+    g.fillStyle = "#6a5a42";
+    g.beginPath(); g.ellipse(40, 20, 24, 17, 0, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#7d6c50";
+    g.beginPath(); g.arc(28, 20, 11, 0, 2*Math.PI); g.fill();
+    g.beginPath(); g.arc(52, 20, 11, 0, 2*Math.PI); g.fill();
+    for (const ex of [28, 52]){
+      g.fillStyle = "#2a2118"; g.beginPath(); g.arc(ex, 20, 8.5, 0, 2*Math.PI); g.fill();
+      g.fillStyle = "#e8a83c"; g.beginPath(); g.arc(ex, 20, 7, 0, 2*Math.PI); g.fill();
+      g.fillStyle = "#141014"; g.beginPath(); g.arc(ex, 20, 3.4, 0, 2*Math.PI); g.fill();
+      px(ex - 2, 17, "#f6ead0");
+    }
+    g.fillStyle = "#3a3026";
+    g.beginPath(); g.moveTo(37, 24); g.lineTo(43, 24); g.lineTo(40, 31); g.closePath(); g.fill();
+    g.fillStyle = "#6a5a42";
+    g.beginPath(); g.moveTo(18, 10); g.lineTo(24, 2); g.lineTo(28, 9); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(62, 10); g.lineTo(56, 2); g.lineTo(52, 9); g.closePath(); g.fill();
+    g.strokeStyle = "#b8b09a"; g.lineWidth = 1;
+    g.beginPath(); g.arc(11, 50, 2.6, 0, 2*Math.PI); g.stroke();
+    g.beginPath(); g.arc(18, 50, 2.6, 0, 2*Math.PI); g.stroke();
+    g.beginPath(); g.moveTo(13.5, 50); g.lineTo(15.5, 50); g.stroke();
+  } else if (v === 1){
+    // THE TELESCOPE
+    dreamDither(g, 0, 54, "#4a4438", "#524b3e");
+    for (const wx of [8, 46]){
+      g.fillStyle = "#9aa4a8";
+      g.fillRect(wx, 8, 20, 34);
+      g.beginPath(); g.arc(wx + 10, 8, 10, Math.PI, 2*Math.PI); g.fill();
+      g.fillStyle = "#b8c2c4"; g.fillRect(wx + 1, 9, 8, 14);
+      g.fillStyle = "#3a352c";
+      g.fillRect(wx + 9, 0, 2, 42); g.fillRect(wx, 24, 20, 2);
+    }
+    g.fillStyle = "#3f3a30"; g.fillRect(0, 42, 81, 12);
+    g.fillStyle = "rgba(154,164,168,0.25)";
+    g.fillRect(10, 42, 18, 8); g.fillRect(48, 42, 18, 8);
+    dreamHood(g, 30, 16, 2.4, HOOD_DARK);
+    g.strokeStyle = "#4a4238"; g.lineWidth = 2.4;
+    g.beginPath(); g.moveTo(40, 26); g.lineTo(56, 14); g.stroke();
+    g.strokeStyle = "#5e5344";
+    g.beginPath(); g.moveTo(52, 17); g.lineTo(56, 14); g.stroke();
+  } else if (v === 2){
+    // THE MIRROR
+    dreamDither(g, 0, 54, "#55503f", "#5d5847");
+    g.fillStyle = "#463f2f"; g.fillRect(0, 48, 81, 6);
+    g.fillStyle = "#7a6a4a";
+    g.beginPath(); g.arc(40, 25, 19, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#8d7c58";
+    for (let a = 0; a < 8; a++){
+      const bx = 40 + Math.cos(a*Math.PI/4)*19, by = 25 + Math.sin(a*Math.PI/4)*19;
+      g.beginPath(); g.arc(bx, by, 2.2, 0, 2*Math.PI); g.fill();
+    }
+    g.fillStyle = "#2e3236";
+    g.beginPath(); g.arc(40, 25, 15, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#cfc6b0";
+    g.beginPath(); g.arc(40, 22, 8, 0, 2*Math.PI); g.fill();
+    g.fillRect(36, 27, 8, 6);
+    g.fillStyle = "#2e3236";
+    g.fillRect(36, 20, 3, 3); g.fillRect(42, 20, 3, 3);
+    g.fillRect(39.5, 25, 2, 2);
+    for (const tx of [36, 39, 42]) g.fillRect(tx, 31, 1, 2);
+    g.fillStyle = "rgba(120,130,138,0.35)";
+    g.beginPath(); g.moveTo(30, 14); g.lineTo(34, 12); g.lineTo(28, 24); g.lineTo(26, 22); g.closePath(); g.fill();
+    g.fillStyle = "#3a3026"; g.fillRect(12, 40, 3, 8);
+    g.fillStyle = "#e8d9a0"; g.fillRect(12.5, 37, 2, 3);
+    px(13, 35, "#ffb84d");
+  } else if (v === 3){
+    // THE CHALKBOARD is wheeled in
+    dreamDither(g, 0, 44, "#4a4438", "#524b3e");
+    for (let y = 44; y < 54; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#3f3a30" : "#463f34");
+    g.fillStyle = "#6a5238"; g.fillRect(9, 7, 56, 32);             // frame
+    g.fillStyle = "#2e3430"; g.fillRect(12, 10, 50, 26);           // slate
+    dreamChalk(g, 16, 14, 42, 18, 7, 4);
+    g.fillStyle = "rgba(228,226,212,0.8)";
+    g.fillRect(20, 16, 2, 1); g.fillRect(32, 20, 2, 1); g.fillRect(50, 25, 2, 1);
+    g.fillStyle = "#5a4530";                                       // legs + wheels
+    g.fillRect(14, 39, 3, 9); g.fillRect(57, 39, 3, 9);
+    g.fillStyle = "#3a3026";
+    g.beginPath(); g.arc(15.5, 49, 2.4, 0, 2*Math.PI); g.fill();
+    g.beginPath(); g.arc(58.5, 49, 2.4, 0, 2*Math.PI); g.fill();
+    dreamHood(g, 62, 24, 2, HOOD_DARK);
+    g.fillStyle = "#c9a582"; g.fillRect(62, 30, 3, 2);             // the reaching hand
+  } else if (v === 4){
+    // HERMES EXITS through a doorway
+    dreamDither(g, 0, 46, "#4a4438", "#524b3e");
+    for (let y = 46; y < 54; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#3f3a30" : "#463f34");
+    g.fillStyle = "#6a5238"; g.fillRect(28, 4, 26, 44);            // door frame
+    g.fillStyle = "#17150f"; g.fillRect(31, 7, 20, 41);            // the dark beyond
+    g.fillStyle = "rgba(138,128,98,0.3)";                          // spilled light
+    g.beginPath(); g.moveTo(31, 48); g.lineTo(51, 48); g.lineTo(64, 54); g.lineTo(20, 54); g.closePath(); g.fill();
+    dreamHood(g, 40, 16, 2.4, { H: "#2c2620", f: "#171410", R: "#38312a", r: "#2a251f" });
+    g.fillStyle = "#17150f";                                       // half through already
+    g.fillRect(31, 7, 12, 41);
+  } else if (v === 5){
+    // THE CADUCEUS, full
+    dreamDither(g, 0, 54, "#55503f", "#5d5847");
+    g.fillStyle = "#463f2f"; g.fillRect(0, 50, 81, 4);
+    for (let r = 26; r > 10; r -= 4){
+      g.fillStyle = "rgba(216,207,184,0.05)";
+      g.beginPath(); g.arc(40, 24, r, 0, 2*Math.PI); g.fill();
+    }
+    dreamCaduceus(g, 39, 6, 42);
+  } else if (v === 6){
+    // HERMES BEGINS RUNNING
+    for (let y = 0; y < 28; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*7 + y*11) % 19 ? "#8f8b7c" : "#999585");
+    for (let x = 0; x < 81; x++){
+      const y = 28 - Math.round(3*Math.sin(x/17 + 1));
+      for (let yy = y; yy < 34; yy++) px(x, yy, "#6a6a54");
+    }
+    for (let y = 34; y < 54; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#5e6247" : "#545a40");
+    g.fillStyle = "#242019";                                       // the runner
+    g.beginPath(); g.arc(44, 22, 3.4, 0, 2*Math.PI); g.fill();     // head
+    g.beginPath(); g.moveTo(41, 25); g.lineTo(48, 27); g.lineTo(45, 38); g.lineTo(39, 36); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(40, 36); g.lineTo(30, 44); g.lineTo(33, 46); g.lineTo(43, 39); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(44, 38); g.lineTo(52, 46); g.lineTo(55, 43); g.lineTo(46, 36); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(47, 27); g.lineTo(56, 24); g.lineTo(55, 22); g.lineTo(46, 25); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(42, 27); g.lineTo(34, 30); g.lineTo(35, 32); g.lineTo(42, 30); g.closePath(); g.fill();
+    g.fillStyle = "rgba(36,32,25,0.35)";                           // dust behind
+    g.fillRect(22, 42, 6, 1); g.fillRect(16, 44, 4, 1); g.fillRect(26, 45, 5, 1);
+  } else if (v === 7){
+    // THE CROWS gather; someone points
+    dreamDither(g, 0, 44, "#8f8b7c", "#999585");
+    for (let y = 44; y < 54; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#5e6247" : "#545a40");
+    for (let i = 0; i < 15; i++)
+      dreamCrow(g, 5 + Math.floor(rs()*70), 4 + Math.floor(rs()*26), 2, i % 3 ? "#242220" : "#17150f");
+    dreamCrow(g, 30, 12, 3, "#17150f");
+    dreamCrow(g, 52, 18, 3, "#17150f");
+    dreamHood(g, 34, 30, 1.8, { H: "#2c2620", f: "#171410", R: "#38312a", r: "#2a251f" });
+    g.fillStyle = "#38312a";                                       // the raised arm
+    g.beginPath(); g.moveTo(42, 34); g.lineTo(52, 27); g.lineTo(53, 29); g.lineTo(43, 36); g.closePath(); g.fill();
+    g.fillStyle = "#c9a582"; g.fillRect(52, 26, 2, 2);
+  } else {
+    // THE DATE is marked
+    dreamDither(g, 0, 54, "#4a4438", "#524b3e");
+    g.fillStyle = "#d8cba8"; g.fillRect(12, 6, 57, 42);            // the calendar
+    g.fillStyle = "#c4b48e"; g.fillRect(12, 6, 57, 6);
+    px(14, 8, "#3a3026"); px(66, 8, "#3a3026");                    // pins
+    g.strokeStyle = "#8a7a5e"; g.lineWidth = 0.8;
+    for (let i = 0; i <= 7; i++){
+      g.beginPath(); g.moveTo(12 + i*57/7, 14); g.lineTo(12 + i*57/7, 48); g.stroke();
+    }
+    for (let j = 0; j <= 5; j++){
+      g.beginPath(); g.moveTo(12, 14 + j*34/5); g.lineTo(69, 14 + j*34/5); g.stroke();
+    }
+    g.fillStyle = "#8a7a5e";
+    for (let cell = 0; cell < 31; cell++){
+      const cx = 12 + (cell % 7)*57/7 + 2, cy = 14 + Math.floor(cell/7)*34/5 + 2;
+      g.fillRect(cx, cy, 2, 1);
+    }
+    const mx = 12 + 3*57/7 + 57/14, my = 14 + 2*34/5 + 34/10;      // the marked day
+    g.strokeStyle = "#c23b30"; g.lineWidth = 1.4;
+    g.beginPath(); g.arc(mx, my, 4.2, 0, 2*Math.PI); g.stroke();
+    g.beginPath(); g.moveTo(mx - 3, my - 3); g.lineTo(mx + 3, my + 3); g.stroke();
+    g.beginPath(); g.moveTo(mx + 3, my - 3); g.lineTo(mx - 3, my + 3); g.stroke();
+  }
+}
+function dreamArt81(g, v, px, rs){
+  if (v === 0){
+    // SEE PROMETHEUS
+    for (let y = 0; y < 81; y++)
+      for (let x = 0; x < 81; x++){
+        const d = Math.hypot(x - 40, y - 44)/56;
+        const t = Math.max(0, 1 - d);
+        const r2 = Math.round(35 + 20*t), g2 = Math.round(37 + 20*t), b2 = Math.round(46 + 22*t);
+        px(x, y, "rgb(" + r2 + "," + g2 + "," + b2 + ")");
+      }
+    g.fillStyle = "#1c1e24";
+    g.fillRect(0, 0, 7, 81); g.fillRect(74, 0, 7, 81); g.fillRect(0, 0, 81, 5);
+    g.fillStyle = "#141318";
+    g.beginPath(); g.arc(40, 24, 12, Math.PI, 2*Math.PI); g.fill();
+    g.fillRect(28, 24, 24, 8);
+    g.beginPath(); g.moveTo(28, 32); g.lineTo(16, 44); g.lineTo(14, 81); g.lineTo(66, 81);
+    g.lineTo(64, 44); g.lineTo(52, 32); g.closePath(); g.fill();
+    g.fillStyle = "#22242e"; g.fillRect(27, 26, 1, 8);
+    for (const ex of [35, 46]){
+      g.fillStyle = "rgba(80,170,230,0.16)";
+      g.beginPath(); g.arc(ex, 27, 6, 0, 2*Math.PI); g.fill();
+      g.fillStyle = "rgba(110,195,245,0.4)";
+      g.beginPath(); g.arc(ex, 27, 3.4, 0, 2*Math.PI); g.fill();
+      g.fillStyle = "#bfe8ff"; g.fillRect(ex - 1.5, 26, 3, 2);
+      px(ex - 1, 26, "#f2fbff");
+    }
+  } else if (v === 1){
+    // SATURN over the open hand
+    for (let y = 0; y < 81; y++)
+      for (let x = 0; x < 81; x++){
+        const t = Math.max(0, 1 - Math.hypot(x - 40, y - 30)/60);
+        const k2 = Math.round(34 + 26*t);
+        px(x, y, "rgb(" + (k2 + 6) + "," + k2 + "," + Math.round(k2*0.82) + ")");
+      }
+    g.fillStyle = "#a8875f";
+    g.beginPath(); g.moveTo(30, 81); g.lineTo(34, 58); g.lineTo(48, 58); g.lineTo(54, 81); g.closePath(); g.fill();
+    g.fillStyle = "#c9a582";
+    g.beginPath(); g.ellipse(41, 54, 12, 7, -0.1, 0, 2*Math.PI); g.fill();
+    for (let f = 0; f < 4; f++){
+      const fx = 31 + f*6;
+      g.fillStyle = f % 2 ? "#c9a582" : "#bd9873";
+      g.fillRect(fx, 40 - f % 2 * 2, 4, 16);
+      g.fillStyle = "#e0c49a"; g.fillRect(fx, 40 - f % 2 * 2, 4, 2);
+    }
+    g.fillStyle = "#bd9873";
+    g.beginPath(); g.ellipse(54, 52, 3.4, 6, 0.5, 0, 2*Math.PI); g.fill();
+    for (const [r, a] of [[16, 0.05], [11, 0.08], [7, 0.12]]){
+      g.fillStyle = "rgba(190,220,255," + a + ")";
+      g.beginPath(); g.arc(40, 24, r, 0, 2*Math.PI); g.fill();
+    }
+    g.fillStyle = "#f2f6ff";
+    g.fillRect(36, 14, 2, 20);
+    g.fillRect(32, 18, 10, 2);
+    g.fillRect(38, 22, 6, 2); g.fillRect(42, 22, 2, 8);
+    g.fillRect(40, 30, 4, 2);
+    g.fillStyle = "rgba(242,246,255,0.5)"; g.fillRect(35, 13, 4, 1);
+  } else if (v === 2){
+    // HERMES TAKES FLIGHT
+    for (let y = 0; y < 81; y++) for (let x = 0; x < 81; x++){
+      const b = Math.min(2, Math.floor(y/27));
+      px(x, y, (x*11 + y*7) % 23 ? ["#6a685c", "#605e52", "#565448"][b] : "#726f60");
+    }
+    const rs2 = dreamRng(999);
+    for (let i = 0; i < 14; i++){
+      const x = Math.floor(rs2()*76), y = 4 + Math.floor(rs2()*22);
+      px(x, y, "#3a3832"); px(x + 1, y - 1, "#3a3832"); px(x + 2, y, "#3a3832");
+    }
+    g.fillStyle = "#1e1a18";
+    g.beginPath();
+    g.moveTo(40, 36); g.lineTo(6, 16); g.lineTo(2, 30); g.lineTo(14, 32);
+    g.lineTo(8, 44); g.lineTo(22, 42); g.lineTo(18, 52); g.lineTo(38, 44);
+    g.closePath(); g.fill();
+    g.beginPath();
+    g.moveTo(41, 36); g.lineTo(75, 16); g.lineTo(79, 30); g.lineTo(67, 32);
+    g.lineTo(73, 44); g.lineTo(59, 42); g.lineTo(63, 52); g.lineTo(43, 44);
+    g.closePath(); g.fill();
+    g.fillStyle = "#242019";
+    g.beginPath(); g.arc(40, 30, 4, 0, 2*Math.PI); g.fill();
+    g.fillRect(36, 33, 9, 18);
+    g.beginPath(); g.moveTo(36, 51); g.lineTo(34, 66); g.lineTo(38, 66); g.lineTo(40, 52); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(45, 51); g.lineTo(48, 63); g.lineTo(44, 64); g.lineTo(41, 52); g.closePath(); g.fill();
+    g.fillStyle = "#38312a"; g.fillRect(36, 33, 2, 18);
+    for (const [fx, fy] of [[24, 66], [52, 71], [38, 76]]){
+      g.fillStyle = "#1a181c";
+      g.fillRect(fx, fy, 3, 1); g.fillRect(fx + 1, fy - 1, 2, 1);
+    }
+  } else if (v === 3){
+    // THE GREAT EYE
+    for (let y = 0; y < 81; y++)
+      for (let x = 0; x < 81; x++){
+        const t = Math.max(0, 1 - Math.hypot(x - 40, y - 40)/58);
+        const k2 = Math.round(38 + 18*t);
+        px(x, y, "rgb(" + (k2 + 4) + "," + k2 + "," + Math.round(k2*0.86) + ")");
+      }
+    g.strokeStyle = "rgba(216,207,184,0.14)";
+    for (let a = 0; a < 16; a++){
+      g.beginPath();
+      g.moveTo(40 + Math.cos(a*Math.PI/8)*32, 40 + Math.sin(a*Math.PI/8)*32);
+      g.lineTo(40 + Math.cos(a*Math.PI/8)*38, 40 + Math.sin(a*Math.PI/8)*38);
+      g.stroke();
+    }
+    g.fillStyle = "#ded6c2";
+    g.beginPath(); g.ellipse(40, 40, 30, 14, 0, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#8a5a24"; g.beginPath(); g.arc(40, 40, 12, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#b87a30"; g.beginPath(); g.arc(40, 40, 10, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#d9a441";
+    for (let a = 0; a < 20; a++){
+      const ax = 40 + Math.cos(a*Math.PI/10)*7.5, ay = 40 + Math.sin(a*Math.PI/10)*7.5;
+      g.fillRect(ax, ay, 1.2, 1.2);
+    }
+    g.fillStyle = "#17130c"; g.beginPath(); g.arc(40, 40, 5, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#f6f2e6"; g.fillRect(36, 35, 3, 3);
+    g.strokeStyle = "#6e4a30"; g.lineWidth = 2.4;
+    g.beginPath(); g.moveTo(9, 40); g.quadraticCurveTo(40, 18, 71, 40); g.stroke();
+    g.beginPath(); g.moveTo(9, 40); g.quadraticCurveTo(40, 60, 71, 40); g.stroke();
+    g.strokeStyle = "#5e3c22"; g.lineWidth = 1;
+    for (let i = 0; i < 8; i++){
+      const lx = 14 + i*8;
+      const ly = 40 - 9*Math.sin(Math.PI*(lx - 9)/62);
+      g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx - 2, ly - 4); g.stroke();
+    }
+  } else if (v === 4){
+    // THE CALENDAR is drawn on the board
+    dreamDither(g, 0, 62, "#4a4438", "#524b3e");
+    for (let y = 62; y < 81; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#3f3a30" : "#463f34");
+    g.fillStyle = "#9aa4a8"; g.fillRect(62, 8, 14, 26);            // window
+    g.fillStyle = "#3a352c"; g.fillRect(68, 8, 2, 26); g.fillRect(62, 20, 14, 2);
+    g.fillStyle = "rgba(154,164,168,0.2)"; g.fillRect(60, 62, 18, 8);
+    g.fillStyle = "#6a5238"; g.fillRect(6, 10, 50, 40);            // board frame
+    g.fillStyle = "#2e3430"; g.fillRect(9, 13, 44, 34);
+    dreamChalk(g, 13, 18, 36, 24, 7, 5);
+    g.fillStyle = "rgba(228,226,212,0.85)";
+    g.fillRect(18, 21, 2, 1); g.fillRect(29, 26, 2, 1); g.fillRect(44, 31, 2, 1); g.fillRect(23, 36, 2, 1);
+    g.fillStyle = "#5a4530";
+    g.fillRect(10, 50, 3, 12); g.fillRect(49, 50, 3, 12);
+    g.fillStyle = "#3a3026";
+    g.beginPath(); g.arc(11.5, 64, 3, 0, 2*Math.PI); g.fill();
+    g.beginPath(); g.arc(50.5, 64, 3, 0, 2*Math.PI); g.fill();
+    dreamHood(g, 52, 32, 2.8, HOOD_DARK);
+    g.fillStyle = "#c9a582"; g.fillRect(52, 40, 4, 3);
+    g.fillStyle = "#e8e4d6"; g.fillRect(50, 41, 3, 1);             // the chalk
+  } else if (v === 5){
+    // THE OWL REMAINS: perched on the table
+    dreamDither(g, 0, 58, "#55503f", "#5d5847");
+    for (let y = 58; y < 81; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#3f3a30" : "#463f34");
+    g.fillStyle = "#17150f"; g.fillRect(64, 8, 14, 50);            // dark door
+    g.fillStyle = "#6a5238"; g.fillRect(62, 6, 2, 52); g.fillRect(62, 6, 18, 2);
+    g.fillStyle = "#6a5238"; g.fillRect(8, 46, 44, 4);             // the table
+    g.fillStyle = "#7d6247"; g.fillRect(8, 46, 44, 1);
+    g.fillStyle = "#5a4530"; g.fillRect(11, 50, 3, 26); g.fillRect(46, 50, 3, 26);
+    g.fillStyle = "#5e503a";                                       // the owl, small
+    g.beginPath(); g.ellipse(30, 38, 8, 9, 0, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#6a5a42";
+    g.beginPath(); g.ellipse(30, 29, 9, 7, 0, 0, 2*Math.PI); g.fill();
+    for (const ex of [26, 34]){
+      g.fillStyle = "#2a2118"; g.beginPath(); g.arc(ex, 29, 3.4, 0, 2*Math.PI); g.fill();
+      g.fillStyle = "#e8a83c"; g.beginPath(); g.arc(ex, 29, 2.6, 0, 2*Math.PI); g.fill();
+      g.fillStyle = "#141014"; g.beginPath(); g.arc(ex, 29, 1.2, 0, 2*Math.PI); g.fill();
+    }
+    g.fillStyle = "#3a3026";
+    g.beginPath(); g.moveTo(29, 31); g.lineTo(31, 31); g.lineTo(30, 34); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(23, 24); g.lineTo(25, 20); g.lineTo(27, 24); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(37, 24); g.lineTo(35, 20); g.lineTo(33, 24); g.closePath(); g.fill();
+    g.strokeStyle = "#b8b09a"; g.lineWidth = 1;                    // the spectacles
+    g.beginPath(); g.arc(41, 44, 2.4, 0, 2*Math.PI); g.stroke();
+    g.beginPath(); g.arc(47, 44, 2.4, 0, 2*Math.PI); g.stroke();
+    g.beginPath(); g.moveTo(43.4, 44); g.lineTo(44.6, 44); g.stroke();
+  } else if (v === 6){
+    // SEE HERMES
+    for (let y = 0; y < 81; y++)
+      for (let x = 0; x < 81; x++){
+        const t = Math.max(0, 1 - Math.hypot(x - 40, y - 40)/60);
+        const k2 = Math.round(40 + 22*t);
+        px(x, y, "rgb(" + k2 + "," + k2 + "," + Math.round(k2*0.92) + ")");
+      }
+    dreamHood(g, 15, 12, 5, { H: "#3a352c", f: "#1c1914", R: "#4a4438", r: "#38332a" });
+    g.fillStyle = "#8a7a5e"; g.fillRect(34, 30, 12, 3);            // pale mouth-shadow
+    dreamCaduceus(g, 62, 14, 52);
+  } else if (v === 7){
+    // PROMETHEUS IS MISSING FROM THE ROOM
+    dreamDither(g, 0, 58, "#4a4438", "#524b3e");
+    for (let y = 58; y < 81; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#3f3a30" : "#463f34");
+    g.fillStyle = "#b8ae90"; g.fillRect(58, 6, 17, 52);            // the open door, light beyond
+    g.fillStyle = "#cabf9e"; g.fillRect(58, 6, 8, 52);
+    g.fillStyle = "#6a5238";
+    g.fillRect(55, 4, 3, 56); g.fillRect(55, 4, 22, 2);
+    g.fillStyle = "rgba(184,174,144,0.3)";                         // light across the floor
+    g.beginPath(); g.moveTo(58, 58); g.lineTo(75, 58); g.lineTo(60, 78); g.lineTo(30, 72); g.closePath(); g.fill();
+    g.fillStyle = "#5a4530";                                       // the overturned chair
+    g.fillRect(14, 56, 22, 3);
+    g.fillRect(14, 48, 3, 8);
+    g.fillRect(20, 59, 3, 9); g.fillRect(30, 59, 3, 7);
+    g.fillRect(14, 45, 12, 3);
+    g.fillStyle = "#d8cba8";                                       // scattered papers
+    g.fillRect(40, 66, 6, 4); g.fillRect(48, 70, 5, 3); g.fillRect(36, 73, 5, 3);
+    g.fillStyle = "#8a7a5e"; g.fillRect(41, 67, 3, 1); g.fillRect(49, 71, 2, 1);
+  } else {
+    // THE MIRROR looks back
+    dreamDither(g, 0, 62, "#4a4438", "#524b3e");
+    for (let y = 62; y < 81; y++) for (let x = 0; x < 81; x++)
+      px(x, y, (x*5 + y*3) % 11 ? "#3f3a30" : "#463f34");
+    g.fillStyle = "#7a6a4a";
+    g.beginPath(); g.arc(48, 26, 17, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#8d7c58";
+    for (let a = 0; a < 8; a++){
+      const bx = 48 + Math.cos(a*Math.PI/4)*17, by = 26 + Math.sin(a*Math.PI/4)*17;
+      g.beginPath(); g.arc(bx, by, 2, 0, 2*Math.PI); g.fill();
+    }
+    g.fillStyle = "#2e3236";
+    g.beginPath(); g.arc(48, 26, 13.5, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#cfc6b0";                                       // the face that waits
+    g.beginPath(); g.arc(48, 24, 6.5, 0, 2*Math.PI); g.fill();
+    g.fillRect(45, 28, 6.5, 5);
+    g.fillStyle = "#2e3236";
+    g.fillRect(45, 22, 2.4, 2.4); g.fillRect(50, 22, 2.4, 2.4);
+    g.fillRect(47.5, 26, 1.6, 1.6);
+    for (const tx of [45.5, 48, 50.5]) g.fillRect(tx, 31.5, 1, 1.6);
+    dreamHood(g, 8, 30, 3.8, { H: "#221e1a", f: "#221e1a", R: "#2e2a24", r: "#241f1b" });
+    px(46, 40, "#4aa4e0");                                         // something else, behind
+    px(50, 40, "#4aa4e0");
+  }
+}
+function dreamBuildArt(key){
+  const parts = key.split(":");
+  const size = parts[0], v = +parts[1] || 0;
+  const rows = size === "s27" ? 3 : size === "s54" ? 6 : 9;
+  const H = rows*9;
+  const c = document.createElement('canvas');
+  c.width = 81; c.height = H;
+  const g = c.getContext('2d');
+  const px = (x, y, col) => { g.fillStyle = col; g.fillRect(x, y, 1, 1); };
+  const rs = dreamRng(1013904223 + v*97 + H);
+  if (size === "s27") dreamArt27(g, v, px, rs);
+  else if (size === "s54") dreamArt54(g, v, px, rs);
+  else dreamArt81(g, v, px, rs);
+  return { kind: key, rows, data: g.getImageData(0, 0, 81, H).data };
+}
+function dreamEnsureArt(){
+  const kind = dreamPickKind();
+  if (dreamArt.kind === kind) return;
+  dreamArt = dreamBuildArt(kind);
+  dreamReveal = document.createElement('canvas');
+  dreamReveal.width = 81; dreamReveal.height = dreamArt.rows*9;
+  dreamRevealCtx = dreamReveal.getContext('2d');
+  dreamRevealN = 0;
+  needsStaticRedraw = true;      // the wall frame follows the fresco size
+}
+/* tick k -> pixel coords: tiles fill raster-wise, pixels raster within the tile */
+function dreamPixelPos(k){
+  const tile = Math.floor(k/81), r = k % 81;
+  return { x: (tile % 9)*9 + r % 9, y: Math.floor(tile/9)*9 + Math.floor(r/9) };
+}
+function dreamRevealTo(n){
+  if (n < dreamRevealN){ dreamRevealCtx.clearRect(0, 0, 81, dreamArt.rows*9); dreamRevealN = 0; }
+  while (dreamRevealN < n){
+    const p = dreamPixelPos(dreamRevealN);
+    const o = (p.y*81 + p.x)*4, d = dreamArt.data;
+    dreamRevealCtx.fillStyle = "rgb(" + d[o] + "," + d[o+1] + "," + d[o+2] + ")";
+    dreamRevealCtx.fillRect(p.x, p.y, 1, 1);
+    dreamRevealN++;
+  }
+}
+
+/* ---- the hooded mage ---- */
+const DREAM_MAGE = [
+  "....HHHH......",
+  "...HHHHHH.....",
+  "..HHhhhhHH....",
+  "..HhFFFFhH....",
+  "..HhFeFeFh....",
+  "..HhFFFFhH....",
+  "...hFFFFh.....",
+  "..RRrRRrRR....",
+  ".RRRRRRRRR..O.",
+  ".RRRRRRRRRgS..",
+  ".RRRRRRRRR.S..",
+  ".RRrRRRRrR.S..",
+  ".RRRRRRRRR.S..",
+  ".RRRRRRRRR.S..",
+  ".RRrRRRRrR.S..",
+  ".RRRRRRRRR.S..",
+  ".RRRRRRRR..S..",
+  ".rRRRRRRr..S..",
+  ".rrRRRRrr..S..",
+  ".rrrrrrrr..S..",
+];
+const DREAM_MAGE_COL = {
+  H: "#3a2a55", h: "#241a38", F: "#0d0a14", e: "#9fd8ea",
+  R: "#46316b", r: "#2c1f47", S: "#5d4326", O: "#aef0ff", g: "#8a7f9a",
+};
+function dreamLayout(){
+  const k = Math.max(0.8, Math.min(viewW/412, 1.25));
+  const ps = Math.max(3, Math.round(4*k));
+  const rows = dreamArt.rows || 9;
+  const frescoW = 81*ps, frescoH = rows*9*ps;
+  const frescoLeft = Math.round((viewW - frescoW)/2);
+  // smaller frescos sit low on the wall, where the mage works
+  const frescoTop = Math.round(72*k + (81*ps - frescoH));
+  const floorY = Math.round(72*k + 81*ps + 46*k);
+  const S = Math.max(3, Math.round(4*k));
+  const mageX = Math.round(34*k);
+  const mageY = Math.round(floorY + 26*k - 20*S);   // feet on the floor, body against the wall
+  return { k, ps, rows, frescoW, frescoH, frescoLeft, frescoTop,
+           frescoBottom: frescoTop + frescoH, floorY, S, mageX, mageY,
+           orbX: mageX + 12*S + Math.floor(S/2), orbY: mageY + 8*S + Math.floor(S/2),
+           textY: Math.round(floorY + 158*k) };
+}
+function drawDreamDungeon(){
+  dreamEnsureArt();
+  const L = dreamLayout();
+  const r = dreamRng(97531);
+  // back wall: staggered stone bricks
+  ctxStatic.fillStyle = "#08090d";
+  ctxStatic.fillRect(0, 0, viewW, L.floorY);
+  const bh = Math.round(15*L.k), bw = Math.round(32*L.k);
+  const shades = ["#141721", "#12141d", "#161924", "#101319"];
+  for (let row = 0, y = 0; y < L.floorY; row++, y += bh){
+    const off = (row % 2) * Math.round(bw/2);
+    for (let x = -off; x < viewW; x += bw){
+      ctxStatic.fillStyle = shades[Math.floor(r()*shades.length)];
+      ctxStatic.fillRect(x + 1, y + 1, bw - 2, Math.min(bh, L.floorY - y) - 2);
+    }
+  }
+  // the fresco's stone frame, set into the wall
+  const b = Math.round(6*L.k);
+  ctxStatic.fillStyle = "#232733";
+  ctxStatic.fillRect(L.frescoLeft - b, L.frescoTop - b, L.frescoW + 2*b, L.frescoH + 2*b);
+  ctxStatic.fillStyle = "#2e3342";
+  ctxStatic.fillRect(L.frescoLeft - b, L.frescoTop - b, L.frescoW + 2*b, Math.max(2, Math.round(2*L.k)));
+  ctxStatic.fillStyle = "#0c0e14";
+  ctxStatic.fillRect(L.frescoLeft - 2, L.frescoTop - 2, L.frescoW + 4, L.frescoH + 4);
+  // the prepared surface: blank plaster, waiting for paint
+  ctxStatic.fillStyle = "#37322a";
+  ctxStatic.fillRect(L.frescoLeft, L.frescoTop, L.frescoW, L.frescoH);
+  for (let i = 0; i < 420; i++){
+    ctxStatic.fillStyle = r() < 0.5 ? "#302b23" : "#3c372e";
+    ctxStatic.fillRect(L.frescoLeft + Math.floor(r()*L.frescoW/2)*2,
+                       L.frescoTop + Math.floor(r()*L.frescoH/2)*2, 2, 2);
+  }
+  // sconce brackets beside the fresco
+  const sy = L.frescoTop + L.frescoH/2;
+  for (const sx of [Math.round(L.frescoLeft/2), viewW - Math.round(L.frescoLeft/2)]){
+    ctxStatic.fillStyle = "#241a10";
+    ctxStatic.fillRect(sx - 2*L.k, sy, 4*L.k, 12*L.k);
+    ctxStatic.fillStyle = "#31241a";
+    ctxStatic.fillRect(sx - 4*L.k, sy + 10*L.k, 8*L.k, 3*L.k);
+  }
+  // floor: big flagstones
+  ctxStatic.fillStyle = "#12101a";
+  ctxStatic.fillRect(0, L.floorY, viewW, viewH - L.floorY);
+  ctxStatic.fillStyle = "#1c1a24";
+  ctxStatic.fillRect(0, L.floorY, viewW, Math.max(2, Math.round(2*L.k)));
+  const fh = Math.round(30*L.k), fw = Math.round(58*L.k);
+  const fshades = ["#141218", "#100e15", "#16141c"];
+  for (let row = 0, y = L.floorY + 2; y < viewH; row++, y += fh){
+    const off = (row % 2) * Math.round(fw/2);
+    for (let x = -off; x < viewW; x += fw){
+      ctxStatic.fillStyle = fshades[Math.floor(r()*fshades.length)];
+      ctxStatic.fillRect(x + 1, y + 1, fw - 2, fh - 2);
+    }
+  }
+}
+function drawDreamTorch(x, y, k){
+  const w = performance.now()/1000;
+  const cols = ["#ff9a3c", "#ffc75a", "#ff7030"];
+  const ph = Math.floor(w*7 + x) % 3;
+  ctx.shadowColor = "rgba(255,150,50,0.6)";
+  ctx.shadowBlur = 8;
+  ctx.fillStyle = cols[ph];
+  ctx.fillRect(x - 3*k, y - 4*k, 6*k, 6*k);
+  ctx.fillStyle = cols[(ph+1) % 3];
+  ctx.fillRect(x - 2*k, y - 8*k, 4*k, 4*k);
+  if (Math.floor(w*9 + x) % 2){
+    ctx.fillStyle = cols[(ph+2) % 3];
+    ctx.fillRect(x - k, y - 11*k, 2*k, 3*k);
+  }
+  ctx.shadowBlur = 0;
+}
+function drawDreamMage(L, ticks, idle, glow){
+  const bob = idle ? 0 : (ticks % 2) * L.S;
+  for (let ry = 0; ry < DREAM_MAGE.length; ry++){
+    const row = DREAM_MAGE[ry];
+    for (let rx = 0; rx < row.length; rx++){
+      const c = DREAM_MAGE_COL[row[rx]];
+      if (!c) continue;
+      ctx.fillStyle = c;
+      ctx.fillRect(L.mageX + rx*L.S, L.mageY + ry*L.S + bob, L.S, L.S);
+    }
+  }
+  // the orb: its glow is the infinitesimal fraction building toward 1/81
+  const oy = L.orbY + (idle ? 0 : (ticks % 2) * L.S);
+  const a = idle ? 0.22 : 0.15 + 0.85*glow;
+  ctx.fillStyle = "rgba(174,240,255," + a + ")";
+  ctx.shadowColor = "rgba(174,240,255," + a + ")";
+  ctx.shadowBlur = 4 + 16*(idle ? 0 : glow);
+  ctx.fillRect(L.orbX - L.S, oy - L.S, L.S*2, L.S*2);
+  ctx.shadowBlur = 0;
+}
+function drawDream(t){
+  dreamEnsureArt();
+  const L = dreamLayout();
+  const idle = !running && !finished && pauseMs === 0;
+  const totalTiles = Math.min(dreamArt.rows*9, Math.round(totalCycle/60));
+  const totalTicks = totalTiles*81;
+  const ticks = finished ? totalTicks : idle ? 0 : Math.min(totalTicks, Math.floor(t/DREAM_T81));
+  const sub = idle || finished ? 0 : t % DREAM_T81;
+
+  // the spark released at each boundary flies for a beat, then the pixel lands
+  const flightT = 0.22;
+  const flying = !idle && !finished && ticks > 0 && sub < flightT;
+  const shown = flying ? ticks - 1 : ticks;
+  dreamRevealTo(shown);
+
+  // torches
+  const sy = L.frescoTop + L.frescoH/2;
+  drawDreamTorch(Math.round(L.frescoLeft/2), sy, L.k);
+  drawDreamTorch(viewW - Math.round(L.frescoLeft/2), sy, L.k);
+
+  // the fresco: paint over blank plaster (plaster lives on the static layer)
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(dreamReveal, L.frescoLeft, L.frescoTop, L.frescoW, L.frescoH);
+  ctx.imageSmoothingEnabled = true;
+  ctx.strokeStyle = "rgba(255,255,255,0.045)";
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 9; i++){
+    const x = L.frescoLeft + i*9*L.ps;
+    ctx.beginPath(); ctx.moveTo(x, L.frescoTop); ctx.lineTo(x, L.frescoTop + L.frescoH); ctx.stroke();
+  }
+  for (let i = 1; i < L.rows; i++){
+    const y = L.frescoTop + i*9*L.ps;
+    ctx.beginPath(); ctx.moveTo(L.frescoLeft, y); ctx.lineTo(L.frescoLeft + L.frescoW, y); ctx.stroke();
+  }
+  // wet paint: the freshest strokes glint, so the brush is always visible
+  if (!idle && !finished){
+    for (let j = 0; j < 10; j++){
+      const i2 = shown - 1 - j;
+      if (i2 < 0) break;
+      const p2 = dreamPixelPos(i2);
+      ctx.fillStyle = "rgba(255,250,230," + (0.5*(1 - j/10)) + ")";
+      ctx.fillRect(L.frescoLeft + p2.x*L.ps, L.frescoTop + p2.y*L.ps, L.ps, L.ps);
+    }
+  }
+  // the tile being painted this minute
+  if (!idle && !finished && shown < totalTicks){
+    const tile = Math.floor(shown/81);
+    ctx.strokeStyle = "rgba(0,191,255,0.35)";
+    ctx.strokeRect(L.frescoLeft + (tile % 9)*9*L.ps + 0.5,
+                   L.frescoTop + Math.floor(tile/9)*9*L.ps + 0.5,
+                   9*L.ps - 1, 9*L.ps - 1);
+  }
+  if (finished){
+    const pulse = 0.5 + 0.5*Math.sin(performance.now()/700);
+    ctx.strokeStyle = "rgba(255,180,80," + (0.5 + 0.35*pulse) + ")";
+    ctx.lineWidth = 2;
+    ctx.shadowColor = "rgba(255,160,60,0.7)";
+    ctx.shadowBlur = 8 + 6*pulse;
+    ctx.strokeRect(L.frescoLeft - 3, L.frescoTop - 3, L.frescoW + 6, L.frescoH + 6);
+    ctx.shadowBlur = 0;
+  }
+
+  // the mage; orb charge = fraction of this 1/81 already lived
+  drawDreamMage(L, ticks, idle, Math.min(1, sub/DREAM_T81));
+
+  // the spark: a straight beam from orb to its place in the tile
+  if (flying){
+    const p = dreamPixelPos(ticks - 1);
+    const tx = L.frescoLeft + p.x*L.ps + L.ps/2;
+    const ty = L.frescoTop + p.y*L.ps + L.ps/2;
+    const q = sub/flightT;
+    for (let s = 0; s <= 3; s++){
+      const u = Math.max(0, q - s*0.07);
+      const sx2 = L.orbX + (tx - L.orbX)*u, sy2 = L.orbY + (ty - L.orbY)*u;
+      ctx.fillStyle = "rgba(220,245,255," + (0.9 - s*0.25) + ")";
+      if (s === 0){ ctx.shadowColor = "rgba(174,240,255,0.9)"; ctx.shadowBlur = 8; }
+      ctx.fillRect(sx2 - 1.5, sy2 - 1.5, 3, 3);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  // attribution (CC BY)
+  ctx.font = Math.round(9*L.k) + "px monospace";
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(120,135,145,0.45)";
+  ctx.fillText("♪ Dreams Become Real — Kevin MacLeod (incompetech.com) · CC BY", viewW/2, Math.min(viewH - 96, L.textY + 118*L.k));
+}
+
+
+/* ---------- GOETIA: Malphas, compelled, builds the temple ----------
+   Point (1/27 min) -> line (1/9) -> plane (1/3) -> cube (1 minute).
+   The cubes are quarried stone; the temple is the sum of the minutes.
+   27 raises a shrine, 54 a temple, 81 the grand temple whose doorway
+   lights from within when the last stone is set. */
+const GOETIA_CROW = [
+  "......bbb........",
+  ".....bbbbb.......",
+  "....bbbbbbb......",
+  "qqqqqbEbbbb......",
+  ".....bbbbbb......",
+  "....WWbbbbW......",
+  "...WWWrrrWWW.....",
+  "...WWrrrrrWW.....",
+  "..WWrrrrrrrWW....",
+  "..WWrrrrrrrWW....",
+  "..WWrrrrrrrWW....",
+  "..WWrrrrrrrWW....",
+  "...WrrrrrrrW.....",
+  "...Wrrrrrrr......",
+  "....rrrrrrr......",
+  "....rrrrrrr......",
+  "....rrrrrrr......",
+  ".....rrrrr.......",
+  "....rr...rr......",
+  "....cc...cc......",
+];
+const GOETIA_CROW_OPEN = [
+  "WW.........bbb.........WW.",
+  "WWW........bbbbb......WWW.",
+  ".WWWW.....bbbbbbb....WWWW.",
+  ".WWWWW.qqqqqbEbbbb..WWWWW.",
+  "..WWWWW....bbbbbb..WWWWW..",
+  "..WWWWWW...bbbbbb.WWWWWW..",
+  "...WWWWWW.WrrrrrWWWWWWW...",
+  "....WWWWWWWrrrrrWWWWWW....",
+  ".....WWWWWWrrrrrWWWWW.....",
+  "......WWW.WrrrrrW.WWW.....",
+  "..........rrrrrrr.........",
+  "..........rrrrrrr.........",
+  ".........rrrrrrrr.........",
+  ".........rrrrrrrr.........",
+  "..........rrrrrrr.........",
+  "..........rrrrrrr.........",
+  "..........rrrrrrr.........",
+  "..........rrrrr...........",
+  ".........rr...rr..........",
+  ".........cc...cc..........",
+];
+const GOETIA_PAL = { b:"#241a2e", q:"#8a8274", E:"#ff7030", r:"#1c1420", W:"#2f1f38", c:"#8a8274" };
+function goetiaPlanKind(){
+  const m = Math.round(totalCycle/60);
+  return m <= 27 ? 27 : m <= 54 ? 54 : 81;
+}
+let goetiaPlanCache = { kind: 0, list: null };
+function goetiaPlan(){
+  const kind = goetiaPlanKind();
+  if (goetiaPlanCache.kind === kind) return goetiaPlanCache.list;
+  const L = [];
+  const row = (j, k, x0, x1, skip) => {
+    for (let x = x0; x <= x1; x++){
+      if (skip && skip.indexOf(x) >= 0) continue;
+      L.push([x, j, k]);
+    }
+  };
+  const ring = (size, off) => {
+    const out = [];
+    for (let j = 0; j < size; j++)
+      for (let i = 0; i < size; i++)
+        if (i === 0 || i === size-1 || j === 0 || j === size-1)
+          out.push([i + (off || 0), j + (off || 0)]);
+    return out;
+  };
+  if (kind === 27){
+    // THE KEEP: three hollow courses, a door, four corner merlons
+    for (const [i,j] of ring(3)) if (!(i === 1 && j === 2)) L.push([i,j,0]);
+    for (let k = 1; k < 3; k++) for (const [i,j] of ring(3)) L.push([i,j,k]);
+    for (const [i,j] of [[0,0],[2,0],[0,2],[2,2]]) L.push([i,j,3]);
+  } else if (kind === 54){
+    // THE FORT: 4x4, four hollow courses, tall gate, four turrets
+    for (let k = 0; k < 4; k++)
+      for (const [i,j] of ring(4)){
+        if (i === 1 && j === 3 && k < 2) continue;
+        L.push([i,j,k]);
+      }
+    for (const [i,j] of [[0,0],[3,0],[0,3],[3,3]]){ L.push([i,j,4]); L.push([i,j,5]); }
+  } else {
+    // THE CITADEL: gated outer wall, three-course corner towers and
+    // merlons, enclosing a hollow keep with its own door and crown
+    for (let k = 0; k < 2; k++)
+      for (const [i,j] of ring(5)){
+        if (i === 2 && j === 4) continue;
+        L.push([i,j,k]);
+      }
+    for (const [i,j] of [[0,0],[4,0],[0,4],[4,4]]){ L.push([i,j,2]); L.push([i,j,3]); L.push([i,j,4]); }
+    for (const [i,j] of [[2,0],[0,2],[4,2],[2,4]]) L.push([i,j,2]);
+    for (let k = 0; k < 4; k++)
+      for (const [i,j] of ring(3, 1)){
+        if (i === 2 && j === 3 && k === 0) continue;
+        L.push([i,j,k]);
+      }
+    for (const [i,j] of [[1,1],[3,1],[1,3],[3,3]]) L.push([i,j,4]);
+  }
+  goetiaPlanCache = { kind, list: L };
+  return L;
+}
+function goetiaLayout(){
+  const k = Math.max(0.8, Math.min(viewW/412, 1.25));
+  const kind = goetiaPlanKind();
+  const u = Math.round((kind === 81 ? 16 : kind === 54 ? 20 : 24)*k);
+  const hh = Math.round(u*1.15);
+  return {
+    k, u, hh, kind,
+    cx: Math.round(viewW/2),
+    baseY: Math.round(356*k),
+    fx: Math.round(viewW*0.24), fy: Math.round(600*k), fr: Math.round(46*k),
+    stX: Math.round(viewW*0.24), stY: Math.round(600*k - 46*k - 30*k),
+    t1: [Math.round(viewW*0.75 - 54*k), Math.round(648*k)],
+    t2: [Math.round(viewW*0.75 + 54*k), Math.round(648*k)],
+    t3: [Math.round(viewW*0.75), Math.round((648 - 108*0.866)*k)],
+    demonX: Math.round(viewW*0.75 - 8.5*Math.max(3, Math.round(3.2*k))),
+    demonY: Math.round(648*k - 2*k) - 20*Math.max(3, Math.round(3.2*k)),
+    textY: Math.round(706*k),
+  };
+}
+function goetiaPos(L, i, j, k){
+  return [L.cx + (i - j)*L.u, L.baseY + (i + j)*L.u/2 - k*L.hh];
+}
+function goetiaPoly(pts, col){
+  ctx.fillStyle = col;
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let n = 1; n < pts.length; n++) ctx.lineTo(pts[n][0], pts[n][1]);
+  ctx.closePath(); ctx.fill();
+}
+function goetiaCube(L, sx, sy, shade, alpha){
+  const u = L.u, hh = L.hh;
+  ctx.globalAlpha = alpha === undefined ? 1 : alpha;
+  const c = (base, d) => "rgb(" + (base+d) + "," + (base+d+3) + "," + (base+d+7) + ")";
+  goetiaPoly([[sx, sy-u/2],[sx+u, sy],[sx, sy+u/2],[sx-u, sy]], c(140, shade));
+  goetiaPoly([[sx-u, sy],[sx, sy+u/2],[sx, sy+u/2+hh],[sx-u, sy+hh]], c(96, shade));
+  goetiaPoly([[sx+u, sy],[sx, sy+u/2],[sx, sy+u/2+hh],[sx+u, sy+hh]], c(66, shade));
+  ctx.strokeStyle = "rgba(16,18,24,0.45)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(sx-u, sy); ctx.lineTo(sx, sy-u/2); ctx.lineTo(sx+u, sy);
+  ctx.lineTo(sx+u, sy+hh); ctx.lineTo(sx, sy+u/2+hh); ctx.lineTo(sx-u, sy+hh);
+  ctx.closePath(); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(sx-u, sy); ctx.lineTo(sx, sy+u/2); ctx.lineTo(sx+u, sy);
+  ctx.moveTo(sx, sy+u/2); ctx.lineTo(sx, sy+u/2+hh);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+function goetiaShade(idx){
+  let h = (idx*2654435761) >>> 0;                 // mottled masonry, stable per stone
+  return (h % 25) - 12;
+}
+function drawGoetiaStatic(){
+  const L = goetiaLayout();
+  // the chamber gloom
+  for (let y = 0; y < viewH; y += 4)
+    for (let x = 0; x < viewW; x += 4){
+      const t = Math.max(0, 1 - Math.hypot(x - viewW/2, y - 400*L.k)/(640*L.k));
+      const g2 = Math.round(11 + 15*t);
+      ctxStatic.fillStyle = "rgb(" + (g2+3) + "," + g2 + "," + (g2+6) + ")";
+      ctxStatic.fillRect(x, y, 4, 4);
+    }
+  // the chalk circle of the forge
+  ctxStatic.strokeStyle = "rgba(216,210,192,0.5)";
+  ctxStatic.lineWidth = 1.5;
+  ctxStatic.beginPath(); ctxStatic.arc(L.fx, L.fy, L.fr, 0, 2*Math.PI); ctxStatic.stroke();
+  ctxStatic.beginPath(); ctxStatic.arc(L.fx, L.fy, L.fr - 7*L.k, 0, 2*Math.PI); ctxStatic.stroke();
+  // the staging pad, above the circle
+  ctxStatic.strokeStyle = "rgba(216,210,192,0.3)";
+  ctxStatic.lineWidth = 1.2;
+  ctxStatic.beginPath();
+  ctxStatic.moveTo(L.stX, L.stY - 9*L.k);
+  ctxStatic.lineTo(L.stX + 24*L.k, L.stY + 3*L.k);
+  ctxStatic.lineTo(L.stX, L.stY + 15*L.k);
+  ctxStatic.lineTo(L.stX - 24*L.k, L.stY + 3*L.k);
+  ctxStatic.closePath(); ctxStatic.stroke();
+  // the triangle of art
+  ctxStatic.strokeStyle = "rgba(216,210,192,0.5)";
+  ctxStatic.beginPath();
+  ctxStatic.moveTo(L.t1[0], L.t1[1]); ctxStatic.lineTo(L.t2[0], L.t2[1]); ctxStatic.lineTo(L.t3[0], L.t3[1]);
+  ctxStatic.closePath(); ctxStatic.stroke();
+  for (const p of [L.t1, L.t2, L.t3]){
+    ctxStatic.beginPath(); ctxStatic.arc(p[0], p[1], 4*L.k, 0, 2*Math.PI); ctxStatic.stroke();
+  }
+}
+function drawGoetia(t){
+  const L = goetiaLayout();
+  const plan = goetiaPlan();
+  const idle = !running && !finished && pauseMs === 0;
+  const totalMin = Math.round(totalCycle/60);
+  const N = Math.min(totalMin, plan.length);
+  const m = finished ? N : idle ? 0 : Math.min(N, Math.floor(t/60));
+  const T27 = 60/27;
+  const flyDur = 0.6;
+  const flying = !idle && !finished && m > 0 && (t % 60) < flyDur;
+  const placed = flying ? m - 1 : m;
+
+  // the ring of 27 lamps: one per point of the stone, lighting as they land
+  {
+    const lit = finished ? 27 : idle ? 0 : Math.floor((t % 60)/T27);
+    for (let a = 0; a < 27; a++){
+      const ang = -Math.PI/2 + a*2*Math.PI/27;      // from the top, counterclockwise to the eye
+      const dx2 = L.fx + Math.cos(ang)*(L.fr - 4*L.k);
+      const dy2 = L.fy + Math.sin(ang)*(L.fr - 4*L.k);
+      if (a < lit){
+        ctx.fillStyle = finished ? "rgba(255,190,90,0.5)" : "rgba(191,232,255,0.85)";
+        ctx.beginPath(); ctx.arc(dx2, dy2, 1.5*L.k, 0, 2*Math.PI); ctx.fill();
+      } else {
+        ctx.strokeStyle = "rgba(216,210,192,0.28)";
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(dx2, dy2, 1.1*L.k, 0, 2*Math.PI); ctx.stroke();
+      }
+    }
+  }
+
+  // the placed stones, painter order
+  const sorted = [];
+  for (let i = 0; i < placed; i++) sorted.push([plan[i], i]);
+  sorted.sort((a, b) => ((a[0][0] + a[0][1])*100 + a[0][2]) - ((b[0][0] + b[0][1])*100 + b[0][2]));
+  for (const [cell, i] of sorted){
+    const p = goetiaPos(L, cell[0], cell[1], cell[2]);
+    goetiaCube(L, p[0], p[1], goetiaShade(i));
+  }
+  // the stone in flight
+  if (flying){
+    const cell = plan[m - 1];
+    const tp = goetiaPos(L, cell[0], cell[1], cell[2]);
+    const q = (t % 60)/flyDur, e = q*q*(3 - 2*q);
+    const sx = L.stX + (tp[0] - L.stX)*e;
+    const sy = (L.stY - 8*L.k) + (tp[1] - (L.stY - 8*L.k))*e - 34*L.k*Math.sin(Math.PI*e);
+    goetiaCube(L, sx, sy, goetiaShade(m - 1));
+  }
+  // land flash
+  if (!idle && !finished && m > 0){
+    const age = (t % 60) - flyDur;
+    if (age >= 0 && age < 0.4){
+      const cell = plan[m - 1];
+      const p = goetiaPos(L, cell[0], cell[1], cell[2]);
+      ctx.strokeStyle = "rgba(230,240,255," + (0.7*(1 - age/0.4)) + ")";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(p[0]-L.u, p[1]); ctx.lineTo(p[0], p[1]-L.u/2); ctx.lineTo(p[0]+L.u, p[1]);
+      ctx.lineTo(p[0]+L.u, p[1]+L.hh); ctx.lineTo(p[0], p[1]+L.u/2+L.hh); ctx.lineTo(p[0]-L.u, p[1]+L.hh);
+      ctx.closePath(); ctx.stroke();
+    }
+  }
+  // the finished temple: the doorway lights from within
+  if (finished){
+    const pulse = 0.5 + 0.5*Math.sin(performance.now()/800);
+    const doors = L.kind === 27 ? [[1,2,0]] : L.kind === 54 ? [[1,3,0],[1,3,1]] : [[2,4,0],[2,4,1]];
+    ctx.fillStyle = "rgba(255,190,90," + (0.35 + 0.3*pulse) + ")";
+    ctx.shadowColor = "rgba(255,170,60,0.9)";
+    ctx.shadowBlur = 12 + 8*pulse;
+    for (const d of doors){
+      const dp = goetiaPos(L, d[0], d[1], d[2]);
+      ctx.fillRect(dp[0] - L.u*0.5, dp[1] + L.u*0.15, L.u, L.hh*0.95);
+    }
+    ctx.shadowBlur = 0;
+  }
+
+  // ---- the circle: one square per scarab lap, set at the apex strike ----
+  // The current square pulses at each corner the scarab passes and
+  // APPEARS when it strikes the top. A row of three squares = a plane,
+  // which rises to the pad; nine squares = the stone.
+  if (!idle && !finished){
+    const sub60 = t % 60;
+    const lapT = 3*T27;                                // one lap = 1/9 minute
+    const sqLit = sub60 < T27 ? 0 : Math.min(9, Math.floor((sub60 - T27)/lapT) + 1);
+    const gather = Math.min(2, Math.floor((((sub60 - T27) % lapT + lapT) % lapT)/T27));
+    const cell = 11*L.k;
+    for (let r = 0; r < 3; r++)
+      for (let cc = 0; cc < 3; cc++){
+        const n = r*3 + cc;
+        const gx = L.fx - 15*L.k + cc*cell, gy = L.fy - 15*L.k + r*cell;
+        if (n < sqLit){
+          ctx.shadowColor = "rgba(120,200,255,0.9)"; ctx.shadowBlur = 5;
+          ctx.fillStyle = "#bfe8ff";
+          ctx.fillRect(gx, gy, 8*L.k, 8*L.k);
+          ctx.shadowBlur = 0;
+        } else if (n === sqLit && sqLit < 9){
+          ctx.fillStyle = "rgba(191,232,255," + (0.16 + 0.26*gather) + ")";
+          ctx.fillRect(gx, gy, 8*L.k, 8*L.k);
+        } else {
+          ctx.strokeStyle = "rgba(191,232,255,0.16)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(gx + 0.5, gy + 0.5, 8*L.k - 1, 8*L.k - 1);
+        }
+      }
+    // completed rows rise to the pad as planes; three planes make the stone
+    const mu = 5.6*L.k, mh = mu*1.15;
+    const sub = (si, sj, sk) => [L.stX + (si - sj)*mu, L.stY + (si + sj)*mu/2 - sk*mh];
+    const quad = (pts2, col) => {
+      ctx.beginPath();
+      ctx.moveTo(pts2[0][0], pts2[0][1]);
+      for (let z = 1; z < pts2.length; z++) ctx.lineTo(pts2[z][0], pts2[z][1]);
+      ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+    };
+    const drawLayer = (sk, alpha, yOff) => {
+      ctx.globalAlpha = alpha;
+      const order = [[0,0],[1,0],[0,1],[2,0],[1,1],[0,2],[2,1],[1,2],[2,2]];
+      for (const [si, sj] of order){
+        const p2 = sub(si, sj, sk);
+        const py = p2[1] + yOff;
+        quad([[p2[0], py-mu/2],[p2[0]+mu, py],[p2[0], py+mu/2],[p2[0]-mu, py]], "#bcd6e8");
+        quad([[p2[0]-mu, py],[p2[0], py+mu/2],[p2[0], py+mu/2+mh],[p2[0]-mu, py+mh]], "#8aa4bc");
+        quad([[p2[0]+mu, py],[p2[0], py+mu/2],[p2[0], py+mu/2+mh],[p2[0]+mu, py+mh]], "#64798c");
+      }
+      ctx.globalAlpha = 1;
+    };
+    const planes = Math.floor(sqLit/3);
+    const sinceSet = sqLit > 0 ? sub60 - (T27 + (sqLit - 1)*lapT) : 99;
+    const rising = sqLit > 0 && sqLit % 3 === 0 && sinceSet >= 0 && sinceSet < 0.4;
+    const shown = rising ? planes - 1 : planes;
+    for (let pl = 0; pl < shown; pl++) drawLayer(pl, 0.92, 0);
+    if (rising){
+      const q2 = sinceSet/0.4, e2 = q2*q2*(3 - 2*q2);
+      const restY = sub(1, 1, planes - 1)[1];
+      drawLayer(planes - 1, 0.55 + 0.4*e2, (1 - e2)*(L.fy - restY));
+    }
+  }
+
+  // ---- Malphas: the six-move ritual, in step with the scarab ----
+  // Six beats per circuit: wings mantle at each corner, a foot lifts
+  // between corners. He never leaves his place.
+  const S = Math.max(3, Math.round(3.2*L.k));
+  const half = T27/2;
+  const beat = Math.floor(t/half);
+  const phase = idle || finished ? -1 : beat % 6;
+  const spread = !idle && !finished && (flying || phase % 2 === 0);
+  const footSide = (beat >> 1) % 2;                                // alternates each foot-beat
+  const map = spread ? GOETIA_CROW_OPEN : GOETIA_CROW;
+  const oxOff = spread ? -7*S : 0;                                 // eyes align across poses
+  const midCol = spread ? 13 : 6;
+  const liftFeet = !idle && !finished && !spread && phase >= 0 && phase % 2 === 1;
+  for (let y = 0; y < map.length; y++)
+    for (let x = 0; x < map[y].length; x++){
+      const ch = map[y][x];
+      const col = GOETIA_PAL[ch];
+      if (!col) continue;
+      let dy = 0;
+      if (liftFeet && ch === 'c' && ((x < midCol) === (footSide === 0))) dy = -S;
+      ctx.fillStyle = col;
+      ctx.fillRect(L.demonX + oxOff + x*S, L.demonY + y*S + dy, S, S);
+    }
+  // the scarab paces the triangle, one corner per 1/27 minute
+  {
+    const corners = [L.t1, L.t3, L.t2];   // counterclockwise circuit
+    const ci = idle || finished ? 0 : Math.floor(t/T27) % 3;
+    const cf = idle || finished ? 0 : (t % T27)/T27;
+    const A = corners[ci], B = corners[(ci + 1) % 3];
+    const bx = A[0] + (B[0] - A[0])*cf, by = A[1] + (B[1] - A[1])*cf;
+    const dl = Math.hypot(B[0] - A[0], B[1] - A[1]);
+    const dxn = (B[0] - A[0])/dl, dyn = (B[1] - A[1])/dl;
+    const pxn = -dyn, pyn = dxn;
+    const kk = L.k;
+    // legs, alternating as it walks
+    const step = Math.floor(t*8) % 2;
+    ctx.strokeStyle = "#1a2a1e";
+    ctx.lineWidth = 1;
+    for (let leg = -1; leg <= 1; leg++){
+      const lx = bx + dxn*leg*2.4*kk, ly = by + dyn*leg*2.4*kk;
+      const side = (leg + step) % 2 ? 1 : -1;
+      ctx.beginPath();
+      ctx.moveTo(lx, ly);
+      ctx.lineTo(lx + pxn*side*3.4*kk, ly + pyn*side*3.4*kk);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(lx, ly);
+      ctx.lineTo(lx - pxn*side*3.4*kk, ly - pyn*side*3.4*kk);
+      ctx.stroke();
+    }
+    // carapace: iridescent green-black
+    ctx.fillStyle = "#22392a";
+    ctx.beginPath(); ctx.ellipse(bx, by, 3.4*kk, 2.4*kk, Math.atan2(dyn, dxn), 0, 2*Math.PI); ctx.fill();
+    ctx.fillStyle = "#3a5c44";
+    ctx.beginPath(); ctx.ellipse(bx - dxn*0.6*kk, by - dyn*0.6*kk, 2.2*kk, 1.4*kk, Math.atan2(dyn, dxn), 0, 2*Math.PI); ctx.fill();
+    ctx.fillStyle = "#141d16";                             // the head
+    ctx.beginPath(); ctx.arc(bx + dxn*3.4*kk, by + dyn*3.4*kk, 1.3*kk, 0, 2*Math.PI); ctx.fill();
+    ctx.fillStyle = "#9fe8c0";                             // one glint
+    ctx.fillRect(bx - dxn*1.2*kk, by - dyn*1.2*kk, 1.2, 1.2);
+  }
+
+  // the eye gathers with each point, and FLASHES as each one lands
+  const flashAge = t % T27;
+  const flashing = !idle && !finished && flashAge < 0.22;
+  const glow = idle || finished ? 0.3 : 0.25 + 0.7*((t % T27)/T27);
+  const eyeX = L.demonX + oxOff + (spread ? 13 : 6)*S;
+  ctx.shadowColor = flashing ? "rgba(255,240,200,0.95)" : "rgba(255,112,48," + glow + ")";
+  ctx.shadowBlur = flashing ? 13 : 7;
+  ctx.fillStyle = flashing ? "#fff2d0" : "#ff9a50";
+  ctx.fillRect(eyeX, L.demonY + 3*S, S, S);
+  ctx.shadowBlur = 0;
+}
+
+function getTextY(){
+  if (viewMode===2){ const L = abacusLayout();  return L.top + L.gridH + 56; }
+  if (viewMode===3){ const F = fractalLayout(); return F.topY + F.triH + 52; }
+  if (viewMode===6){ const L = septLayout();    return L.fracTop + L.ph + 22 + 42; }
+  if (viewMode===7){ const L = dreamLayout();   return Math.min(viewH - 170, L.textY); }
+  if (viewMode===8){ const L = goetiaLayout();  return Math.min(viewH - 170, L.textY); }
+  return viewH/2 - 40;
+}
+
+function gotoView(v){
+  if (viewMode <= 8) lastTimerView = viewMode;
+  viewMode = v;
+  if (viewMode === 3){ fracCam.init = false; fracTrail.length = 0; } // snap camera on entry
+  if (viewMode >= 9) frameHintUntil = performance.now() + 3000;     // hint on entry
+  needsStaticRedraw = true;
+  try { localStorage.setItem('salvationView', viewMode); } catch(e) {}
 }
 
 
 /* ---------- DRAW HELPERS ---------- */
 function drawStaticLayer(){
-  ctxStatic.clearRect(0, 0, canvasStatic.width, canvasStatic.height);
+  ctxStatic.clearRect(0, 0, viewW, viewH);
   
-  // Star lines: wide soft halo pass under a fine crisp core
-  for (const [lw, style] of [[4.5, "rgba(0,191,255,0.18)"], [1.5, "#00bfff"]]){
-    ctxStatic.lineWidth = lw;
-    ctxStatic.strokeStyle = style;
-    for (let s of starLines){
-      let a = worldToScreen(s.x1, s.y1);
-      let b = worldToScreen(s.x2, s.y2);
-      ctxStatic.beginPath();
-      ctxStatic.moveTo(a.x, a.y);
-      ctxStatic.lineTo(b.x, b.y);
-      ctxStatic.stroke();
-    }
-  }
+  if (viewMode===0){ drawRingsStatic();   needsStaticRedraw = false; return; }
+  if (viewMode===2){ drawAbacusStatic();  needsStaticRedraw = false; return; }
+  if (viewMode===3){ needsStaticRedraw = false; return; } // fractal renders on the anim layer (moving camera)
+  if (viewMode===4){ needsStaticRedraw = false; return; } // wheels render on the anim layer (spinning)
+  if (viewMode===5){ needsStaticRedraw = false; return; } // weave renders on the anim layer (traveler)
+  if (viewMode===6){ drawSeptStatic(); needsStaticRedraw = false; return; } // sept panel frames
+  if (viewMode===7){ drawDreamDungeon(); needsStaticRedraw = false; return; } // the dungeon is static
+  if (viewMode===8){ drawGoetiaStatic(); needsStaticRedraw = false; return; }   // the chamber is static
+  if (viewMode>=9){ needsStaticRedraw = false; return; } // frame/goal render on the anim layer (pannable)
 
-  // Faint rails: the triangles the LEDs actually travel
-  ctxStatic.lineWidth = 1;
-  ctxStatic.strokeStyle = "rgba(0,191,255,0.3)";
-  for (let V of triVerts){
-    const a = worldToScreen(V[0].x, V[0].y);
-    const b = worldToScreen(V[1].x, V[1].y);
-    const c = worldToScreen(V[2].x, V[2].y);
+  // Star lines - matched to the WEAVE track (thin, faint)
+  ctxStatic.lineWidth = 1.5;
+  ctxStatic.strokeStyle = "rgba(0,191,255,0.34)";
+  for (let s of starLines){
+    let a = worldToScreen(s.x1, s.y1);
+    let b = worldToScreen(s.x2, s.y2);
     ctxStatic.beginPath();
     ctxStatic.moveTo(a.x, a.y);
     ctxStatic.lineTo(b.x, b.y);
-    ctxStatic.lineTo(c.x, c.y);
-    ctxStatic.closePath();
     ctxStatic.stroke();
   }
   
@@ -556,7 +3293,7 @@ function drawCenterDots(now){
   if (finished){
     const t=now/1000;
     for (let i=0;i<numDials;i++){
-      centerSize[i]=6+3*(0.5+0.5*Math.sin(t*1.5));
+      centerSize[i]=8+4*(0.5+0.5*Math.sin(t*1.5));
       glowAlpha[i]=0.15 + 0.15*(0.5+0.5*Math.sin(t*1.5+i*0.3));
     }
   }
@@ -589,27 +3326,49 @@ function drawCenterDots(now){
   }
 }
 
-function drawLEDs(){
-  ctx.fillStyle="white";
+function drawLEDs(t){
   for (let i=0;i<numDials;i++){
     const idx=activeIdx[i];
     const P=ledPath[i][idx];
     const s=worldToScreen(P.x,P.y);
-    ctx.beginPath();
-    ctx.arc(s.x,s.y,6,0,Math.PI*2);
-    ctx.fill();
+    // At each corner the dot iterates blue -> orange -> red across the dwell
+    // (three sub-steps), bursting at each, then teleports to the next corner.
+    const T = ticks[i], subT = T/3;
+    const sub = Math.floor((t % T) / subT) % 3;      // 0/1/2 -> blue/orange/red
+    const subFrac = (t % subT) / subT;               // 0..1 within this color
+    const pulse = running ? Math.max(0, 1 - subFrac/0.4) : 0;
+    if (pulse > 0.01){
+      const gc = WEAVE_COL[sub];
+      const R = 7 + 20*pulse;
+      const g = ctx.createRadialGradient(s.x,s.y,0, s.x,s.y, R);
+      g.addColorStop(0,   `rgba(255,255,255,${(0.9*pulse).toFixed(3)})`);
+      g.addColorStop(0.4, withA(gc, (0.5*pulse).toFixed(3)));
+      g.addColorStop(1,   withA(gc, "0"));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(s.x,s.y, R, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.fillStyle = digitColor(sub + 1);             // blue/orange/red (white when idle)
+    ctx.beginPath(); ctx.arc(s.x,s.y, 6, 0, Math.PI*2); ctx.fill();
+    if (pulse > 0.01){
+      ctx.fillStyle = `rgba(255,255,255,${pulse.toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(s.x,s.y, 3, 0, Math.PI*2); ctx.fill();
+    }
   }
 }
 
 function drawSubCounter(elapsed){
+  // Only on STAR view. The abacus shows it as its bottom row; other views
+  // move continuously. Also hidden in 27-min mode (too fast to read).
+  if (viewMode !== 1) return;
+  if (timeMode === 0) return;
   const e = finished ? totalCycle : elapsed;
   const pos = Math.floor(e / (ticks[6]/3)) % 3; // always one subdivision (3x) faster than the top triangle
 
-  const cellW = canvasAnim.width < 500 ? 20 : 24;
+  const cellW = viewW < 500 ? 20 : 24;
   const cellH = cellW;
   const totalW = cellW * 3;
-  const left = canvasAnim.width / 2 - totalW / 2;
-  const top  = canvasAnim.height / 2 - 40 + 14;
+  const left = viewW / 2 - totalW / 2;
+  const top  = getTextY() + 14;
   const dotR = cellW * 0.22;
 
   // Outer border and dividers
@@ -629,28 +3388,159 @@ function drawSubCounter(elapsed){
   ctx.fill();
 }
 
-function drawTimerText(){
-  ctx.fillStyle = finished ? "#ff9500" : "white";
-  ctx.font = canvasAnim.width < 500 ? "32px monospace" : "40px monospace";
-  ctx.textAlign="center";
-  ctx.fillText(timerStr, canvasAnim.width/2, canvasAnim.height/2 - 40);
+/* Seven-segment LED digits (alarm-clock style) for the ABACUS readout */
+const SEG_MAP = { "0":[1,1,1,1,1,1,0], "1":[0,1,1,0,0,0,0], "2":[1,1,0,1,1,0,1], "3":[1,1,1,1,0,0,1] };
+const SEG_RED = "rgb(255,52,38)", SEG_GHOST = "rgba(255,52,38,0.07)";
+function drawSegDigit(x, y, w, h, th, on, ghost){
+  const segs = [
+    [x+th, y, w-2*th, th],
+    [x+w-th, y+th*0.5, th, h/2-th],
+    [x+w-th, y+h/2+th*0.5, th, h/2-th],
+    [x+th, y+h-th, w-2*th, th],
+    [x, y+h/2+th*0.5, th, h/2-th],
+    [x, y+th*0.5, th, h/2-th],
+    [x+th, y+h/2-th/2, w-2*th, th],
+  ];
+  if (ghost){
+    ctx.fillStyle = SEG_GHOST;
+    for (let i=0;i<7;i++) if (!on[i]) ctx.fillRect(segs[i][0]+1, segs[i][1]+1, segs[i][2]-2, segs[i][3]-2);
+  }
+  ctx.fillStyle = SEG_RED;
+  ctx.shadowColor = SEG_RED;
+  ctx.shadowBlur = 7;
+  for (let i=0;i<7;i++) if (on[i]) ctx.fillRect(segs[i][0]+1, segs[i][1]+1, segs[i][2]-2, segs[i][3]-2);
+  ctx.shadowBlur = 0;
+}
+function drawSevenSegText(str, baseY, scale){
+  const H = (viewW < 500 ? 30 : 38) * (scale || 1);
+  const W = H*0.55, TH = Math.max(3, Math.round(H*0.13)), GAP = W*0.5;
+  const wOf = ch => ch === ":" ? TH*2 : ch === "\u2083" ? W*0.62 : (ch === "+" || ch === "-") ? W*0.7 : W;
+  let total = -GAP;
+  for (const ch of str) total += wOf(ch) + GAP;
+  let x = viewW/2 - total/2;
+  const top = baseY - H + 8;
+  for (const ch of str){
+    if (SEG_MAP[ch]){
+      drawSegDigit(x, top, W, H, TH, SEG_MAP[ch], true);
+    } else if (ch === ":"){
+      ctx.fillStyle = SEG_RED;
+      ctx.shadowColor = SEG_RED; ctx.shadowBlur = 7;
+      ctx.fillRect(x + TH*0.5, top + H*0.28, TH, TH);
+      ctx.fillRect(x + TH*0.5, top + H*0.62, TH, TH);
+      ctx.shadowBlur = 0;
+    } else if (ch === "\u2083"){
+      drawSegDigit(x, top + H*0.45, W*0.55, H*0.55, Math.max(2, TH*0.75), SEG_MAP["3"], true);
+    } else if (ch === "+" || ch === "-"){
+      ctx.fillStyle = SEG_RED;
+      ctx.shadowColor = SEG_RED; ctx.shadowBlur = 7;
+      ctx.fillRect(x, top + H/2 - TH/2, W*0.6, TH);
+      if (ch === "+") ctx.fillRect(x + W*0.3 - TH/2, top + H/2 - W*0.3, TH, W*0.6);
+      ctx.shadowBlur = 0;
+    }
+    x += wOf(ch) + GAP;
+  }
+}
+
+function drawTimerText(t){
+  const y = getTextY();
+  if (viewMode === 2){ // LED readout on ABACUS
+    drawSevenSegText(timerStr, y);
+    if (finished && overtimeStr) drawSevenSegText(overtimeStr, y + (viewW < 500 ? 34 : 42), 0.62);
+    return;
+  }
+  ctx.font = viewW < 500 ? "32px monospace" : "40px monospace";
+
+  let str = timerStr;
+  if ((viewMode === 7 || viewMode === 8) && str.indexOf(":") !== -1){
+    // DREAM and GOETIA read one place deeper: the 1/81-minute digit
+    const d81 = finished ? 0 : Math.floor(t / (60/81)) % 3;
+    str = str.replace("₃", d81 + "₃");
+  }
+
+  // Final value and idle keep a single color
+  const idle = !running && !finished && pauseMs === 0;
+  if (finished || idle){
+    ctx.fillStyle = finished ? "#ff9500" : "white";
+    ctx.textAlign = "center";
+    ctx.fillText(str, viewW/2, y);
+    if (finished && overtimeStr){
+      ctx.font = viewW < 500 ? "19px monospace" : "23px monospace";
+      ctx.fillStyle = "rgba(255,149,0,0.7)";
+      ctx.fillText(overtimeStr, viewW/2, y + (viewW < 500 ? 28 : 34));
+    }
+    return;
+  }
+
+  // Each digit tinted by its value - same code as the dials in every
+  // view (0=blue, 1=orange, 2=red). On RINGS, digits drift through the
+  // same hue transition as their own ring, syncing text to the orrery.
+  const DIGIT_COLORS = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"];
+  ctx.textAlign = "left";
+  let x = viewW/2 - ctx.measureText(str).width/2;
+  let di = 0; // digits appear in dial order (minutes then fractions)
+  for (const ch of str){
+    if (ch >= "0" && ch <= "2"){
+      if (viewMode === 0 || viewMode === 4){
+        const T = ticks[di];
+        ctx.fillStyle = ringLerp(posIndex(di, t), (t % T)/T);
+      } else {
+        ctx.fillStyle = viewMode === 8 ? "#d8d2c0" : DIGIT_COLORS[+ch];
+      }
+      di++;
+    } else {
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+    }
+    ctx.fillText(ch, x, y);
+    x += ctx.measureText(ch).width;
+  }
+}
+
+function drawMuteBadge(){
+  // small amber speaker-x, top-right, on every view while muted
+  if (!muted) return;
+  const x = viewW - 36, y = 16;
+  ctx.fillStyle = ctx.strokeStyle = "rgba(255,160,0,0.8)";
+  ctx.beginPath();
+  ctx.moveTo(x, y+4); ctx.lineTo(x+5, y+4); ctx.lineTo(x+11, y-2);
+  ctx.lineTo(x+11, y+14); ctx.lineTo(x+5, y+8); ctx.lineTo(x, y+8);
+  ctx.closePath(); ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x+15, y+2); ctx.lineTo(x+22, y+10);
+  ctx.moveTo(x+22, y+2); ctx.lineTo(x+15, y+10);
+  ctx.stroke();
 }
 
 function drawTapHint(){
-  if (running) return;
-  const hint = finished ? "tap to restart"
-             : pauseMs > 0 ? "tap to resume"
-             : "tap to start";
-  ctx.fillStyle = "rgba(255,255,255,0.45)";
-  ctx.font = canvasAnim.width < 500 ? "14px system-ui, sans-serif" : "16px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(hint, canvasAnim.width/2, canvasAnim.height/2 + 34);
+  const cx = viewW/2, y = getTextY() + 74;
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  if (running){
+    // pause icon (two bars) - a tap will pause
+    const bw=4.5, bh=16, gap=4;
+    ctx.fillRect(cx - gap - bw, y - bh/2, bw, bh);
+    ctx.fillRect(cx + gap,      y - bh/2, bw, bh);
+  } else if (finished || pauseMs > 0){
+    // play icon (right triangle) - a tap will resume / restart
+    const s=9;
+    ctx.beginPath();
+    ctx.moveTo(cx - s*0.6, y - s);
+    ctx.lineTo(cx - s*0.6, y + s);
+    ctx.lineTo(cx + s,     y);
+    ctx.closePath(); ctx.fill();
+  } else {
+    // not started yet
+    ctx.font = viewW < 500 ? "14px system-ui, sans-serif" : "16px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("tap to start", cx, y);
+  }
 }
 
 /* ---------- MAIN DRAW LOOP ---------- */
 function draw(now){
   try {
-    if (now-lastFrameTime < frameInterval){
+    // drags need native-rate rendering; the 30fps cap makes them feel laggy
+    const dragging = (viewMode === 9 && framePtr);
+    if (!dragging && now-lastFrameTime < frameInterval){
       requestAnimationFrame(draw); return;
     }
     lastFrameTime=now;
@@ -661,15 +3551,33 @@ function draw(now){
     }
 
     // Clear only the animation canvas (not the static background)
-    ctx.clearRect(0, 0, canvasAnim.width, canvasAnim.height);
+    ctx.clearRect(0, 0, viewW, viewH);
 
     const elapsed = running ? (now-startMs)/1000 : pauseMs/1000;
 
     if (running){
       updateTimerText(elapsed);
 
-      const beepMinute = Math.floor(elapsed / 180);
-      if (beepMinute > lastBeepMinute) { lastBeepMinute = beepMinute; playBeep(); }
+      for (const d of TONE_DEFS){
+        const idx = Math.floor(elapsed / d.interval);
+        const sel = toneSel[d.id] || 0;
+        // DREAM belongs to the music: interval tones stay silent there
+        if (!sel || viewMode === 7){ lastToneIdx[d.id] = idx; continue; }
+        if (idx > (lastToneIdx[d.id] || 0)){
+          lastToneIdx[d.id] = idx;
+          const opt = TONE_OPTS[sel];
+          const v = toneVoice[d.id] || 0;
+          if (opt.seq){
+            // arpeggio: the sequence plays through at every mark
+            opt.seq.forEach((f, k) => setTimeout(() => playVoice(f, d.interval < 20, v), k * 190));
+          } else if (opt.steps){
+            // unfolding: one note per mark, stepping through the sequence
+            playVoice(opt.steps[(idx - 1) % opt.steps.length], d.interval < 20, v);
+          } else {
+            playVoice(opt.freq, d.interval < 20, v);
+          }
+        }
+      }
 
       if (elapsed>=totalCycle && !finished) finishClock();
     }
@@ -692,11 +3600,38 @@ function draw(now){
   }
 
   // Draw only animated elements
-  drawCenterDots(now);
-  drawLEDs();
-  drawTimerText();
-  drawSubCounter(elapsed);
-  drawTapHint();
+  const vizT = finished ? totalCycle : elapsed;
+  if (viewMode===0){
+    drawRingDots(vizT);
+  } else if (viewMode===1){
+    drawCenterDots(now);
+    drawLEDs(vizT);
+  } else if (viewMode===2){
+    drawAbacusDots(vizT);
+  } else if (viewMode===3){
+    drawFractalView(vizT);
+  } else if (viewMode===4){
+    drawSevenRings(vizT);
+  } else if (viewMode===5){
+    drawWeave(vizT);
+  } else if (viewMode===6){
+    drawSept(vizT);
+  } else if (viewMode===7){
+    drawDream(vizT);
+  } else if (viewMode===8){
+    drawGoetia(vizT);
+  } else {
+    drawFrameView();
+  }
+  if (viewMode < 9){
+    drawTimerText(vizT);
+    drawTapHint();
+  }
+  drawStatus();
+  drawMuteBadge();
+  syncDreamAudio();
+  const playLbl = running ? "PAUSE" : finished ? "RESTART" : pauseMs > 0 ? "RESUME" : "START";
+  if (btnPlay.textContent !== playLbl) btnPlay.textContent = playLbl;
 
   } catch (err) {
     console.error('Draw loop error:', err);
@@ -710,7 +3645,366 @@ function toggleClock(){
   else startClock(); // startClock() itself restarts fresh after a finished cycle
   haptic('medium');
 }
-canvasAnim.addEventListener("click", toggleClock);
+// The tap target sits on the icon itself (tap-to-start / pause / play),
+// drawn at (viewW/2, getTextY()+74) - so you tap the visible control.
+canvasAnim.addEventListener("click", (e) => {
+  if (viewMode >= 9) return; // diagram taps select boxes, not the clock
+  const rect = canvasAnim.getBoundingClientRect();
+  const dx = (e.clientX - rect.left) - rect.width/2;
+  const dy = (e.clientY - rect.top)  - (getTextY() + 74);
+  const r = 70;
+  if (dx*dx + dy*dy <= r*r) toggleClock();
+});
+
+/* ---------- FRAME VIEW: pan (drag dark space) + select (tap a box) ---------- */
+let framePtr = null;
+canvasAnim.addEventListener("pointerdown", (e) => {
+  if (viewMode !== 9 && viewMode !== 10) return;
+  if (frameEdit.style.display === "block") return; // dialog open
+  const rect = canvasAnim.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  if (statusHit(cx, cy)) return; // status long-press owns that corner
+  framePtr = { x: cx, y: cy, camX: CF().cam.x, camY: CF().cam.y,
+               moved: false, longFired: false,
+               boxAtDown: frameBoxAt(cx, cy),           // selectable boxes only
+               boxAny: frameBoxAt(cx, cy, true) };      // includes empty boxes
+  try { canvasAnim.setPointerCapture(e.pointerId); } catch(err) {}
+  clearTimeout(framePressTimer);
+  if (framePtr.boxAny >= 0){
+    framePressTimer = setTimeout(() => {
+      if (framePtr && !framePtr.moved){
+        framePtr.longFired = true;
+        openFrameEdit(curFrameIdx(), framePtr.boxAny);
+      }
+    }, 500);
+  }
+});
+canvasAnim.addEventListener("pointermove", (e) => {
+  if ((viewMode !== 9 && viewMode !== 10) || !framePtr) return;
+  const rect = canvasAnim.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  const dx = cx - framePtr.x, dy = cy - framePtr.y;
+  if (Math.abs(dx) + Math.abs(dy) > 8){ framePtr.moved = true; clearTimeout(framePressTimer); }
+  // pan only when the drag started on dark space, not on a box
+  if (framePtr.moved && framePtr.boxAny === -1){
+    CF().cam.x = framePtr.camX + dx;
+    CF().cam.y = framePtr.camY + dy;
+    clampFrameCam();
+  }
+});
+canvasAnim.addEventListener("pointerup", (e) => {
+  clearTimeout(framePressTimer);
+  if ((viewMode !== 9 && viewMode !== 10) || !framePtr){ framePtr = null; return; }
+  const rect = canvasAnim.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  if (!framePtr.moved && !framePtr.longFired){
+    const hit = frameBoxAt(cx, cy);
+    if (hit >= 0){
+      frameSelected = hit;
+      frameSelectedF = curFrameIdx();
+      frameStatus = CF().boxes[hit].lines.join(" ");
+      try {
+        localStorage.setItem('salvationStatus', frameStatus);
+        localStorage.setItem('salvationStatusIdx', hit);
+        localStorage.setItem('salvationStatusF', frameSelectedF);
+      } catch(err) {}
+      haptic('light');
+    }
+  }
+  framePtr = null;
+});
+canvasAnim.addEventListener("pointercancel", () => { clearTimeout(framePressTimer); framePtr = null; });
+
+const frameEdit = document.getElementById('frameEdit');
+const frameEditText = document.getElementById('frameEditText');
+let frameEditIdx = -1;
+let frameEditF = 0;
+let framePressTimer = null;
+
+function openFrameEdit(fi, idx){
+  frameEditF = fi;
+  frameEditIdx = idx;
+  frameEditText.value = FRAME_DEFS[fi].boxes[idx].lines.join(" ");
+  frameEdit.style.display = "block";
+  frameEditText.focus();
+  haptic('light');
+}
+function closeFrameEdit(save){
+  if (save && frameEditIdx >= 0) setFrameBoxText(frameEditF, frameEditIdx, frameEditText.value, true);
+  frameEdit.style.display = "none";
+  frameEditIdx = -1;
+}
+/* ---------- MENU ---------- */
+const menuEl = document.getElementById('menu');
+try {
+  const savedV = JSON.parse(localStorage.getItem('salvationVoices') || "null");
+  if (savedV) toneVoice = savedV;
+} catch(e) {}
+try {
+  const saved2 = JSON.parse(localStorage.getItem('salvationTones2') || "null");
+  if (saved2) toneSel = saved2;
+  else {
+    const old = JSON.parse(localStorage.getItem('salvationTones') || "null");
+    if (old){
+      toneSel = {};
+      if (old.tone20)  toneSel.t20  = 2;
+      if (old.tone60)  toneSel.t60  = 2;
+      if (old.tone180) toneSel.t180 = 2;
+    }
+  }
+} catch(e) {}
+const tonePaints = []; // repaint callbacks, one per tone row (used by DEFAULT)
+TONE_DEFS.forEach(d => {
+  const row = document.createElement('label');
+  row.className = 'set-row';
+  const span = document.createElement('span');
+  span.textContent = d.label + ' min';
+  const vb = document.createElement('button');
+  vb.className = 'tone-btn';
+  const paintV = () => {
+    vb.textContent = VOICES[toneVoice[d.id] || 0];
+    vb.classList.toggle('on', (toneSel[d.id] || 0) > 0);
+  };
+  const b = document.createElement('button');
+  b.className = 'tone-btn';
+  const paint = () => {
+    const sel = toneSel[d.id] || 0;
+    b.textContent = TONE_OPTS[sel].name;
+    b.classList.toggle('on', sel > 0);
+    paintV();
+  };
+  paint();
+  tonePaints.push(paint);
+  vb.onclick = (e) => {
+    e.preventDefault();
+    toneVoice[d.id] = ((toneVoice[d.id] || 0) + 1) % VOICES.length;
+    paintV();
+    try { localStorage.setItem('salvationVoices', JSON.stringify(toneVoice)); } catch(err) {}
+    haptic('light');
+    playVoice(440, false, toneVoice[d.id]); // audition the voice
+  };
+  b.onclick = (e) => {
+    e.preventDefault();
+    toneSel[d.id] = ((toneSel[d.id] || 0) + 1) % TONE_OPTS.length;
+    paint();
+    try { localStorage.setItem('salvationTones2', JSON.stringify(toneSel)); } catch(err) {}
+    haptic('light');
+    const opt = TONE_OPTS[toneSel[d.id]];
+    const v = toneVoice[d.id] || 0;
+    if (opt.seq) opt.seq.forEach((f, k) => setTimeout(() => playVoice(f, true, v), k * 190)); // arpeggio preview
+    else if (opt.steps) opt.steps.forEach((f, k) => setTimeout(() => playVoice(f, true, v), k * 340)); // one-per-mark hint
+    else if (opt.freq) playVoice(opt.freq, d.interval < 20, v); // preview
+  };
+  row.appendChild(span);
+  const grp = document.createElement('span');
+  grp.style.display = 'flex';
+  grp.style.gap = '6px';
+  grp.appendChild(vb);
+  grp.appendChild(b);
+  row.appendChild(grp);
+  document.getElementById('menuTones').appendChild(row);
+});
+function menuSync(){
+  const clean = !running && !finished && pauseMs === 0;
+  document.querySelectorAll('#menuViews button').forEach((b, i) =>
+    b.classList.toggle('active', i === viewMode));
+  document.querySelectorAll('#menuDur button').forEach((b, i) => {
+    b.classList.toggle('active', i === timeMode);
+    b.classList.toggle('disabled', !clean);
+  });
+  const bc = document.getElementById('btnCustom');
+  bc.classList.toggle('active', timeMode === 3);
+  bc.classList.toggle('disabled', !clean);
+  document.getElementById('custStep').classList.toggle('dim', timeMode !== 3);
+  document.getElementById('custVal').textContent = customMins + " MIN";
+  const mb = document.getElementById('muteBar');
+  mb.classList.toggle('on', muted);
+  mb.innerHTML = muted ? "&#128263;&nbsp; MUTED &mdash; TAP TO UNMUTE" : "&#128266;&nbsp; MUTE";
+  document.querySelectorAll('#menuVol button').forEach((b, i) =>
+    b.classList.toggle('active', i === volSel));
+  document.getElementById('menuTones').classList.toggle('muted', muted);
+}
+VIEW_NAMES.forEach((n, i) => {
+  const b = document.createElement('button');
+  b.textContent = n;
+  b.onclick = () => {
+    gotoView(i);
+    menuSync();
+    menuEl.style.display = 'none';
+    haptic('light');
+  };
+  document.getElementById('menuViews').appendChild(b);
+});
+["27 MIN","54 MIN","81 MIN"].forEach((n, i) => {
+  const b = document.createElement('button');
+  b.textContent = n;
+  b.onclick = () => {
+    if (!setDuration(i)){ haptic('light'); return; } // reset first
+    menuSync();
+    menuEl.style.display = 'none';
+    haptic('light');
+  };
+  document.getElementById('menuDur').appendChild(b);
+});
+
+/* ---------- CUSTOM duration ---------- */
+function setCustomMins(v){
+  v = Math.max(1, Math.min(243, v));
+  if (v === customMins) return true;
+  if (timeMode === 3){
+    // changing the live duration: same gate as switching presets
+    if (running || finished || pauseMs > 0){ haptic('light'); return false; }
+    customMins = v;
+    updateTables();
+    resetClock();
+    needsStaticRedraw = true;
+  } else {
+    customMins = v; // just remember it for the next time CUSTOM is picked
+  }
+  try { localStorage.setItem('salvationCustom', String(customMins)); } catch(e) {}
+  menuSync();
+  return true;
+}
+document.getElementById('btnCustom').onclick = () => {
+  if (!setDuration(3)){ haptic('light'); return; } // reset first
+  menuSync();
+  haptic('light');
+};
+document.getElementById('custMinus').onclick = () => { if (setCustomMins(customMins - 1)) haptic('light'); };
+document.getElementById('custPlus').onclick  = () => { if (setCustomMins(customMins + 1)) haptic('light'); };
+
+/* keypad dialog */
+const custPad = document.getElementById('custPad');
+let cpEntry = "";
+function cpRender(){
+  const n = parseInt(cpEntry || "0", 10);
+  document.getElementById('cpNum').textContent = cpEntry || "0";
+  const valid = n >= 1 && n <= 243;
+  document.getElementById('cpSet').classList.toggle('dim', !valid);
+  const stop = document.getElementById('cpStop');
+  if (!valid){ stop.innerHTML = "&mdash;"; return; }
+  let m = "", x = n;
+  while (x > 0){ m = (x % 3) + m; x = Math.floor(x / 3); }
+  while (m.length < 4) m = "0" + m;
+  const DC = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"];
+  const span = (ch, col) => '<span style="color:' + col + '">' + ch + '</span>';
+  let html = "stops at ";
+  for (const ch of m) html += span(ch, DC[+ch]);
+  html += span(":", "rgba(255,255,255,0.85)");
+  for (let k = 0; k < 3; k++) html += span("0", DC[0]);
+  html += span("₃", "rgba(255,255,255,0.85)");
+  stop.innerHTML = html;
+}
+document.getElementById('custVal').onclick = () => {
+  cpEntry = String(customMins);
+  cpRender();
+  custPad.style.display = 'block';
+  haptic('light');
+};
+document.querySelectorAll('#cpGrid button').forEach(b => {
+  if (b.id) return;
+  b.onclick = () => {
+    if (cpEntry.length >= 3 && cpEntry !== "0") return;
+    cpEntry = (cpEntry === "0" ? "" : cpEntry) + b.textContent;
+    cpRender();
+    haptic('light');
+  };
+});
+document.getElementById('cpClr').onclick  = () => { cpEntry = ""; cpRender(); haptic('light'); };
+document.getElementById('cpBack').onclick = () => { cpEntry = cpEntry.slice(0, -1); cpRender(); haptic('light'); };
+document.getElementById('cpCancel').onclick = () => { custPad.style.display = 'none'; };
+document.getElementById('cpSet').onclick = () => {
+  const n = parseInt(cpEntry || "0", 10);
+  if (n < 1 || n > 243) return;
+  custPad.style.display = 'none';
+  if (!setCustomMins(n)) return;
+  if (timeMode !== 3 && !setDuration(3)) haptic('light'); // value saved; mode needs a reset
+  menuSync();
+  haptic('medium');
+};
+
+/* ---------- SOUND: mute + volume ---------- */
+document.getElementById('muteBar').onclick = () => {
+  muted = !muted;
+  try { localStorage.setItem('salvationMute', muted ? "1" : "0"); } catch(e) {}
+  menuSync();
+  haptic('medium');
+  if (!muted) playVoice(440, true, 0); // little chirp to confirm sound is back
+};
+["LOW","MED","HIGH"].forEach((n, i) => {
+  const b = document.createElement('button');
+  b.textContent = n;
+  b.onclick = () => {
+    setVolume(i);
+    menuSync();
+    haptic('light');
+    playVoice(440, false, 0); // audition the level
+  };
+  document.getElementById('menuVol').appendChild(b);
+});
+btnMenu.onclick = () => {
+  pulseButton(btnMenu, 'light');
+  menuSync();
+  menuEl.style.display = menuEl.style.display === 'block' ? 'none' : 'block';
+};
+document.getElementById('menuClose').addEventListener('click', () => { menuEl.style.display = 'none'; });
+
+/* DEFAULT: restore the house settings (RINGS, 54 min, the E.PIANO ladder) */
+const DEFAULT_PRESET = {
+  view: 0,   // RINGS
+  dur: 1,    // 54 MIN
+  tones:  { t1620: 3, t540: 6, t180: 5, t60: 4, t20: 3, t6: 2, t2: 1 },  // HIGH, L>M>H, M>H, L>M, HIGH, MID, LOW
+  voices: { t1620: 2, t540: 3, t180: 3, t60: 3, t20: 3, t6: 3, t2: 3 },  // ORGAN on 27, E.PIANO elsewhere
+};
+document.getElementById('menuDefault').addEventListener('click', () => {
+  toneSel   = Object.assign({}, DEFAULT_PRESET.tones);
+  toneVoice = Object.assign({}, DEFAULT_PRESET.voices);
+  try {
+    localStorage.setItem('salvationTones2', JSON.stringify(toneSel));
+    localStorage.setItem('salvationVoices', JSON.stringify(toneVoice));
+  } catch(e) {}
+  tonePaints.forEach(p => p());
+  gotoView(DEFAULT_PRESET.view);
+  setDuration(DEFAULT_PRESET.dur); // duration stays reset-gated: no-op mid-session
+  menuSync();
+  haptic('medium');
+});
+
+document.getElementById('feSave').addEventListener('click', () => closeFrameEdit(true));
+document.getElementById('feCancel').addEventListener('click', () => closeFrameEdit(false));
+
+/* ---------- STATUS long-press: jump timer <-> its diagram ---------- */
+function statusHit(cx, cy){
+  if (cx > 250 || cy > 80) return false;
+  return !!frameStatus || viewMode < 9; // placeholder is pressable too
+}
+let statusDown = null, statusPressTimer = null;
+canvasAnim.addEventListener("pointerdown", (e) => {
+  if (frameEdit.style.display === "block") return;
+  const rect = canvasAnim.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  if (!statusHit(cx, cy)) return;
+  statusDown = { x: cx, y: cy };
+  clearTimeout(statusPressTimer);
+  statusPressTimer = setTimeout(() => {
+    statusDown = null;
+    if (viewMode >= 9) gotoView(lastTimerView);        // diagram -> back to the timer
+    else if (frameStatus) gotoView(9 + (frameSelectedF === 1 ? 1 : 0)); // timer -> status's diagram
+    else gotoView(9);                                   // no status yet -> first diagram
+    haptic('medium');
+  }, 500);
+});
+canvasAnim.addEventListener("pointermove", (e) => {
+  if (!statusDown) return;
+  const rect = canvasAnim.getBoundingClientRect();
+  if (Math.abs(e.clientX - rect.left - statusDown.x) +
+      Math.abs(e.clientY - rect.top  - statusDown.y) > 10){
+    clearTimeout(statusPressTimer);
+    statusDown = null;
+  }
+});
+canvasAnim.addEventListener("pointerup",     () => { clearTimeout(statusPressTimer); statusDown = null; });
+canvasAnim.addEventListener("pointercancel", () => { clearTimeout(statusPressTimer); statusDown = null; });
 
 /* ---------- PWA INSTALL PROMPT ---------- */
 let deferredPrompt;
@@ -753,6 +4047,12 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+/* ---------- ORIENTATION LOCK ---------- */
+// Honored in the installed app; plain browser tabs reject it (harmless)
+if (screen.orientation && screen.orientation.lock) {
+  screen.orientation.lock('portrait').catch(() => {});
+}
+
 /* ---------- WAKE LOCK RE-ACQUIRE ON VISIBILITY CHANGE ---------- */
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState === 'visible' && running) {
@@ -766,8 +4066,56 @@ const modeParam = new URLSearchParams(location.search).get('mode');
 const modeIdx = {"27": 0, "54": 1, "81": 2}[modeParam];
 if (modeIdx !== undefined) {
   timeMode = modeIdx;
-  btnMode.textContent = ["27-MIN", "54-MIN", "81-MIN"][timeMode];
 }
+
+// Migrate: the two old empty boxes (indices 8,9) were replaced by ladders
+try {
+  const old = JSON.parse(localStorage.getItem('salvationFrameTexts') || "{}");
+  if ("8" in old || "9" in old){
+    delete old["8"]; delete old["9"];
+    localStorage.setItem('salvationFrameTexts', JSON.stringify(old));
+  }
+  const oi = parseInt(localStorage.getItem('salvationStatusIdx'), 10);
+  if (localStorage.getItem('salvationStatusF') !== "1" && oi >= 8){
+    localStorage.removeItem('salvationStatusIdx');
+  }
+} catch(e) {}
+
+// Restore custom box texts for both diagrams
+try {
+  for (let f = 0; f < FRAME_DEFS.length; f++){
+    const map = JSON.parse(localStorage.getItem(FRAME_DEFS[f].store) || "{}");
+    for (const k in map){
+      const i = parseInt(k, 10);
+      if (i >= 0 && i < FRAME_DEFS[f].boxes.length) setFrameBoxText(f, i, map[k], false);
+    }
+  }
+} catch(e) {}
+
+// Restore last-used view and selected status
+try {
+  let savedView = parseInt(localStorage.getItem('salvationView'), 10);
+  // Migrate: LEDGER slotted in at 7, pushing FRAME/GOAL to 8/9
+  if (!localStorage.getItem('salvationViewMig10')){
+    if (savedView >= 7){ savedView++; localStorage.setItem('salvationView', String(savedView)); }
+    localStorage.setItem('salvationViewMig10', "1");
+  }
+  // Migrate: GOETIA slotted in at 8, pushing FRAME/GOAL to 9/10
+  if (!localStorage.getItem('salvationViewMig11')){
+    if (savedView >= 8){ savedView++; localStorage.setItem('salvationView', String(savedView)); }
+    localStorage.setItem('salvationViewMig11', "1");
+  }
+  if (savedView >= 0 && savedView <= 10){
+    viewMode = savedView;
+  }
+  const savedStatus = localStorage.getItem('salvationStatus');
+  if (savedStatus) frameStatus = savedStatus;
+  const savedF = parseInt(localStorage.getItem('salvationStatusF'), 10);
+  if (savedF === 0 || savedF === 1) frameSelectedF = savedF;
+  const savedIdx = parseInt(localStorage.getItem('salvationStatusIdx'), 10);
+  if (savedIdx >= 0 && savedIdx < FRAME_DEFS[frameSelectedF].boxes.length) frameSelected = savedIdx;
+} catch(e) {}
+if (viewMode >= 9) frameHintUntil = performance.now() + 3000;
 
 updateTables();
 setupGeometry();
@@ -775,7 +4123,7 @@ setupTriangles();
 buildLedPaths();
 
 centerColor=Array(numDials).fill("white");
-centerSize =Array(numDials).fill(6);
+centerSize =Array(numDials).fill(8);
 glowAlpha =Array(numDials).fill(0);
 updateTimerText(0);
 
@@ -784,7 +4132,11 @@ drawStaticLayer();
 
 /* ---------- BUTTON HOOKS ---------- */
 btnReset.onclick = ()=>{ pulseButton(btnReset); resetClock(); };
-btnMode.onclick  = ()=>{ pulseButton(btnMode, 'light'); toggleMode(); };
+btnPlay.onclick = ()=>{
+  btnPlay.classList.add('pulse');
+  setTimeout(()=>btnPlay.classList.remove('pulse'), 150);
+  toggleClock();
+};
 
 requestAnimationFrame(draw);
 </script>

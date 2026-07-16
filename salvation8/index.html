@@ -2842,46 +2842,48 @@ function drawDream(t){
    27 raises a shrine, 54 a temple, 81 the grand temple whose doorway
    lights from within when the last stone is set. */
 const GOETIA_CROW = [
-  ".....bb........",
-  "...bbbbb.......",
-  "..bbbbbbb......",
-  "qqqqqbEbb......",
-  ".....bbbbb.....",
-  "....Wbbbbb.....",
-  "...WWWrrrWW....",
-  "..WWWrrrrrWW...",
-  ".WWWrrrrrrWW...",
-  ".WWrrrrrrrWW...",
-  ".WWrrrrrrrWW...",
-  "..WrrrrrrrW....",
-  "..Wrrrrrrrr....",
-  "...rrrrrrrr....",
-  "...rrrrrrr.....",
-  "...rrrrrrr.....",
-  "....rrrrr......",
-  "....rr.rr......",
-  "....cc.cc......",
+  "......bbb........",
+  ".....bbbbb.......",
+  "....bbbbbbb......",
+  "qqqqqbEbbbb......",
+  ".....bbbbbb......",
+  "....WWbbbbW......",
+  "...WWWrrrWWW.....",
+  "...WWrrrrrWW.....",
+  "..WWrrrrrrrWW....",
+  "..WWrrrrrrrWW....",
+  "..WWrrrrrrrWW....",
+  "..WWrrrrrrrWW....",
+  "...WrrrrrrrW.....",
+  "...Wrrrrrrr......",
+  "....rrrrrrr......",
+  "....rrrrrrr......",
+  "....rrrrrrr......",
+  ".....rrrrr.......",
+  "....rr...rr......",
+  "....cc...cc......",
 ];
 const GOETIA_CROW_OPEN = [
-  "........bb...........",
-  "......bbbbb..........",
-  ".....bbbbbbb.........",
-  "...qqqqqbEbb.........",
-  "........bbbbb........",
-  "WW......bbbbb....WW..",
-  ".WWW..WWrrrWW..WWW...",
-  "..WWWWWWrrrrrWWWW....",
-  "...WWWWrrrrrrWW......",
-  "....WWrrrrrrrW.......",
-  "....W.rrrrrrr........",
-  "......rrrrrrr........",
-  ".....rrrrrrrr........",
-  "......rrrrrrrr.......",
-  "......rrrrrrr........",
-  "......rrrrrrr........",
-  ".......rrrrr.........",
-  ".......rr.rr.........",
-  ".......cc.cc.........",
+  "WW.........bbb.........WW.",
+  "WWW........bbbbb......WWW.",
+  ".WWWW.....bbbbbbb....WWWW.",
+  ".WWWWW.qqqqqbEbbbb..WWWWW.",
+  "..WWWWW....bbbbbb..WWWWW..",
+  "..WWWWWW...bbbbbb.WWWWWW..",
+  "...WWWWWW.WrrrrrWWWWWWW...",
+  "....WWWWWWWrrrrrWWWWWW....",
+  ".....WWWWWWrrrrrWWWWW.....",
+  "......WWW.WrrrrrW.WWW.....",
+  "..........rrrrrrr.........",
+  "..........rrrrrrr.........",
+  ".........rrrrrrrr.........",
+  ".........rrrrrrrr.........",
+  "..........rrrrrrr.........",
+  "..........rrrrrrr.........",
+  "..........rrrrrrr.........",
+  "..........rrrrr...........",
+  ".........rr...rr..........",
+  ".........cc...cc..........",
 ];
 const GOETIA_PAL = { b:"#241a2e", q:"#8a8274", E:"#ff7030", r:"#1c1420", W:"#2f1f38", c:"#8a8274" };
 function goetiaPlanKind(){
@@ -2954,8 +2956,8 @@ function goetiaLayout(){
     t1: [Math.round(viewW*0.75 - 54*k), Math.round(648*k)],
     t2: [Math.round(viewW*0.75 + 54*k), Math.round(648*k)],
     t3: [Math.round(viewW*0.75), Math.round((648 - 108*0.866)*k)],
-    demonX: Math.round(viewW*0.75 - 7.5*Math.max(3, Math.round(3.2*k))),
-    demonY: Math.round(648*k - 2*k) - 19*Math.max(3, Math.round(3.2*k)),
+    demonX: Math.round(viewW*0.75 - 8.5*Math.max(3, Math.round(3.2*k))),
+    demonY: Math.round(648*k - 2*k) - 20*Math.max(3, Math.round(3.2*k)),
     textY: Math.round(706*k),
   };
 }
@@ -3041,7 +3043,7 @@ function drawGoetia(t){
   {
     const lit = finished ? 27 : idle ? 0 : Math.floor((t % 60)/T27);
     for (let a = 0; a < 27; a++){
-      const ang = -Math.PI/2 - a*2*Math.PI/27;      // from the top, counterclockwise
+      const ang = -Math.PI/2 + a*2*Math.PI/27;      // from the top, counterclockwise to the eye
       const dx2 = L.fx + Math.cos(ang)*(L.fr - 4*L.k);
       const dy2 = L.fy + Math.sin(ang)*(L.fr - 4*L.k);
       if (a < lit){
@@ -3100,25 +3102,27 @@ function drawGoetia(t){
     ctx.shadowBlur = 0;
   }
 
-  // ---- the circle builds the plane; planes rise and stack into the stone ----
+  // ---- the circle: one square per scarab lap, set at the apex strike ----
+  // The current square pulses at each corner the scarab passes and
+  // APPEARS when it strikes the top. A row of three squares = a plane,
+  // which rises to the pad; nine squares = the stone.
   if (!idle && !finished){
     const sub60 = t % 60;
-    const planes = Math.floor(sub60/20);               // planes finished this minute
-    const subPlane = sub60 % 20;
-    const ptsIn = Math.floor(subPlane/T27);            // points set in this plane (1/27 each)
-    const step81 = Math.min(2, Math.floor((t % T27)/(T27/3)));  // each point gathers in three 1/81 pulses
+    const lapT = 3*T27;                                // one lap = 1/9 minute
+    const sqLit = sub60 < T27 ? 0 : Math.min(9, Math.floor((sub60 - T27)/lapT) + 1);
+    const gather = Math.min(2, Math.floor((((sub60 - T27) % lapT + lapT) % lapT)/T27));
     const cell = 11*L.k;
     for (let r = 0; r < 3; r++)
       for (let cc = 0; cc < 3; cc++){
         const n = r*3 + cc;
         const gx = L.fx - 15*L.k + cc*cell, gy = L.fy - 15*L.k + r*cell;
-        if (n < ptsIn){
+        if (n < sqLit){
           ctx.shadowColor = "rgba(120,200,255,0.9)"; ctx.shadowBlur = 5;
           ctx.fillStyle = "#bfe8ff";
           ctx.fillRect(gx, gy, 8*L.k, 8*L.k);
           ctx.shadowBlur = 0;
-        } else if (n === ptsIn){
-          ctx.fillStyle = "rgba(191,232,255," + (0.18 + 0.27*step81) + ")";
+        } else if (n === sqLit && sqLit < 9){
+          ctx.fillStyle = "rgba(191,232,255," + (0.16 + 0.26*gather) + ")";
           ctx.fillRect(gx, gy, 8*L.k, 8*L.k);
         } else {
           ctx.strokeStyle = "rgba(191,232,255,0.16)";
@@ -3126,7 +3130,7 @@ function drawGoetia(t){
           ctx.strokeRect(gx + 0.5, gy + 0.5, 8*L.k - 1, 8*L.k - 1);
         }
       }
-    // the stone on the pad: finished planes stacked as a growing miniature
+    // completed rows rise to the pad as planes; three planes make the stone
     const mu = 5.6*L.k, mh = mu*1.15;
     const sub = (si, sj, sk) => [L.stX + (si - sj)*mu, L.stY + (si + sj)*mu/2 - sk*mh];
     const quad = (pts2, col) => {
@@ -3147,34 +3151,40 @@ function drawGoetia(t){
       }
       ctx.globalAlpha = 1;
     };
-    const rising = planes > 0 && subPlane < 0.4;
+    const planes = Math.floor(sqLit/3);
+    const sinceSet = sqLit > 0 ? sub60 - (T27 + (sqLit - 1)*lapT) : 99;
+    const rising = sqLit > 0 && sqLit % 3 === 0 && sinceSet >= 0 && sinceSet < 0.4;
     const shown = rising ? planes - 1 : planes;
     for (let pl = 0; pl < shown; pl++) drawLayer(pl, 0.92, 0);
     if (rising){
-      const q2 = subPlane/0.4, e2 = q2*q2*(3 - 2*q2);
+      const q2 = sinceSet/0.4, e2 = q2*q2*(3 - 2*q2);
       const restY = sub(1, 1, planes - 1)[1];
       drawLayer(planes - 1, 0.55 + 0.4*e2, (1 - e2)*(L.fy - restY));
     }
   }
 
-  // ---- Malphas: wings pump open with each point's gathering ----
+  // ---- Malphas: the six-move ritual, in step with the scarab ----
+  // Six beats per circuit: wings mantle at each corner, a foot lifts
+  // between corners. He never leaves his place.
   const S = Math.max(3, Math.round(3.2*L.k));
-  const tick = Math.floor(t/T27);
-  const bob = idle || finished ? 0 : (tick % 2) * S;
-  const sway = idle || finished ? 0 : Math.round(Math.sin(t*0.6)*1.4) * S;
-  const step81d = Math.min(2, Math.floor((t % T27)/(T27/3)));
-  const pose = idle || finished ? 0 : (flying ? 2 : step81d);      // closed -> raised -> spread
-  const map = pose === 2 ? GOETIA_CROW_OPEN : GOETIA_CROW;
-  const oxOff = pose === 2 ? -3*S : 0;
-  const wingDy = pose === 1 ? -S : 0;
+  const half = T27/2;
+  const beat = Math.floor(t/half);
+  const phase = idle || finished ? -1 : beat % 6;
+  const spread = !idle && !finished && (flying || phase % 2 === 0);
+  const footSide = (beat >> 1) % 2;                                // alternates each foot-beat
+  const map = spread ? GOETIA_CROW_OPEN : GOETIA_CROW;
+  const oxOff = spread ? -7*S : 0;                                 // eyes align across poses
+  const midCol = spread ? 13 : 6;
+  const liftFeet = !idle && !finished && !spread && phase >= 0 && phase % 2 === 1;
   for (let y = 0; y < map.length; y++)
     for (let x = 0; x < map[y].length; x++){
       const ch = map[y][x];
       const col = GOETIA_PAL[ch];
       if (!col) continue;
-      const dy = ch === 'W' ? wingDy : 0;
+      let dy = 0;
+      if (liftFeet && ch === 'c' && ((x < midCol) === (footSide === 0))) dy = -S;
       ctx.fillStyle = col;
-      ctx.fillRect(L.demonX + oxOff + x*S + sway, L.demonY + y*S + dy + bob, S, S);
+      ctx.fillRect(L.demonX + oxOff + x*S, L.demonY + y*S + dy, S, S);
     }
   // the scarab paces the triangle, one corner per 1/27 minute
   {
@@ -3218,10 +3228,11 @@ function drawGoetia(t){
   const flashAge = t % T27;
   const flashing = !idle && !finished && flashAge < 0.22;
   const glow = idle || finished ? 0.3 : 0.25 + 0.7*((t % T27)/T27);
+  const eyeX = L.demonX + oxOff + (spread ? 13 : 6)*S;
   ctx.shadowColor = flashing ? "rgba(255,240,200,0.95)" : "rgba(255,112,48," + glow + ")";
   ctx.shadowBlur = flashing ? 13 : 7;
   ctx.fillStyle = flashing ? "#fff2d0" : "#ff9a50";
-  ctx.fillRect(L.demonX + 6*S + sway, L.demonY + 3*S + bob, S, S);
+  ctx.fillRect(eyeX, L.demonY + 3*S, S, S);
   ctx.shadowBlur = 0;
 }
 
