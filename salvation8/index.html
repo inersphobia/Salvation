@@ -2862,6 +2862,27 @@ const GOETIA_CROW = [
   "....rr.rr......",
   "....cc.cc......",
 ];
+const GOETIA_CROW_OPEN = [
+  "........bb...........",
+  "......bbbbb..........",
+  ".....bbbbbbb.........",
+  "...qqqqqbEbb.........",
+  "........bbbbb........",
+  "WW......bbbbb....WW..",
+  ".WWW..WWrrrWW..WWW...",
+  "..WWWWWWrrrrrWWWW....",
+  "...WWWWrrrrrrWW......",
+  "....WWrrrrrrrW.......",
+  "....W.rrrrrrr........",
+  "......rrrrrrr........",
+  ".....rrrrrrrr........",
+  "......rrrrrrrr.......",
+  "......rrrrrrr........",
+  "......rrrrrrr........",
+  ".......rrrrr.........",
+  ".......rr.rr.........",
+  ".......cc.cc.........",
+];
 const GOETIA_PAL = { b:"#241a2e", q:"#8a8274", E:"#ff7030", r:"#1c1420", W:"#2f1f38", c:"#8a8274" };
 function goetiaPlanKind(){
   const m = Math.round(totalCycle/60);
@@ -3016,14 +3037,22 @@ function drawGoetia(t){
   const flying = !idle && !finished && m > 0 && (t % 60) < flyDur;
   const placed = flying ? m - 1 : m;
 
-  // the character ring, slowly turning
-  ctx.strokeStyle = "rgba(216,210,192,0.4)";
-  ctx.lineWidth = 1;
-  for (let a = 0; a < 24; a++){
-    const ang = a*Math.PI/12 + (idle ? 0 : t*0.04);
-    ctx.beginPath();
-    ctx.arc(L.fx + Math.cos(ang)*(L.fr - 3.5*L.k), L.fy + Math.sin(ang)*(L.fr - 3.5*L.k), 1, 0, 2*Math.PI);
-    ctx.stroke();
+  // the ring of 27 lamps: one per point of the stone, lighting as they land
+  {
+    const lit = finished ? 27 : idle ? 0 : Math.floor((t % 60)/T27);
+    for (let a = 0; a < 27; a++){
+      const ang = -Math.PI/2 - a*2*Math.PI/27;      // from the top, counterclockwise
+      const dx2 = L.fx + Math.cos(ang)*(L.fr - 4*L.k);
+      const dy2 = L.fy + Math.sin(ang)*(L.fr - 4*L.k);
+      if (a < lit){
+        ctx.fillStyle = finished ? "rgba(255,190,90,0.5)" : "rgba(191,232,255,0.85)";
+        ctx.beginPath(); ctx.arc(dx2, dy2, 1.5*L.k, 0, 2*Math.PI); ctx.fill();
+      } else {
+        ctx.strokeStyle = "rgba(216,210,192,0.28)";
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(dx2, dy2, 1.1*L.k, 0, 2*Math.PI); ctx.stroke();
+      }
+    }
   }
 
   // the placed stones, painter order
@@ -3128,20 +3157,24 @@ function drawGoetia(t){
     }
   }
 
-  // ---- Malphas, bound in the triangle: he paces as he works ----
+  // ---- Malphas: wings pump open with each point's gathering ----
   const S = Math.max(3, Math.round(3.2*L.k));
-  const flap = flying ? -S : 0;
   const tick = Math.floor(t/T27);
-  const bob = idle || finished ? 0 : (tick % 2) * S;               // steps with each point
-  const sway = idle || finished ? 0 : Math.round(Math.sin(t*0.6)*1.4) * S;  // drifts in the triangle
-  for (let y = 0; y < GOETIA_CROW.length; y++)
-    for (let x = 0; x < GOETIA_CROW[y].length; x++){
-      const ch = GOETIA_CROW[y][x];
+  const bob = idle || finished ? 0 : (tick % 2) * S;
+  const sway = idle || finished ? 0 : Math.round(Math.sin(t*0.6)*1.4) * S;
+  const step81d = Math.min(2, Math.floor((t % T27)/(T27/3)));
+  const pose = idle || finished ? 0 : (flying ? 2 : step81d);      // closed -> raised -> spread
+  const map = pose === 2 ? GOETIA_CROW_OPEN : GOETIA_CROW;
+  const oxOff = pose === 2 ? -3*S : 0;
+  const wingDy = pose === 1 ? -S : 0;
+  for (let y = 0; y < map.length; y++)
+    for (let x = 0; x < map[y].length; x++){
+      const ch = map[y][x];
       const col = GOETIA_PAL[ch];
       if (!col) continue;
-      const dy = ch === 'W' ? flap : 0;
+      const dy = ch === 'W' ? wingDy : 0;
       ctx.fillStyle = col;
-      ctx.fillRect(L.demonX + x*S + sway, L.demonY + y*S + dy + bob, S, S);
+      ctx.fillRect(L.demonX + oxOff + x*S + sway, L.demonY + y*S + dy + bob, S, S);
     }
   // the scarab paces the triangle, one corner per 1/27 minute
   {
@@ -3181,13 +3214,14 @@ function drawGoetia(t){
     ctx.fillRect(bx - dxn*1.2*kk, by - dyn*1.2*kk, 1.2, 1.2);
   }
 
-  // the ember eye gathers with each point
+  // the eye gathers with each point, and FLASHES as each one lands
+  const flashAge = t % T27;
+  const flashing = !idle && !finished && flashAge < 0.22;
   const glow = idle || finished ? 0.3 : 0.25 + 0.7*((t % T27)/T27);
-  ctx.shadowColor = "rgba(255,112,48," + glow + ")";
-  ctx.shadowBlur = 7;
-  ctx.fillStyle = "#ff9a50";
-  ctx.fillRect(L.demonX + 6*S + (idle || finished ? 0 : Math.round(Math.sin(t*0.6)*1.4)*S),
-               L.demonY + 3*S + (idle || finished ? 0 : (Math.floor(t/T27) % 2)*S), S, S);
+  ctx.shadowColor = flashing ? "rgba(255,240,200,0.95)" : "rgba(255,112,48," + glow + ")";
+  ctx.shadowBlur = flashing ? 13 : 7;
+  ctx.fillStyle = flashing ? "#fff2d0" : "#ff9a50";
+  ctx.fillRect(L.demonX + 6*S + sway, L.demonY + 3*S + bob, S, S);
   ctx.shadowBlur = 0;
 }
 
@@ -3439,7 +3473,7 @@ function drawTimerText(t){
         const T = ticks[di];
         ctx.fillStyle = ringLerp(posIndex(di, t), (t % T)/T);
       } else {
-        ctx.fillStyle = DIGIT_COLORS[+ch];
+        ctx.fillStyle = viewMode === 8 ? "#d8d2c0" : DIGIT_COLORS[+ch];
       }
       di++;
     } else {
