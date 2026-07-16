@@ -2921,10 +2921,11 @@ function goetiaLayout(){
     cx: Math.round(viewW/2),
     baseY: Math.round(356*k),
     fx: Math.round(viewW*0.27), fy: Math.round(586*k), fr: Math.round(54*k),
-    t1: [Math.round(viewW*0.56), Math.round(652*k)],
-    t2: [Math.round(viewW*0.94), Math.round(652*k)],
-    t3: [Math.round(viewW*0.75), Math.round(528*k)],
-    demonX: Math.round(viewW*0.62), demonY: Math.round(558*k),
+    t1: [Math.round(viewW*0.75 - 54*k), Math.round(648*k)],
+    t2: [Math.round(viewW*0.75 + 54*k), Math.round(648*k)],
+    t3: [Math.round(viewW*0.75), Math.round((648 - 108*0.866)*k)],
+    demonX: Math.round(viewW*0.75 - 7.5*Math.max(3, Math.round(3.2*k))),
+    demonY: Math.round(648*k - 2*k) - 19*Math.max(3, Math.round(3.2*k)),
     textY: Math.round(706*k),
   };
 }
@@ -3006,11 +3007,6 @@ function drawGoetia(t){
     ctx.stroke();
   }
 
-  // the ghost plan: the temple as promise
-  for (let i = 0; i < N; i++){
-    const p = goetiaPos(L, plan[i][0], plan[i][1], plan[i][2]);
-    goetiaCube(L, p[0], p[1], 0, 0.05);
-  }
   // the placed stones, painter order
   const sorted = [];
   for (let i = 0; i < placed; i++) sorted.push([plan[i], i]);
@@ -3088,7 +3084,7 @@ function drawGoetia(t){
   }
 
   // ---- Malphas, bound in the triangle ----
-  const S = Math.max(3, Math.round(3.6*L.k));
+  const S = Math.max(3, Math.round(3.2*L.k));
   const flap = flying ? -S : 0;
   for (let y = 0; y < GOETIA_CROW.length; y++)
     for (let x = 0; x < GOETIA_CROW[y].length; x++){
@@ -3101,7 +3097,7 @@ function drawGoetia(t){
     }
   // the scarab paces the triangle, one corner per 1/27 minute
   {
-    const corners = [L.t1, L.t2, L.t3];
+    const corners = [L.t1, L.t3, L.t2];   // counterclockwise circuit
     const ci = idle || finished ? 0 : Math.floor(t/T27) % 3;
     const cf = idle || finished ? 0 : (t % T27)/T27;
     const A = corners[ci], B = corners[(ci + 1) % 3];
