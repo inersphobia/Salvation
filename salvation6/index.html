@@ -2879,23 +2879,34 @@ function goetiaPlan(){
     }
   };
   if (kind === 27){
-    row(0,0,0,4); row(1,0,0,4);          // plinth
-    row(0,1,0,4); row(1,1,0,4,[2]);      // walls, the doorway
-    row(1,2,0,4); row(0,2,1,3);          // roof
+    // THE CUBE: a perfect 3x3x3 with a doorway and a capstone
+    for (let k = 0; k < 3; k++)
+      for (let j = 0; j < 3; j++)
+        for (let i = 0; i < 3; i++){
+          if (k === 0 && j === 2 && i === 1) continue;   // the doorway
+          L.push([i, j, k]);
+        }
+    L.push([1, 1, 3]);                                    // the capstone
   } else if (kind === 54){
-    row(0,0,0,6); row(1,0,0,6);
-    row(0,1,0,6); row(1,1,0,6,[3]);
-    row(0,2,0,6); row(1,2,0,6);
-    row(0,3,1,5); row(1,3,1,5);
-    row(1,4,2,4);                        // the crown
+    // THE TOWER: two cubes stacked, door below, merlons above
+    for (let k = 0; k < 6; k++)
+      for (let j = 0; j < 3; j++)
+        for (let i = 0; i < 3; i++){
+          if (j === 2 && i === 1 && k < 2) continue;      // the tall doorway
+          L.push([i, j, k]);
+        }
+    L.push([0, 2, 6]); L.push([2, 2, 6]);                 // the merlons
   } else {
-    row(0,0,0,8); row(1,0,0,8);
-    row(0,1,0,8); row(1,1,0,8,[3,4,5]);  // tall doorway
-    row(0,2,0,8); row(1,2,0,8,[3,4,5]);
-    row(0,3,0,8); row(1,3,0,8);          // lintel course
-    row(1,4,1,7);                        // ziggurat crown
-    row(1,5,2,6);
-    row(1,6,3,5);
+    // THE ZIGGURAT: 36 + 25 + 16 + 4 tiers and a two-stone crown
+    for (let j = 0; j < 6; j++)
+      for (let i = 0; i < 6; i++){
+        if (j === 5 && (i === 2 || i === 3)) continue;    // the gate
+        L.push([i, j, 0]);
+      }
+    for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) L.push([i, j, 1]);
+    for (let j = 1; j < 5; j++) for (let i = 1; i < 5; i++) L.push([i, j, 2]);
+    for (let j = 2; j < 4; j++) for (let i = 2; i < 4; i++) L.push([i, j, 3]);
+    L.push([2, 3, 4]); L.push([3, 3, 4]);                 // the crown
   }
   goetiaPlanCache = { kind, list: L };
   return L;
@@ -2903,13 +2914,12 @@ function goetiaPlan(){
 function goetiaLayout(){
   const k = Math.max(0.8, Math.min(viewW/412, 1.25));
   const kind = goetiaPlanKind();
-  const u = Math.round((kind === 81 ? 15 : kind === 54 ? 18 : 22)*k);
+  const u = Math.round((kind === 81 ? 16 : kind === 54 ? 20 : 24)*k);
   const hh = Math.round(u*1.15);
-  const w = kind === 81 ? 9 : kind === 54 ? 7 : 5;
   return {
     k, u, hh, kind,
-    cx: Math.round(viewW/2 - ((w - 2)/2)*u),
-    baseY: Math.round(360*k),
+    cx: Math.round(viewW/2),
+    baseY: Math.round(356*k),
     fx: Math.round(viewW*0.27), fy: Math.round(586*k), fr: Math.round(54*k),
     t1: [Math.round(viewW*0.56), Math.round(652*k)],
     t2: [Math.round(viewW*0.94), Math.round(652*k)],
@@ -3034,13 +3044,15 @@ function drawGoetia(t){
   }
   // the finished temple: the doorway lights from within
   if (finished){
-    const doorX = L.kind === 27 ? 2 : L.kind === 54 ? 3 : 4;
-    const dp = goetiaPos(L, doorX, 1, L.kind === 81 ? 1.5 : 1);
     const pulse = 0.5 + 0.5*Math.sin(performance.now()/800);
+    const doors = L.kind === 27 ? [[1,2,0]] : L.kind === 54 ? [[1,2,0],[1,2,1]] : [[2,5,0],[3,5,0]];
     ctx.fillStyle = "rgba(255,190,90," + (0.35 + 0.3*pulse) + ")";
     ctx.shadowColor = "rgba(255,170,60,0.9)";
     ctx.shadowBlur = 12 + 8*pulse;
-    ctx.fillRect(dp[0] - L.u*0.55, dp[1] - (L.kind === 81 ? L.hh*1.4 : L.hh*0.5), L.u*1.1, L.kind === 81 ? L.hh*2.2 : L.hh*1.2);
+    for (const d of doors){
+      const dp = goetiaPos(L, d[0], d[1], d[2]);
+      ctx.fillRect(dp[0] - L.u*0.5, dp[1] + L.u*0.15, L.u, L.hh*0.95);
+    }
     ctx.shadowBlur = 0;
   }
 
@@ -3087,6 +3099,44 @@ function drawGoetia(t){
       ctx.fillStyle = col;
       ctx.fillRect(L.demonX + x*S, L.demonY + y*S + dy, S, S);
     }
+  // the scarab paces the triangle, one corner per 1/27 minute
+  {
+    const corners = [L.t1, L.t2, L.t3];
+    const ci = idle || finished ? 0 : Math.floor(t/T27) % 3;
+    const cf = idle || finished ? 0 : (t % T27)/T27;
+    const A = corners[ci], B = corners[(ci + 1) % 3];
+    const bx = A[0] + (B[0] - A[0])*cf, by = A[1] + (B[1] - A[1])*cf;
+    const dl = Math.hypot(B[0] - A[0], B[1] - A[1]);
+    const dxn = (B[0] - A[0])/dl, dyn = (B[1] - A[1])/dl;
+    const pxn = -dyn, pyn = dxn;
+    const kk = L.k;
+    // legs, alternating as it walks
+    const step = Math.floor(t*8) % 2;
+    ctx.strokeStyle = "#1a2a1e";
+    ctx.lineWidth = 1;
+    for (let leg = -1; leg <= 1; leg++){
+      const lx = bx + dxn*leg*2.4*kk, ly = by + dyn*leg*2.4*kk;
+      const side = (leg + step) % 2 ? 1 : -1;
+      ctx.beginPath();
+      ctx.moveTo(lx, ly);
+      ctx.lineTo(lx + pxn*side*3.4*kk, ly + pyn*side*3.4*kk);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(lx, ly);
+      ctx.lineTo(lx - pxn*side*3.4*kk, ly - pyn*side*3.4*kk);
+      ctx.stroke();
+    }
+    // carapace: iridescent green-black
+    ctx.fillStyle = "#22392a";
+    ctx.beginPath(); ctx.ellipse(bx, by, 3.4*kk, 2.4*kk, Math.atan2(dyn, dxn), 0, 2*Math.PI); ctx.fill();
+    ctx.fillStyle = "#3a5c44";
+    ctx.beginPath(); ctx.ellipse(bx - dxn*0.6*kk, by - dyn*0.6*kk, 2.2*kk, 1.4*kk, Math.atan2(dyn, dxn), 0, 2*Math.PI); ctx.fill();
+    ctx.fillStyle = "#141d16";                             // the head
+    ctx.beginPath(); ctx.arc(bx + dxn*3.4*kk, by + dyn*3.4*kk, 1.3*kk, 0, 2*Math.PI); ctx.fill();
+    ctx.fillStyle = "#9fe8c0";                             // one glint
+    ctx.fillRect(bx - dxn*1.2*kk, by - dyn*1.2*kk, 1.2, 1.2);
+  }
+
   // the ember eye gathers with each point
   const glow = idle || finished ? 0.3 : 0.25 + 0.7*((t % T27)/T27);
   ctx.shadowColor = "rgba(255,112,48," + glow + ")";
@@ -3311,8 +3361,8 @@ function drawTimerText(t){
   ctx.font = viewW < 500 ? "32px monospace" : "40px monospace";
 
   let str = timerStr;
-  if (viewMode === 7 && str.indexOf(":") !== -1){
-    // DREAM reads one place deeper: the 1/81-minute digit (81 ticks per minute)
+  if ((viewMode === 7 || viewMode === 8) && str.indexOf(":") !== -1){
+    // DREAM and GOETIA read one place deeper: the 1/81-minute digit
     const d81 = finished ? 0 : Math.floor(t / (60/81)) % 3;
     str = str.replace("₃", d81 + "₃");
   }
