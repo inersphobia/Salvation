@@ -2928,7 +2928,8 @@ function goetiaLayout(){
     k, u, hh, kind,
     cx: Math.round(viewW/2),
     baseY: Math.round(356*k),
-    fx: Math.round(viewW*0.27), fy: Math.round(586*k), fr: Math.round(54*k),
+    fx: Math.round(viewW*0.24), fy: Math.round(586*k), fr: Math.round(48*k),
+    stX: Math.round(viewW*0.47), stY: Math.round(594*k),
     t1: [Math.round(viewW*0.75 - 54*k), Math.round(648*k)],
     t2: [Math.round(viewW*0.75 + 54*k), Math.round(648*k)],
     t3: [Math.round(viewW*0.75), Math.round((648 - 108*0.866)*k)],
@@ -2985,7 +2986,17 @@ function drawGoetiaStatic(){
   ctxStatic.lineWidth = 1.5;
   ctxStatic.beginPath(); ctxStatic.arc(L.fx, L.fy, L.fr, 0, 2*Math.PI); ctxStatic.stroke();
   ctxStatic.beginPath(); ctxStatic.arc(L.fx, L.fy, L.fr - 7*L.k, 0, 2*Math.PI); ctxStatic.stroke();
+  // the staging pad
+  ctxStatic.strokeStyle = "rgba(216,210,192,0.3)";
+  ctxStatic.lineWidth = 1.2;
+  ctxStatic.beginPath();
+  ctxStatic.moveTo(L.stX, L.stY - 4*L.k);
+  ctxStatic.lineTo(L.stX + 26*L.k, L.stY + 9*L.k);
+  ctxStatic.lineTo(L.stX, L.stY + 22*L.k);
+  ctxStatic.lineTo(L.stX - 26*L.k, L.stY + 9*L.k);
+  ctxStatic.closePath(); ctxStatic.stroke();
   // the triangle of art
+  ctxStatic.strokeStyle = "rgba(216,210,192,0.5)";
   ctxStatic.beginPath();
   ctxStatic.moveTo(L.t1[0], L.t1[1]); ctxStatic.lineTo(L.t2[0], L.t2[1]); ctxStatic.lineTo(L.t3[0], L.t3[1]);
   ctxStatic.closePath(); ctxStatic.stroke();
@@ -3028,8 +3039,8 @@ function drawGoetia(t){
     const cell = plan[m - 1];
     const tp = goetiaPos(L, cell[0], cell[1], cell[2]);
     const q = (t % 60)/flyDur, e = q*q*(3 - 2*q);
-    const sx = L.fx + (tp[0] - L.fx)*e;
-    const sy = (L.fy - 44*L.k) + (tp[1] - (L.fy - 44*L.k))*e - 30*L.k*Math.sin(Math.PI*e);
+    const sx = L.stX + (tp[0] - L.stX)*e;
+    const sy = (L.stY - 8*L.k) + (tp[1] - (L.stY - 8*L.k))*e - 34*L.k*Math.sin(Math.PI*e);
     goetiaCube(L, sx, sy, goetiaShade(m - 1));
   }
   // land flash
@@ -3060,40 +3071,56 @@ function drawGoetia(t){
     ctx.shadowBlur = 0;
   }
 
-  // ---- the forge: the cascade inside the circle ----
+  // ---- the staging area: the stone assembles, plane by plane ----
   if (!idle && !finished){
-    const pts = Math.floor((t % 60)/T27);              // points laid this minute
-    const frac = (t % T27)/T27;                        // the infinitesimal, gathering
-    const planes = Math.floor(pts/9);
-    const cell = 11*L.k;
-    for (let r = 0; r < 3; r++)
-      for (let cc = 0; cc < 3; cc++){
-        const n = r*3 + cc;
-        const gx = L.fx - 16*L.k + cc*cell, gy = L.fy - 12*L.k + r*cell;
-        if (n < pts % 9){
-          ctx.shadowColor = "rgba(120,200,255,0.9)"; ctx.shadowBlur = 5;
-          ctx.fillStyle = "#bfe8ff";
-          ctx.fillRect(gx, gy, 8*L.k, 8*L.k);
-          ctx.shadowBlur = 0;
-        } else if (n === pts % 9){
-          ctx.fillStyle = "rgba(191,232,255," + (0.1 + 0.75*frac) + ")";
-          ctx.fillRect(gx, gy, 8*L.k, 8*L.k);
-        } else {
-          ctx.strokeStyle = "rgba(191,232,255,0.18)";
-          ctx.lineWidth = 1;
-          ctx.strokeRect(gx + 0.5, gy + 0.5, 8*L.k - 1, 8*L.k - 1);
-        }
-      }
-    for (let p = 0; p < planes; p++){                  // folded planes hover, waiting
-      const py = L.fy - 30*L.k - p*8*L.k;
-      goetiaPoly([[L.fx, py - 7*L.k],[L.fx + 15*L.k, py],[L.fx, py + 7*L.k],[L.fx - 15*L.k, py]],
-                 "rgba(160,215,255,0.55)");
+    const pts = Math.floor((t % 60)/T27);              // sub-cells laid this minute
+    const frac = (t % T27)/T27;                        // the point, gathering
+    const mu = 5.6*L.k, mh = mu*1.15;
+    const sub = (si, sj, sk) => [L.stX + (si - sj)*mu, L.stY + 9*L.k + (si + sj)*mu/2 - (si + sj)*0 - sk*mh - 10*L.k];
+    // the conjured point pulses at the circle's heart
+    ctx.fillStyle = "rgba(191,232,255," + (0.15 + 0.7*frac) + ")";
+    ctx.shadowColor = "rgba(120,200,255,0.9)";
+    ctx.shadowBlur = 5 + 6*frac;
+    ctx.fillRect(L.fx - 2*L.k, L.fy - 2*L.k, 4*L.k, 4*L.k);
+    ctx.shadowBlur = 0;
+    // late in each 1/27, the point streams to its place in the stone
+    if (frac > 0.82 && pts < 27){
+      const nsi = pts % 3, nsj = Math.floor(pts/3) % 3, nsk = Math.floor(pts/9);
+      const tpos = sub(nsi, nsj, nsk);
+      const q2 = (frac - 0.82)/0.18;
+      ctx.fillStyle = "rgba(210,240,255,0.9)";
+      ctx.shadowColor = "rgba(120,200,255,0.9)"; ctx.shadowBlur = 6;
+      ctx.fillRect(L.fx + (tpos[0] - L.fx)*q2 - 1.5, L.fy + (tpos[1] - L.fy)*q2 - 1.5, 3, 3);
+      ctx.shadowBlur = 0;
+    }
+    // the mini stone itself: a true miniature of the cube to come
+    const cells = [];
+    for (let n = 0; n < Math.min(27, pts + 1); n++)
+      cells.push([n % 3, Math.floor(n/3) % 3, Math.floor(n/9), n === pts]);
+    cells.sort((a, b) => ((a[0] + a[1])*100 + a[2]) - ((b[0] + b[1])*100 + b[2]));
+    for (const [si, sj, sk, isCur] of cells){
+      if (isCur && pts >= 27) continue;
+      const p2 = sub(si, sj, sk);
+      ctx.globalAlpha = isCur ? 0.15 + 0.6*frac : 0.92;
+      const quad = (pts2, col) => {
+        ctx.fillStyle = col; ctx.beginPath();
+        ctx.moveTo(pts2[0][0], pts2[0][1]);
+        for (let z = 1; z < pts2.length; z++) ctx.lineTo(pts2[z][0], pts2[z][1]);
+        ctx.closePath(); ctx.fill();
+      };
+      quad([[p2[0], p2[1]-mu/2],[p2[0]+mu, p2[1]],[p2[0], p2[1]+mu/2],[p2[0]-mu, p2[1]]], "#bcd6e8");
+      quad([[p2[0]-mu, p2[1]],[p2[0], p2[1]+mu/2],[p2[0], p2[1]+mu/2+mh],[p2[0]-mu, p2[1]+mh]], "#8aa4bc");
+      quad([[p2[0]+mu, p2[1]],[p2[0], p2[1]+mu/2],[p2[0], p2[1]+mu/2+mh],[p2[0]+mu, p2[1]+mh]], "#64798c");
+      ctx.globalAlpha = 1;
     }
   }
 
-  // ---- Malphas, bound in the triangle ----
+  // ---- Malphas, bound in the triangle: he paces as he works ----
   const S = Math.max(3, Math.round(3.2*L.k));
   const flap = flying ? -S : 0;
+  const tick = Math.floor(t/T27);
+  const bob = idle || finished ? 0 : (tick % 2) * S;               // steps with each point
+  const sway = idle || finished ? 0 : Math.round(Math.sin(t*0.6)*1.4) * S;  // drifts in the triangle
   for (let y = 0; y < GOETIA_CROW.length; y++)
     for (let x = 0; x < GOETIA_CROW[y].length; x++){
       const ch = GOETIA_CROW[y][x];
@@ -3101,7 +3128,7 @@ function drawGoetia(t){
       if (!col) continue;
       const dy = ch === 'W' ? flap : 0;
       ctx.fillStyle = col;
-      ctx.fillRect(L.demonX + x*S, L.demonY + y*S + dy, S, S);
+      ctx.fillRect(L.demonX + x*S + sway, L.demonY + y*S + dy + bob, S, S);
     }
   // the scarab paces the triangle, one corner per 1/27 minute
   {
@@ -3141,38 +3168,13 @@ function drawGoetia(t){
     ctx.fillRect(bx - dxn*1.2*kk, by - dyn*1.2*kk, 1.2, 1.2);
   }
 
-  // the Seal of Solomon, hovering over the conjurer: it turns slowly,
-  // gathers light with each 1/27, and flares as the stone releases
-  {
-    const sxc = L.demonX + 7.5*S, syc = L.demonY - 11*L.k;
-    const rot = idle ? 0 : t*0.25;
-    const flare = flying ? 1 - (t % 60)/0.6 : 0;
-    const charge = idle || finished ? 0.2 : 0.3 + 0.5*((t % T27)/T27);
-    const R = (8.5 + 3.5*flare)*L.k;
-    ctx.strokeStyle = "rgba(232,217,160," + Math.min(1, charge + 0.55*flare) + ")";
-    ctx.lineWidth = 1.2;
-    ctx.shadowColor = "rgba(232,217,160,0.8)";
-    ctx.shadowBlur = 4 + 10*flare;
-    for (const ph of [0, Math.PI]){
-      ctx.beginPath();
-      for (let v = 0; v <= 3; v++){
-        const ang = rot + ph + v*2*Math.PI/3 - Math.PI/2;
-        const hx = sxc + Math.cos(ang)*R, hy = syc + Math.sin(ang)*R;
-        if (v === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
-      }
-      ctx.stroke();
-    }
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = "rgba(255,240,200," + (0.25 + 0.6*charge) + ")";
-    ctx.fillRect(sxc - 1, syc - 1, 2, 2);
-  }
-
   // the ember eye gathers with each point
   const glow = idle || finished ? 0.3 : 0.25 + 0.7*((t % T27)/T27);
   ctx.shadowColor = "rgba(255,112,48," + glow + ")";
   ctx.shadowBlur = 7;
   ctx.fillStyle = "#ff9a50";
-  ctx.fillRect(L.demonX + 6*S, L.demonY + 3*S, S, S);
+  ctx.fillRect(L.demonX + 6*S + (idle || finished ? 0 : Math.round(Math.sin(t*0.6)*1.4)*S),
+               L.demonY + 3*S + (idle || finished ? 0 : (Math.floor(t/T27) % 2)*S), S, S);
   ctx.shadowBlur = 0;
 }
 
