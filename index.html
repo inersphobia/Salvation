@@ -3122,8 +3122,9 @@ function drawGoetia(t){
           ctx.fillStyle = "#bfe8ff";
           ctx.fillRect(gx, gy, 8*L.k, 8*L.k);
           ctx.shadowBlur = 0;
-        } else if (n === sqLit){
-          ctx.fillStyle = "rgba(191,232,255," + (0.16 + 0.26*gather) + ")";
+        } else if (n === sqLit && gather > 0){
+          // dark at 1/81 = 0; first light arrives at 1
+          ctx.fillStyle = "rgba(191,232,255," + (0.24*gather) + ")";
           ctx.fillRect(gx, gy, 8*L.k, 8*L.k);
         } else {
           ctx.strokeStyle = "rgba(191,232,255,0.16)";
