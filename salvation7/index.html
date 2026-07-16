@@ -2928,8 +2928,8 @@ function goetiaLayout(){
     k, u, hh, kind,
     cx: Math.round(viewW/2),
     baseY: Math.round(356*k),
-    fx: Math.round(viewW*0.24), fy: Math.round(586*k), fr: Math.round(48*k),
-    stX: Math.round(viewW*0.47), stY: Math.round(594*k),
+    fx: Math.round(viewW*0.24), fy: Math.round(600*k), fr: Math.round(46*k),
+    stX: Math.round(viewW*0.24), stY: Math.round(600*k - 46*k - 30*k),
     t1: [Math.round(viewW*0.75 - 54*k), Math.round(648*k)],
     t2: [Math.round(viewW*0.75 + 54*k), Math.round(648*k)],
     t3: [Math.round(viewW*0.75), Math.round((648 - 108*0.866)*k)],
@@ -2986,14 +2986,14 @@ function drawGoetiaStatic(){
   ctxStatic.lineWidth = 1.5;
   ctxStatic.beginPath(); ctxStatic.arc(L.fx, L.fy, L.fr, 0, 2*Math.PI); ctxStatic.stroke();
   ctxStatic.beginPath(); ctxStatic.arc(L.fx, L.fy, L.fr - 7*L.k, 0, 2*Math.PI); ctxStatic.stroke();
-  // the staging pad
+  // the staging pad, above the circle
   ctxStatic.strokeStyle = "rgba(216,210,192,0.3)";
   ctxStatic.lineWidth = 1.2;
   ctxStatic.beginPath();
-  ctxStatic.moveTo(L.stX, L.stY - 4*L.k);
-  ctxStatic.lineTo(L.stX + 26*L.k, L.stY + 9*L.k);
-  ctxStatic.lineTo(L.stX, L.stY + 22*L.k);
-  ctxStatic.lineTo(L.stX - 26*L.k, L.stY + 9*L.k);
+  ctxStatic.moveTo(L.stX, L.stY - 9*L.k);
+  ctxStatic.lineTo(L.stX + 24*L.k, L.stY + 3*L.k);
+  ctxStatic.lineTo(L.stX, L.stY + 15*L.k);
+  ctxStatic.lineTo(L.stX - 24*L.k, L.stY + 3*L.k);
   ctxStatic.closePath(); ctxStatic.stroke();
   // the triangle of art
   ctxStatic.strokeStyle = "rgba(216,210,192,0.5)";
@@ -3071,47 +3071,60 @@ function drawGoetia(t){
     ctx.shadowBlur = 0;
   }
 
-  // ---- the staging area: the stone assembles, plane by plane ----
+  // ---- the circle builds the plane; planes rise and stack into the stone ----
   if (!idle && !finished){
-    const pts = Math.floor((t % 60)/T27);              // sub-cells laid this minute
-    const frac = (t % T27)/T27;                        // the point, gathering
+    const sub60 = t % 60;
+    const planes = Math.floor(sub60/20);               // planes finished this minute
+    const subPlane = sub60 % 20;
+    const ptsIn = Math.floor(subPlane/T27);            // points set in this plane (1/27 each)
+    const step81 = Math.min(2, Math.floor((t % T27)/(T27/3)));  // each point gathers in three 1/81 pulses
+    const cell = 11*L.k;
+    for (let r = 0; r < 3; r++)
+      for (let cc = 0; cc < 3; cc++){
+        const n = r*3 + cc;
+        const gx = L.fx - 15*L.k + cc*cell, gy = L.fy - 15*L.k + r*cell;
+        if (n < ptsIn){
+          ctx.shadowColor = "rgba(120,200,255,0.9)"; ctx.shadowBlur = 5;
+          ctx.fillStyle = "#bfe8ff";
+          ctx.fillRect(gx, gy, 8*L.k, 8*L.k);
+          ctx.shadowBlur = 0;
+        } else if (n === ptsIn){
+          ctx.fillStyle = "rgba(191,232,255," + (0.18 + 0.27*step81) + ")";
+          ctx.fillRect(gx, gy, 8*L.k, 8*L.k);
+        } else {
+          ctx.strokeStyle = "rgba(191,232,255,0.16)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(gx + 0.5, gy + 0.5, 8*L.k - 1, 8*L.k - 1);
+        }
+      }
+    // the stone on the pad: finished planes stacked as a growing miniature
     const mu = 5.6*L.k, mh = mu*1.15;
-    const sub = (si, sj, sk) => [L.stX + (si - sj)*mu, L.stY + 9*L.k + (si + sj)*mu/2 - (si + sj)*0 - sk*mh - 10*L.k];
-    // the conjured point pulses at the circle's heart
-    ctx.fillStyle = "rgba(191,232,255," + (0.15 + 0.7*frac) + ")";
-    ctx.shadowColor = "rgba(120,200,255,0.9)";
-    ctx.shadowBlur = 5 + 6*frac;
-    ctx.fillRect(L.fx - 2*L.k, L.fy - 2*L.k, 4*L.k, 4*L.k);
-    ctx.shadowBlur = 0;
-    // late in each 1/27, the point streams to its place in the stone
-    if (frac > 0.82 && pts < 27){
-      const nsi = pts % 3, nsj = Math.floor(pts/3) % 3, nsk = Math.floor(pts/9);
-      const tpos = sub(nsi, nsj, nsk);
-      const q2 = (frac - 0.82)/0.18;
-      ctx.fillStyle = "rgba(210,240,255,0.9)";
-      ctx.shadowColor = "rgba(120,200,255,0.9)"; ctx.shadowBlur = 6;
-      ctx.fillRect(L.fx + (tpos[0] - L.fx)*q2 - 1.5, L.fy + (tpos[1] - L.fy)*q2 - 1.5, 3, 3);
-      ctx.shadowBlur = 0;
-    }
-    // the mini stone itself: a true miniature of the cube to come
-    const cells = [];
-    for (let n = 0; n < Math.min(27, pts + 1); n++)
-      cells.push([n % 3, Math.floor(n/3) % 3, Math.floor(n/9), n === pts]);
-    cells.sort((a, b) => ((a[0] + a[1])*100 + a[2]) - ((b[0] + b[1])*100 + b[2]));
-    for (const [si, sj, sk, isCur] of cells){
-      if (isCur && pts >= 27) continue;
-      const p2 = sub(si, sj, sk);
-      ctx.globalAlpha = isCur ? 0.15 + 0.6*frac : 0.92;
-      const quad = (pts2, col) => {
-        ctx.fillStyle = col; ctx.beginPath();
-        ctx.moveTo(pts2[0][0], pts2[0][1]);
-        for (let z = 1; z < pts2.length; z++) ctx.lineTo(pts2[z][0], pts2[z][1]);
-        ctx.closePath(); ctx.fill();
-      };
-      quad([[p2[0], p2[1]-mu/2],[p2[0]+mu, p2[1]],[p2[0], p2[1]+mu/2],[p2[0]-mu, p2[1]]], "#bcd6e8");
-      quad([[p2[0]-mu, p2[1]],[p2[0], p2[1]+mu/2],[p2[0], p2[1]+mu/2+mh],[p2[0]-mu, p2[1]+mh]], "#8aa4bc");
-      quad([[p2[0]+mu, p2[1]],[p2[0], p2[1]+mu/2],[p2[0], p2[1]+mu/2+mh],[p2[0]+mu, p2[1]+mh]], "#64798c");
+    const sub = (si, sj, sk) => [L.stX + (si - sj)*mu, L.stY + (si + sj)*mu/2 - sk*mh];
+    const quad = (pts2, col) => {
+      ctx.beginPath();
+      ctx.moveTo(pts2[0][0], pts2[0][1]);
+      for (let z = 1; z < pts2.length; z++) ctx.lineTo(pts2[z][0], pts2[z][1]);
+      ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+    };
+    const drawLayer = (sk, alpha, yOff) => {
+      ctx.globalAlpha = alpha;
+      const order = [[0,0],[1,0],[0,1],[2,0],[1,1],[0,2],[2,1],[1,2],[2,2]];
+      for (const [si, sj] of order){
+        const p2 = sub(si, sj, sk);
+        const py = p2[1] + yOff;
+        quad([[p2[0], py-mu/2],[p2[0]+mu, py],[p2[0], py+mu/2],[p2[0]-mu, py]], "#bcd6e8");
+        quad([[p2[0]-mu, py],[p2[0], py+mu/2],[p2[0], py+mu/2+mh],[p2[0]-mu, py+mh]], "#8aa4bc");
+        quad([[p2[0]+mu, py],[p2[0], py+mu/2],[p2[0], py+mu/2+mh],[p2[0]+mu, py+mh]], "#64798c");
+      }
       ctx.globalAlpha = 1;
+    };
+    const rising = planes > 0 && subPlane < 0.4;
+    const shown = rising ? planes - 1 : planes;
+    for (let pl = 0; pl < shown; pl++) drawLayer(pl, 0.92, 0);
+    if (rising){
+      const q2 = subPlane/0.4, e2 = q2*q2*(3 - 2*q2);
+      const restY = sub(1, 1, planes - 1)[1];
+      drawLayer(planes - 1, 0.55 + 0.4*e2, (1 - e2)*(L.fy - restY));
     }
   }
 
