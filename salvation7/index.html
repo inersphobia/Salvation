@@ -2950,15 +2950,15 @@ function goetiaLayout(){
   return {
     k, u, hh, kind,
     cx: Math.round(viewW/2),
-    baseY: Math.round(356*k),
-    fx: Math.round(viewW*0.24), fy: Math.round(600*k), fr: Math.round(46*k),
-    stX: Math.round(viewW*0.24), stY: Math.round(600*k - 46*k - 30*k),
-    t1: [Math.round(viewW*0.75 - 54*k), Math.round(648*k)],
-    t2: [Math.round(viewW*0.75 + 54*k), Math.round(648*k)],
-    t3: [Math.round(viewW*0.75), Math.round((648 - 108*0.866)*k)],
+    baseY: Math.round(330*k),
+    fx: Math.round(viewW*0.24), fy: Math.round(546*k), fr: Math.round(46*k),
+    stX: Math.round(viewW*0.24), stY: Math.round(546*k - 46*k - 30*k),
+    t1: [Math.round(viewW*0.75 - 54*k), Math.round(594*k)],
+    t2: [Math.round(viewW*0.75 + 54*k), Math.round(594*k)],
+    t3: [Math.round(viewW*0.75), Math.round((594 - 108*0.866)*k)],
     demonX: Math.round(viewW*0.75 - 8.5*Math.max(3, Math.round(3.2*k))),
-    demonY: Math.round(648*k - 2*k) - 20*Math.max(3, Math.round(3.2*k)),
-    textY: Math.round(706*k),
+    demonY: Math.round(594*k - 2*k) - 20*Math.max(3, Math.round(3.2*k)),
+    textY: Math.max(Math.round(628*k), viewH - 116),
   };
 }
 function goetiaPos(L, i, j, k){
@@ -3244,7 +3244,7 @@ function getTextY(){
   if (viewMode===3){ const F = fractalLayout(); return F.topY + F.triH + 52; }
   if (viewMode===6){ const L = septLayout();    return L.fracTop + L.ph + 22 + 42; }
   if (viewMode===7){ const L = dreamLayout();   return Math.min(viewH - 170, L.textY); }
-  if (viewMode===8){ const L = goetiaLayout();  return Math.min(viewH - 170, L.textY); }
+  if (viewMode===8){ const L = goetiaLayout();  return L.textY; }
   return viewH/2 - 40;
 }
 
@@ -3628,7 +3628,7 @@ function draw(now){
   }
   if (viewMode < 9){
     drawTimerText(vizT);
-    drawTapHint();
+    if (viewMode !== 8) drawTapHint();
   }
   drawStatus();
   drawMuteBadge();
