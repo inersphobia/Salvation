@@ -349,6 +349,7 @@ const TONE_DEFS = [
   { id: 't20',   label: '1/3',  interval: 20 },
   { id: 't6',    label: '1/9',  interval: 60/9 },
   { id: 't2',    label: '1/27', interval: 60/27 },
+  { id: 't081',  label: '1/81', interval: 60/81 },
 ];
 const TONE_OPTS = [
   { name: 'OFF' },
@@ -503,7 +504,7 @@ function setVolume(v){
 }
 
 /* ---------- VOICES: bell / marimba / organ, additive synthesis ---------- */
-const VOICES = ["BELL", "MARIMBA", "ORGAN", "E.PIANO"];
+const VOICES = ["BELL", "MARIMBA", "ORGAN", "E.PIANO", "DRUM"];
 function playVoice(freq, soft, voice){
   if (muted) return;
   try {
@@ -555,6 +556,19 @@ function playVoice(freq, soft, voice){
       ep(1, base,        0.020, 1.4*k, 1.9*k, 1);       // body
       ep(1, base*0.45,   0.025, 1.4*k, 1.9*k, 1.0025);  // detuned pair -> chorus warmth
       ep(2, base*0.13,   0.030, 0.7*k, 1.0*k, 1);       // soft 2nd harmonic
+    } else if (voice === 4){   // DRUM: warm skin thump, pitch falling, soft tap
+      const dur = soft ? 0.16 : 0.3;
+      const o = ctx.createOscillator(), gn = ctx.createGain();
+      o.connect(gn); gn.connect(audioBus);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(freq*0.9, now);
+      o.frequency.exponentialRampToValueAtTime(freq*0.45, now + dur*0.8);
+      gn.gain.setValueAtTime(0.0001, now);
+      gn.gain.exponentialRampToValueAtTime(base*1.5, now + 0.008);
+      gn.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+      gn.gain.linearRampToValueAtTime(0, now + dur + 0.02);
+      o.start(now); o.stop(now + dur + 0.06);
+      strike(freq*2.9, base*0.12, 0.035);
     } else {                   // BELL: fundamental + octave + shimmer, long tail
       const dur = soft ? 0.3 : 0.7;
       strike(freq,       base,      dur);
