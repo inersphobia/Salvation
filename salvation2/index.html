@@ -3169,79 +3169,92 @@ function drawGoetia(t){
     }
   }
 
-  // ---- the rite of the third: serpent, scarab, raven - one per stone,
-  //      the trio dissolving in a burst once complete ----
+  // ---- the rite of the third: the Eye wanders the triptych ----
+  // One frame occupied at a time: closed in the first, half-open in
+  // the second, fully open in the third - pupil following the scarab -
+  // then a flare and the greater release.
   {
     const fw = 27*L.k, gp = 14*L.k, ty0 = 442*L.k;
     const cx0 = viewW/2 - (fw*3 + gp*2)/2;
-    let slots = m === 0 ? 0 : ((m - 1) % 3) + 1;
+    let occ = m === 0 ? -1 : (m - 1) % 3;
     let burst = 0;
-    if (!idle && !finished && slots === 3){
+    if (!idle && !finished && occ === 2){
       const age = t % 60;
       if (age >= 1.6 && age < 2.6) burst = age - 1.6;
-      else if (age >= 2.6) slots = 0;
+      else if (age >= 2.6) occ = -1;
     }
-    if (idle) slots = 0;
-    if (finished) slots = 3;
+    if (idle) occ = -1;
+    if (finished) occ = 2;
     for (let f2 = 0; f2 < 3; f2++){
       const fx2 = cx0 + f2*(fw + gp);
       ctx.strokeStyle = burst ? "rgba(230,240,255," + (0.6*(1 - burst)) + ")" : "rgba(216,210,192,0.35)";
       ctx.lineWidth = 1.2;
       ctx.strokeRect(fx2, ty0, fw, fw);
     }
-    const creature = (which, cx2, cy2, r, al) => {
+    if (occ >= 0){
+      const cx2 = cx0 + occ*(fw + gp) + fw/2;
+      let cy2 = ty0 + fw/2;
+      const r = fw*0.4;
+      // where is the scarab? the open eye follows it
+      const corners = [L.t3, L.t2, L.t1];
+      const ci = idle || finished ? 0 : Math.floor(t/T27) % 3;
+      const cf = idle || finished ? 0 : (t % T27)/T27;
+      const A2 = corners[ci], B2 = corners[(ci + 1) % 3];
+      const sbx = A2[0] + (B2[0] - A2[0])*cf, sby = A2[1] + (B2[1] - A2[1])*cf;
+      const dl2 = Math.max(1, Math.hypot(sbx - cx2, sby - cy2));
+      const pdx = (sbx - cx2)/dl2*r*0.24, pdy = (sby - cy2)/dl2*r*0.18;
+      // materialize with the strike
+      let al = 0.95, hFac = 1;
+      if (!finished && !idle && (t % 60) < 0.45){
+        const aq = (t % 60)/0.45;
+        al = aq; hFac = 0.3 + 0.7*aq;                    // the lid opening
+      }
+      if (burst){ al = 0.95*(1 - burst); cy2 -= 14*L.k*burst; }
+      const flare = burst > 0 || (finished);
       ctx.globalAlpha = al;
-      if (which === 0){                                  // the serpent
-        ctx.strokeStyle = "#5aa06a";
-        ctx.lineWidth = Math.max(2, r*0.35);
+      if (occ === 0 && !finished){
+        // CLOSED: the lid and its lashes
+        ctx.strokeStyle = "#c9b8a0";
+        ctx.lineWidth = 1.7;
         ctx.beginPath();
-        for (let u2 = 0; u2 <= 1.001; u2 += 0.08){
-          const px2 = cx2 - r + 2*r*u2, py2 = cy2 + Math.sin(u2*Math.PI*2.5)*r*0.5;
-          if (u2 === 0) ctx.moveTo(px2, py2); else ctx.lineTo(px2, py2);
-        }
+        ctx.moveTo(cx2 - r, cy2 - r*0.05);
+        ctx.quadraticCurveTo(cx2, cy2 + r*0.55, cx2 + r, cy2 - r*0.05);
         ctx.stroke();
-        ctx.fillStyle = "#3a7a4a";
-        ctx.beginPath(); ctx.arc(cx2 + r, cy2 + r*0.35, r*0.28, 0, 2*Math.PI); ctx.fill();
+        ctx.lineWidth = 1;
+        for (const lx of [-0.55, 0, 0.55]){
+          const bx2 = cx2 + lx*r, by2 = cy2 + r*0.42*(1 - Math.abs(lx)*0.5);
+          ctx.beginPath();
+          ctx.moveTo(bx2, by2);
+          ctx.lineTo(bx2 - r*0.12, by2 + r*0.3);
+          ctx.stroke();
+        }
+      } else {
+        // HALF or OPEN
+        const ry = (occ === 1 ? r*0.3 : r*0.55)*hFac;
+        if (flare){
+          ctx.shadowColor = "rgba(255,245,220,0.95)";
+          ctx.shadowBlur = 16;
+        }
+        ctx.fillStyle = "#ded6c2";
+        ctx.beginPath(); ctx.ellipse(cx2, cy2, r, ry, 0, 0, 2*Math.PI); ctx.fill();
+        ctx.shadowBlur = 0;
+        const ir = occ === 1 ? r*0.3 : r*0.42;
+        ctx.fillStyle = "#b87a30";
+        ctx.beginPath(); ctx.arc(cx2 + pdx, cy2 + pdy*0.6, ir, 0, 2*Math.PI); ctx.fill();
         ctx.fillStyle = "#ffcf3d";
-        ctx.fillRect(cx2 + r + r*0.1, cy2 + r*0.2, 1.6, 1.6);
-      } else if (which === 1){                           // the scarab
-        ctx.strokeStyle = "#1a2a1e"; ctx.lineWidth = 1;
-        for (const sgn of [-1, 1])
-          for (const lo of [-0.5, 0, 0.5]){
-            ctx.beginPath();
-            ctx.moveTo(cx2 + lo*r, cy2);
-            ctx.lineTo(cx2 + lo*r + sgn*r*0.25, cy2 + sgn*r*0.9);
-            ctx.stroke();
-          }
-        ctx.fillStyle = "#22392a";
-        ctx.beginPath(); ctx.ellipse(cx2, cy2, r*0.75, r*0.55, 0, 0, 2*Math.PI); ctx.fill();
-        ctx.fillStyle = "#3a5c44";
-        ctx.beginPath(); ctx.ellipse(cx2 - r*0.15, cy2 - r*0.1, r*0.45, r*0.3, 0, 0, 2*Math.PI); ctx.fill();
-        ctx.fillStyle = "#141d16";
-        ctx.beginPath(); ctx.arc(cx2 + r*0.75, cy2, r*0.22, 0, 2*Math.PI); ctx.fill();
-      } else {                                           // the raven
-        ctx.fillStyle = "#3a2b52";
-        ctx.beginPath(); ctx.ellipse(cx2, cy2 + r*0.15, r*0.6, r*0.5, -0.2, 0, 2*Math.PI); ctx.fill();
-        ctx.beginPath(); ctx.arc(cx2 - r*0.45, cy2 - r*0.35, r*0.32, 0, 2*Math.PI); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(cx2 + r*0.4, cy2); ctx.lineTo(cx2 + r*1.05, cy2 + r*0.25); ctx.lineTo(cx2 + r*0.4, cy2 + r*0.4); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = "#8a8274";
-        ctx.beginPath(); ctx.moveTo(cx2 - r*0.7, cy2 - r*0.4); ctx.lineTo(cx2 - r*1.15, cy2 - r*0.3); ctx.lineTo(cx2 - r*0.65, cy2 - r*0.2); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = "#ff7030";
-        ctx.fillRect(cx2 - r*0.5, cy2 - r*0.45, 1.6, 1.6);
+        ctx.beginPath(); ctx.arc(cx2 + pdx, cy2 + pdy*0.6, ir*0.72, 0, 2*Math.PI); ctx.fill();
+        ctx.fillStyle = "#17130c";
+        ctx.beginPath(); ctx.arc(cx2 + pdx, cy2 + pdy*0.6, ir*0.4, 0, 2*Math.PI); ctx.fill();
+        ctx.fillStyle = "#f6f2e6";
+        ctx.fillRect(cx2 + pdx - ir*0.35, cy2 + pdy*0.6 - ir*0.4, 2, 2);
+        // clip the almond with lids
+        ctx.strokeStyle = "#8a7660";
+        ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.ellipse(cx2, cy2, r, ry, 0, 0, 2*Math.PI); ctx.stroke();
       }
       ctx.globalAlpha = 1;
-    };
-    for (let i2 = 0; i2 < slots; i2++){
-      const fx2 = cx0 + i2*(fw + gp) + fw/2, fy3 = ty0 + fw/2;
-      let sc = 1, al = 0.9, dy2 = 0;
-      if (!finished && !idle && i2 === slots - 1 && (t % 60) < 0.45){
-        const aq = (t % 60)/0.45;
-        sc = 0.4 + 0.6*aq; al = aq;                      // materializes with the strike
-      }
-      if (burst){ al = 0.9*(1 - burst); dy2 = -14*L.k*burst; }
-      creature(i2, fx2, fy3 + dy2, fw*0.44*sc, al);
     }
-    if (burst > 0){                                      // the greater release
+    if (burst > 0){
       const bcy = ty0 + fw/2;
       ctx.strokeStyle = "rgba(210,190,255," + (0.5*(1 - burst)) + ")";
       ctx.lineWidth = 2.5;
