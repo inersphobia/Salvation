@@ -2640,7 +2640,7 @@ const DREAM_MAGE_COL = {
   R: "#46316b", r: "#2c1f47", S: "#5d4326", O: "#aef0ff", g: "#8a7f9a",
 };
 function dreamLayout(){
-  const k = Math.max(0.8, Math.min(viewW/412, 1.25));
+  const k = Math.max(0.62, Math.min(viewW/412, viewH/845, 1.25));
   const ps = Math.max(3, Math.round(4*k));
   const rows = dreamArt.rows || 9;
   const frescoW = 81*ps, frescoH = rows*9*ps;
@@ -2988,7 +2988,7 @@ function goetiaPlan(){
   return L;
 }
 function goetiaLayout(){
-  const k = Math.max(0.8, Math.min(viewW/412, 1.25));
+  const k = Math.max(0.62, Math.min(viewW/412, viewH/845, 1.25));
   const kind = goetiaPlanKind();
   const u = Math.round((kind === 81 ? 16 : kind === 54 ? 20 : 24)*k);
   const hh = Math.round(u*1.15);
