@@ -504,7 +504,7 @@ function setVolume(v){
 }
 
 /* ---------- VOICES: bell / marimba / organ, additive synthesis ---------- */
-const VOICES = ["BELL", "MARIMBA", "ORGAN", "E.PIANO", "DRUM"];
+const VOICES = ["BELL", "MARIMBA", "ORGAN", "E.PIANO", "BASS", "TICK"];
 function playVoice(freq, soft, voice){
   if (muted) return;
   try {
@@ -556,19 +556,21 @@ function playVoice(freq, soft, voice){
       ep(1, base,        0.020, 1.4*k, 1.9*k, 1);       // body
       ep(1, base*0.45,   0.025, 1.4*k, 1.9*k, 1.0025);  // detuned pair -> chorus warmth
       ep(2, base*0.13,   0.030, 0.7*k, 1.0*k, 1);       // soft 2nd harmonic
-    } else if (voice === 4){   // DRUM: warm skin thump, pitch falling, soft tap
-      const dur = soft ? 0.16 : 0.3;
+    } else if (voice === 4){   // BASS: one clean sine boom, gentle fall, no tap
+      const dur = soft ? 0.2 : 0.38;
       const o = ctx.createOscillator(), gn = ctx.createGain();
       o.connect(gn); gn.connect(audioBus);
       o.type = 'sine';
-      o.frequency.setValueAtTime(freq*0.9, now);
-      o.frequency.exponentialRampToValueAtTime(freq*0.45, now + dur*0.8);
+      o.frequency.setValueAtTime(freq*0.56, now);
+      o.frequency.exponentialRampToValueAtTime(freq*0.46, now + dur);
       gn.gain.setValueAtTime(0.0001, now);
-      gn.gain.exponentialRampToValueAtTime(base*1.5, now + 0.008);
+      gn.gain.exponentialRampToValueAtTime(base*1.6, now + 0.006);
       gn.gain.exponentialRampToValueAtTime(0.0001, now + dur);
       gn.gain.linearRampToValueAtTime(0, now + dur + 0.02);
       o.start(now); o.stop(now + dur + 0.06);
-      strike(freq*2.9, base*0.12, 0.035);
+    } else if (voice === 5){   // TICK: a clean watch-click
+      strike(freq*5, base*0.5, 0.014);
+      strike(freq*2.2, base*0.22, 0.024);
     } else {                   // BELL: fundamental + octave + shimmer, long tail
       const dur = soft ? 0.3 : 0.7;
       strike(freq,       base,      dur);
@@ -2878,26 +2880,26 @@ const GOETIA_CROW = [
   "....cc...cc......",
 ];
 const GOETIA_CROW_OPEN = [
-  "WW.........bbb.........WW.",
-  "WWW........bbbbb......WWW.",
-  ".WWWW.....bbbbbbb....WWWW.",
-  ".WWWWW.qqqqqbEbbbb..WWWWW.",
-  "..WWWWW....bbbbbb..WWWWW..",
-  "..WWWWWW...bbbbbb.WWWWWW..",
-  "...WWWWWW.WrrrrrWWWWWWW...",
-  "....WWWWWWWrrrrrWWWWWW....",
-  ".....WWWWWWrrrrrWWWWW.....",
-  "......WWW.WrrrrrW.WWW.....",
-  "..........rrrrrrr.........",
-  "..........rrrrrrr.........",
-  ".........rrrrrrrr.........",
-  ".........rrrrrrrr.........",
-  "..........rrrrrrr.........",
-  "..........rrrrrrr.........",
-  "..........rrrrrrr.........",
-  "..........rrrrr...........",
-  ".........rr...rr..........",
-  ".........cc...cc..........",
+  "WWWW..........bbb..........WWWW.",
+  "WWWWW.........bbbbb.......WWWWW.",
+  ".WWWWWW......bbbbbbb.....WWWWWW.",
+  ".WWWWWWW..qqqqqbEbbbb...WWWWWWW.",
+  "..WWWWWWW.....bbbbbb...WWWWWWW..",
+  "..WWWWWWWW....bbbbbb..WWWWWWWW..",
+  "...WWWWWWWW..WrrrrrW.WWWWWWWW...",
+  "....WWWWWWWWWWrrrrrWWWWWWWWW....",
+  ".....WWWWWWWWWrrrrrWWWWWWWW.....",
+  "......WWWW...WrrrrrW..WWWW......",
+  ".............rrrrrrr............",
+  ".............rrrrrrr............",
+  "............rrrrrrrr............",
+  "............rrrrrrrr............",
+  ".............rrrrrrr............",
+  ".............rrrrrrr............",
+  ".............rrrrrrr............",
+  ".............rrrrr..............",
+  "............rr...rr.............",
+  "............cc...cc.............",
 ];
 const GB_PROM = [
   "..hhhhhh.....",
@@ -3478,11 +3480,11 @@ function drawGoetia(t){
   const S = Math.max(3, Math.round(3.2*L.k));
   const subT = t % T27;
   const spread = !idle && !finished && (flying || subT < 0.45);    // mantle AT the corner, fold promptly
-  const liftFeet = !idle && !finished && !spread && Math.abs(subT - T27/2) < 0.3;  // a step at the midpoint
-  const footSide = Math.floor(t/T27) % 2;
+  const liftFeet = !idle && !finished;                             // he treads at 1/81, always
+  const footSide = Math.floor(t/(T27/3)) % 2;                      // one step per 1/81, alternating
   const map = spread ? GOETIA_CROW_OPEN : GOETIA_CROW;
-  const oxOff = spread ? -7*S : 0;                                 // eyes align across poses
-  const midCol = spread ? 13 : 6;
+  const oxOff = spread ? -10*S : 0;                                // eyes align across poses
+  const midCol = spread ? 15 : 6;
   for (let y = 0; y < map.length; y++)
     for (let x = 0; x < map[y].length; x++){
       const ch = map[y][x];
@@ -3548,7 +3550,7 @@ function drawGoetia(t){
   const flashAge = t % T27;
   const flashing = !idle && !finished && flashAge < 0.22;
   const glow = idle || finished ? 0.3 : 0.25 + 0.7*((t % T27)/T27);
-  const eyeX = L.demonX + oxOff + (spread ? 13 : 6)*S;
+  const eyeX = L.demonX + oxOff + (spread ? 16 : 6)*S;
   ctx.shadowColor = flashing ? "rgba(255,240,200,0.95)" : "rgba(255,112,48," + glow + ")";
   ctx.shadowBlur = flashing ? 13 : 7;
   ctx.fillStyle = flashing ? "#fff2d0" : "#ff9a50";
