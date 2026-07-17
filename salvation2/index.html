@@ -3180,6 +3180,80 @@ function drawGoetia(t){
       ctx.fillRect(dp[0] - L.u*0.5, dp[1] + L.u*0.15, L.u, L.hh*0.95);
     }
     ctx.shadowBlur = 0;
+
+    // ---- THE CONSECRATION ----
+    const finAge = Math.max(0, (performance.now() - overtimeStart)/1000);
+    // a storm of five great bolts upon the finished temple
+    const BOLTS = [[0.0, -62, 0], [0.6, 44, 1], [1.25, -24, 2], [1.9, 68, 0], [2.6, 4, 3]];
+    const topH = (L.kind === 27 ? 3 : L.kind === 54 ? 5 : 6)*L.hh;
+    for (let bi = 0; bi < BOLTS.length; bi++){
+      const ba = finAge - BOLTS[bi][0];
+      if (ba < 0 || ba > 0.55) continue;
+      const bq = ba/0.55;
+      const seed = (bi*7919 + 40427) >>> 0;
+      const h = (n) => {
+        let x = (seed + n*2654435761) >>> 0;
+        x ^= x >>> 13; x = (x*1103515245 + 12345) >>> 0;
+        return (x % 1000)/1000 - 0.5;
+      };
+      const tx = viewW/2 + BOLTS[bi][1]*L.k;
+      const ty = L.baseY - topH + BOLTS[bi][2]*L.hh;
+      const flick = 0.5 + 0.5*Math.sin(bq*38 + seed % 11);
+      const a = Math.max(0, 1 - bq)*flick;
+      const segs = 9;
+      for (const wc of [[8, 0.2, "150,190,255"], [3.4, 0.95, "240,248,255"], [1.5, 0.95, "180,230,255"]]){
+        ctx.strokeStyle = "rgba(" + wc[2] + "," + (wc[1]*a) + ")";
+        ctx.lineWidth = wc[0];
+        ctx.beginPath();
+        ctx.moveTo(tx + h(0)*40*L.k, 0);
+        for (let sg = 1; sg <= segs; sg++){
+          const yy = ty*sg/segs;
+          ctx.lineTo(tx + (sg === segs ? 0 : h(sg)*64*L.k*(1.25 - sg/segs)), yy);
+        }
+        ctx.stroke();
+      }
+      for (const fk of [3, 6]){                          // two forks each
+        ctx.strokeStyle = "rgba(200,235,255," + (0.45*a) + ")";
+        ctx.lineWidth = 1.4;
+        const fy2 = ty*fk/segs, fx2 = tx + h(fk)*64*L.k*(1.25 - fk/segs);
+        ctx.beginPath();
+        ctx.moveTo(fx2, fy2);
+        ctx.lineTo(fx2 + h(fk + 20)*80*L.k, fy2 + 40*L.k + h(fk + 21)*24*L.k);
+        ctx.stroke();
+      }
+      if (bq < 0.25){                                    // the sky answers, harder
+        ctx.fillStyle = "rgba(215,228,255," + (0.2*(1 - bq/0.25)*flick) + ")";
+        ctx.fillRect(0, 0, viewW, viewH);
+      }
+    }
+    // someone comes to the temple
+    const walkStart = 3.4, walkDur = 4.4;
+    if (finAge > walkStart && finAge < walkStart + walkDur + 0.2){
+      const wq = Math.min(1, (finAge - walkStart)/walkDur);
+      const d0 = doors[0];
+      const dp = goetiaPos(L, d0[0], d0[1], d0[2]);
+      const gy = dp[1] + L.hh*1.02;
+      const px4 = -14*L.k + (dp[0] + 14*L.k)*wq;
+      const bob = Math.abs(Math.sin(wq*46))*1.4*L.k;
+      let al4 = Math.min(1, (finAge - walkStart)/0.6)*0.9;
+      if (wq > 0.92) al4 *= Math.max(0, 1 - (wq - 0.92)/0.08);   // slips inside
+      ctx.globalAlpha = al4;
+      ctx.fillStyle = "#cfc8b4";
+      ctx.beginPath();
+      ctx.moveTo(px4 - 2.6*L.k, gy);
+      ctx.lineTo(px4 + 2.6*L.k, gy);
+      ctx.lineTo(px4, gy - 7.5*L.k - bob*0.4);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.arc(px4, gy - 9.5*L.k - bob, 2.2*L.k, 0, 2*Math.PI); ctx.fill();
+      ctx.globalAlpha = 1;
+      if (wq > 0.9){                                     // the temple receives them
+        ctx.fillStyle = "rgba(255,220,140," + (0.5*(wq - 0.9)/0.1*(1 - (wq > 0.98 ? (wq - 0.98)/0.02 : 0))) + ")";
+        ctx.shadowColor = "rgba(255,190,90,1)";
+        ctx.shadowBlur = 18;
+        ctx.fillRect(dp[0] - L.u*0.6, dp[1] - L.u*0.1, L.u*1.2, L.hh*1.2);
+        ctx.shadowBlur = 0;
+      }
+    }
   }
 
   // ---- chamber ambience: dust adrift, embers off the forge, a stray
