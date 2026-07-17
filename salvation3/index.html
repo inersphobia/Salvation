@@ -3065,11 +3065,46 @@ function drawGoetia(t){
     const p = goetiaPos(L, cell[0], cell[1], cell[2]);
     goetiaCube(L, p[0], p[1], goetiaShade(i));
   }
-  // the stone in flight
+  // the stone in flight - struck free by lightning
   if (flying){
     const cell = plan[m - 1];
     const tp = goetiaPos(L, cell[0], cell[1], cell[2]);
     const q = (t % 60)/flyDur, e = q*q*(3 - 2*q);
+    if (q < 0.45){
+      // the crash: a bolt from the dark, unique to each minute
+      const bq = q/0.45;
+      const seed = (Math.floor(t/60)*7919) >>> 0;
+      const h = (n) => {
+        let x = (seed + n*2654435761) >>> 0;
+        x ^= x >>> 13; x = (x*1103515245 + 12345) >>> 0;
+        return (x % 1000)/1000 - 0.5;
+      };
+      const tx = L.stX, ty = L.stY - 6*L.k, segs = 8;
+      const flick = 0.55 + 0.45*Math.sin(bq*42 + seed % 7);
+      const a = Math.max(0, (1 - bq))*flick;
+      for (const wc of [[5.5, 0.22, "160,200,255"], [2.2, 0.9, "240,248,255"], [1, 0.9, "180,230,255"]]){
+        ctx.strokeStyle = "rgba(" + wc[2] + "," + (wc[1]*a) + ")";
+        ctx.lineWidth = wc[0];
+        ctx.beginPath();
+        ctx.moveTo(tx + h(0)*30*L.k, 0);
+        for (let sg = 1; sg <= segs; sg++){
+          const yy = ty*sg/segs;
+          ctx.lineTo(tx + (sg === segs ? 0 : h(sg)*46*L.k*(1.3 - sg/segs)), yy);
+        }
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "rgba(200,235,255," + (0.5*a) + ")";   // a fork
+      ctx.lineWidth = 1.2;
+      const fy2 = ty*0.45, fx2 = tx + h(3)*46*L.k*0.85;
+      ctx.beginPath();
+      ctx.moveTo(fx2, fy2);
+      ctx.lineTo(fx2 + h(11)*60*L.k, fy2 + 30*L.k + h(12)*20*L.k);
+      ctx.stroke();
+      if (bq < 0.3){                                            // the sky answers
+        ctx.fillStyle = "rgba(210,225,255," + (0.14*(1 - bq/0.3)*flick) + ")";
+        ctx.fillRect(0, 0, viewW, viewH);
+      }
+    }
     const sx = L.stX + (tp[0] - L.stX)*e;
     const sy = (L.stY - 8*L.k) + (tp[1] - (L.stY - 8*L.k))*e - 34*L.k*Math.sin(Math.PI*e);
     goetiaCube(L, sx, sy, goetiaShade(m - 1));
@@ -3131,6 +3166,89 @@ function drawGoetia(t){
         ctx.moveTo(gp[0] - L.u, gp[1]); ctx.lineTo(gp[0], gp[1] - L.u/2); ctx.lineTo(gp[0] + L.u, gp[1]);
         ctx.stroke();
       }
+    }
+  }
+
+  // ---- the rite of the third: serpent, scarab, raven - one per stone,
+  //      the trio dissolving in a burst once complete ----
+  {
+    const fw = 27*L.k, gp = 14*L.k, ty0 = 442*L.k;
+    const cx0 = viewW/2 - (fw*3 + gp*2)/2;
+    let slots = m === 0 ? 0 : ((m - 1) % 3) + 1;
+    let burst = 0;
+    if (!idle && !finished && slots === 3){
+      const age = t % 60;
+      if (age >= 1.6 && age < 2.6) burst = age - 1.6;
+      else if (age >= 2.6) slots = 0;
+    }
+    if (idle) slots = 0;
+    if (finished) slots = 3;
+    for (let f2 = 0; f2 < 3; f2++){
+      const fx2 = cx0 + f2*(fw + gp);
+      ctx.strokeStyle = burst ? "rgba(230,240,255," + (0.6*(1 - burst)) + ")" : "rgba(216,210,192,0.35)";
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(fx2, ty0, fw, fw);
+    }
+    const creature = (which, cx2, cy2, r, al) => {
+      ctx.globalAlpha = al;
+      if (which === 0){                                  // the serpent
+        ctx.strokeStyle = "#5aa06a";
+        ctx.lineWidth = Math.max(2, r*0.35);
+        ctx.beginPath();
+        for (let u2 = 0; u2 <= 1.001; u2 += 0.08){
+          const px2 = cx2 - r + 2*r*u2, py2 = cy2 + Math.sin(u2*Math.PI*2.5)*r*0.5;
+          if (u2 === 0) ctx.moveTo(px2, py2); else ctx.lineTo(px2, py2);
+        }
+        ctx.stroke();
+        ctx.fillStyle = "#3a7a4a";
+        ctx.beginPath(); ctx.arc(cx2 + r, cy2 + r*0.35, r*0.28, 0, 2*Math.PI); ctx.fill();
+        ctx.fillStyle = "#ffcf3d";
+        ctx.fillRect(cx2 + r + r*0.1, cy2 + r*0.2, 1.6, 1.6);
+      } else if (which === 1){                           // the scarab
+        ctx.strokeStyle = "#1a2a1e"; ctx.lineWidth = 1;
+        for (const sgn of [-1, 1])
+          for (const lo of [-0.5, 0, 0.5]){
+            ctx.beginPath();
+            ctx.moveTo(cx2 + lo*r, cy2);
+            ctx.lineTo(cx2 + lo*r + sgn*r*0.25, cy2 + sgn*r*0.9);
+            ctx.stroke();
+          }
+        ctx.fillStyle = "#22392a";
+        ctx.beginPath(); ctx.ellipse(cx2, cy2, r*0.75, r*0.55, 0, 0, 2*Math.PI); ctx.fill();
+        ctx.fillStyle = "#3a5c44";
+        ctx.beginPath(); ctx.ellipse(cx2 - r*0.15, cy2 - r*0.1, r*0.45, r*0.3, 0, 0, 2*Math.PI); ctx.fill();
+        ctx.fillStyle = "#141d16";
+        ctx.beginPath(); ctx.arc(cx2 + r*0.75, cy2, r*0.22, 0, 2*Math.PI); ctx.fill();
+      } else {                                           // the raven
+        ctx.fillStyle = "#3a2b52";
+        ctx.beginPath(); ctx.ellipse(cx2, cy2 + r*0.15, r*0.6, r*0.5, -0.2, 0, 2*Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx2 - r*0.45, cy2 - r*0.35, r*0.32, 0, 2*Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(cx2 + r*0.4, cy2); ctx.lineTo(cx2 + r*1.05, cy2 + r*0.25); ctx.lineTo(cx2 + r*0.4, cy2 + r*0.4); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "#8a8274";
+        ctx.beginPath(); ctx.moveTo(cx2 - r*0.7, cy2 - r*0.4); ctx.lineTo(cx2 - r*1.15, cy2 - r*0.3); ctx.lineTo(cx2 - r*0.65, cy2 - r*0.2); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "#ff7030";
+        ctx.fillRect(cx2 - r*0.5, cy2 - r*0.45, 1.6, 1.6);
+      }
+      ctx.globalAlpha = 1;
+    };
+    for (let i2 = 0; i2 < slots; i2++){
+      const fx2 = cx0 + i2*(fw + gp) + fw/2, fy3 = ty0 + fw/2;
+      let sc = 1, al = 0.9, dy2 = 0;
+      if (!finished && !idle && i2 === slots - 1 && (t % 60) < 0.45){
+        const aq = (t % 60)/0.45;
+        sc = 0.4 + 0.6*aq; al = aq;                      // materializes with the strike
+      }
+      if (burst){ al = 0.9*(1 - burst); dy2 = -14*L.k*burst; }
+      creature(i2, fx2, fy3 + dy2, fw*0.44*sc, al);
+    }
+    if (burst > 0){                                      // the greater release
+      const bcy = ty0 + fw/2;
+      ctx.strokeStyle = "rgba(210,190,255," + (0.5*(1 - burst)) + ")";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(viewW/2, bcy, (10 + 120*burst)*L.k, 0, 2*Math.PI); ctx.stroke();
+      ctx.strokeStyle = "rgba(191,232,255," + (0.4*(1 - burst)) + ")";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(viewW/2, bcy, (6 + 76*burst)*L.k, 0, 2*Math.PI); ctx.stroke();
     }
   }
 
