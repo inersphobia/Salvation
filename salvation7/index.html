@@ -3169,10 +3169,10 @@ function drawGoetia(t){
     }
   }
 
-  // ---- the rite of the third: the Eye wanders the triptych ----
-  // One frame occupied at a time: closed in the first, half-open in
-  // the second, fully open in the third - pupil following the scarab -
-  // then a flare and the greater release.
+  // ---- the rite of the third: the brothers take their turns ----
+  // One frame at a time: Prometheus (burning blue) at the first stone,
+  // Hermes (winged, caduceus) at the second, Epimetheus (ember eyes,
+  // glancing back toward the scarab) at the third - then the release.
   {
     const fw = 27*L.k, gp = 14*L.k, ty0 = 442*L.k;
     const cx0 = viewW/2 - (fw*3 + gp*2)/2;
@@ -3193,64 +3193,58 @@ function drawGoetia(t){
     }
     if (occ >= 0){
       const cx2 = cx0 + occ*(fw + gp) + fw/2;
-      let cy2 = ty0 + fw/2;
-      const r = fw*0.4;
-      // where is the scarab? the open eye follows it
-      const corners = [L.t3, L.t2, L.t1];
-      const ci = idle || finished ? 0 : Math.floor(t/T27) % 3;
-      const cf = idle || finished ? 0 : (t % T27)/T27;
-      const A2 = corners[ci], B2 = corners[(ci + 1) % 3];
-      const sbx = A2[0] + (B2[0] - A2[0])*cf, sby = A2[1] + (B2[1] - A2[1])*cf;
-      const dl2 = Math.max(1, Math.hypot(sbx - cx2, sby - cy2));
-      const pdx = (sbx - cx2)/dl2*r*0.24, pdy = (sby - cy2)/dl2*r*0.18;
-      // materialize with the strike
-      let al = 0.95, hFac = 1;
+      let cy2 = ty0 + fw*0.52;
+      const r = fw*0.42;
+      let al = 0.95;
       if (!finished && !idle && (t % 60) < 0.45){
-        const aq = (t % 60)/0.45;
-        al = aq; hFac = 0.3 + 0.7*aq;                    // the lid opening
+        al = (t % 60)/0.45;                              // materializes with the strike
       }
       if (burst){ al = 0.95*(1 - burst); cy2 -= 14*L.k*burst; }
-      const flare = burst > 0 || (finished);
       ctx.globalAlpha = al;
-      if (occ === 0 && !finished){
-        // CLOSED: the lid and its lashes
-        ctx.strokeStyle = "#c9b8a0";
-        ctx.lineWidth = 1.7;
-        ctx.beginPath();
-        ctx.moveTo(cx2 - r, cy2 - r*0.05);
-        ctx.quadraticCurveTo(cx2, cy2 + r*0.55, cx2 + r, cy2 - r*0.05);
-        ctx.stroke();
-        ctx.lineWidth = 1;
-        for (const lx of [-0.55, 0, 0.55]){
-          const bx2 = cx2 + lx*r, by2 = cy2 + r*0.42*(1 - Math.abs(lx)*0.5);
-          ctx.beginPath();
-          ctx.moveTo(bx2, by2);
-          ctx.lineTo(bx2 - r*0.12, by2 + r*0.3);
-          ctx.stroke();
-        }
-      } else {
-        // HALF or OPEN
-        const ry = (occ === 1 ? r*0.3 : r*0.55)*hFac;
-        if (flare){
-          ctx.shadowColor = "rgba(255,245,220,0.95)";
-          ctx.shadowBlur = 16;
-        }
-        ctx.fillStyle = "#ded6c2";
-        ctx.beginPath(); ctx.ellipse(cx2, cy2, r, ry, 0, 0, 2*Math.PI); ctx.fill();
+      // the hooded bust
+      ctx.fillStyle = occ === 0 ? "#232036" : occ === 1 ? "#2d2a1f" : "#31202a";
+      ctx.beginPath(); ctx.arc(cx2, cy2 - r*0.15, r*0.62, Math.PI, 2*Math.PI); ctx.fill();
+      ctx.fillRect(cx2 - r*0.62, cy2 - r*0.16, r*1.24, r*0.5);
+      ctx.beginPath(); ctx.ellipse(cx2, cy2 + r*0.62, r*0.92, r*0.4, 0, Math.PI, 2*Math.PI); ctx.fill();
+      ctx.fillRect(cx2 - r*0.92, cy2 + r*0.62, r*1.84, r*0.34);
+      ctx.fillStyle = "#0d0a12";                         // the face within
+      ctx.beginPath(); ctx.arc(cx2, cy2 - r*0.02, r*0.4, 0, 2*Math.PI); ctx.fill();
+      if (occ === 0){
+        // PROMETHEUS: the burning blue gaze
+        ctx.shadowColor = "rgba(110,195,245,0.9)";
+        ctx.shadowBlur = 7;
+        ctx.fillStyle = "#bfe8ff";
+        ctx.fillRect(cx2 - r*0.26, cy2 - r*0.12, r*0.16, r*0.14);
+        ctx.fillRect(cx2 + r*0.1, cy2 - r*0.12, r*0.16, r*0.14);
         ctx.shadowBlur = 0;
-        const ir = occ === 1 ? r*0.3 : r*0.42;
-        ctx.fillStyle = "#b87a30";
-        ctx.beginPath(); ctx.arc(cx2 + pdx, cy2 + pdy*0.6, ir, 0, 2*Math.PI); ctx.fill();
-        ctx.fillStyle = "#ffcf3d";
-        ctx.beginPath(); ctx.arc(cx2 + pdx, cy2 + pdy*0.6, ir*0.72, 0, 2*Math.PI); ctx.fill();
-        ctx.fillStyle = "#17130c";
-        ctx.beginPath(); ctx.arc(cx2 + pdx, cy2 + pdy*0.6, ir*0.4, 0, 2*Math.PI); ctx.fill();
-        ctx.fillStyle = "#f6f2e6";
-        ctx.fillRect(cx2 + pdx - ir*0.35, cy2 + pdy*0.6 - ir*0.4, 2, 2);
-        // clip the almond with lids
-        ctx.strokeStyle = "#8a7660";
+      } else if (occ === 1){
+        // HERMES: winged hood, the caduceus at his side
+        ctx.fillStyle = "#d8d2c0";
+        ctx.fillRect(cx2 - r*0.24, cy2 - r*0.1, r*0.14, r*0.12);
+        ctx.fillRect(cx2 + r*0.1, cy2 - r*0.1, r*0.14, r*0.12);
+        ctx.strokeStyle = "#e6e0cc";                     // the little wings
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(cx2 - r*0.55, cy2 - r*0.5); ctx.lineTo(cx2 - r*0.9, cy2 - r*0.75); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx2 + r*0.55, cy2 - r*0.5); ctx.lineTo(cx2 + r*0.9, cy2 - r*0.75); ctx.stroke();
+        ctx.strokeStyle = "#c9a860";                     // the staff
         ctx.lineWidth = 1.4;
-        ctx.beginPath(); ctx.ellipse(cx2, cy2, r, ry, 0, 0, 2*Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx2 + r*0.95, cy2 + r*0.9); ctx.lineTo(cx2 + r*0.95, cy2 - r*0.6); ctx.stroke();
+        ctx.fillStyle = "#c9a860";
+        ctx.beginPath(); ctx.arc(cx2 + r*0.95, cy2 - r*0.72, r*0.12, 0, 2*Math.PI); ctx.fill();
+      } else {
+        // EPIMETHEUS: ember eyes, glancing back toward the scarab
+        const corners = [L.t3, L.t2, L.t1];
+        const ci = idle || finished ? 0 : Math.floor(t/T27) % 3;
+        const cf = idle || finished ? 0 : (t % T27)/T27;
+        const A2 = corners[ci], B2 = corners[(ci + 1) % 3];
+        const sbx = A2[0] + (B2[0] - A2[0])*cf;
+        const pdx = Math.max(-1, Math.min(1, (sbx - cx2)/(120*L.k)))*r*0.08;
+        ctx.shadowColor = "rgba(255,112,48,0.8)";
+        ctx.shadowBlur = 6;
+        ctx.fillStyle = "#ff9a50";
+        ctx.fillRect(cx2 - r*0.26 + pdx, cy2 - r*0.1, r*0.15, r*0.13);
+        ctx.fillRect(cx2 + r*0.11 + pdx, cy2 - r*0.1, r*0.15, r*0.13);
+        ctx.shadowBlur = 0;
       }
       ctx.globalAlpha = 1;
     }
