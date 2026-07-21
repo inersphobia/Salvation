@@ -3019,7 +3019,7 @@ function goetiaLayout(){
     t3: [Math.round(viewW*0.75), Math.round((594 - 108*0.866)*k)],
     demonX: Math.round(viewW*0.75 - 8.5*Math.max(3, Math.round(3.2*k))),
     demonY: Math.round(594*k - 2*k) - 20*Math.max(3, Math.round(3.2*k)),
-    textY: Math.max(Math.round(628*k), viewH - 116),
+    textY: Math.max(Math.round(628*k), viewH - 130),
   };
 }
 function goetiaPos(L, i, j, k){
@@ -3877,8 +3877,16 @@ function draw(now){
 
     const elapsed = running ? (now-startMs)/1000 : pauseMs/1000;
 
+    // One presentation clock: the timer digits and every visualization run
+    // exactly one audio-pipeline-latency behind the true clock. Tones keep
+    // firing on the true clock, so by the time a bell reaches the ear the
+    // screen is showing the very instant it belongs to. Self-calibrating
+    // per device (re-read each frame; adapts if output latency changes).
+    const audioLag = audioCtx ? Math.min(0.35, (audioCtx.outputLatency || 0) + (audioCtx.baseLatency || 0)) : 0;
+    const pElapsed = Math.max(0, elapsed - audioLag);
+
     if (running){
-      updateTimerText(elapsed);
+      updateTimerText(pElapsed);
 
       for (const d of TONE_DEFS){
         const idx = Math.floor(elapsed / d.interval);
@@ -3907,8 +3915,8 @@ function draw(now){
     // Continue animations only when running (not in overtime)
     if (running) {
       for (let i=0;i<numDials;i++){
-        updateLedPosition(i, elapsed);
-        const p=posIndex(i, elapsed);
+        updateLedPosition(i, pElapsed);
+        const p=posIndex(i, pElapsed);
         centerColor[i] =
           p===1 ? "blue" :
           p===2 ? "orange" : "red";
@@ -3922,7 +3930,7 @@ function draw(now){
   }
 
   // Draw only animated elements
-  const vizT = finished ? totalCycle : elapsed;
+  const vizT = finished ? totalCycle : pElapsed;
   if (viewMode===0){
     drawRingDots(vizT);
   } else if (viewMode===1){
