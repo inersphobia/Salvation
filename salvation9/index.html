@@ -339,6 +339,7 @@ let centerColor=[], centerSize=[], glowAlpha=[];
 
 let running=false, finished=false;
 let startMs=0, pauseMs=0;
+let startWall=0, finishWall=0;  // wall-clock anchors: Date.now() survives device sleep
 let lastBeepMinute = 0;
 let lastToneIdx = {};
 const TONE_DEFS = [
@@ -823,6 +824,7 @@ function startClock(){
   if (finished) resetClock();
   if (pauseMs === 0) dreamVariant = Math.floor(Math.random()*9); // a new dream each session
   startMs = pauseMs>0 ? performance.now()-pauseMs : performance.now();
+  startWall = Date.now() - (performance.now() - startMs);
   running=true;
   getAudio(); // unlock audio within the user gesture
   requestWakeLock();
@@ -845,7 +847,7 @@ function pauseClock(){
 }
 function resetClock(){
   running=false; finished=false;
-  pauseMs=0; startMs=performance.now();
+  pauseMs=0; startMs=performance.now(); startWall=Date.now(); finishWall=0;
   overtimeStart=0; lastBeepMinute=0; lastToneIdx={}; overtimeStr="";
   buildLedPaths();
   centerColor=Array(numDials).fill("white");
@@ -860,6 +862,7 @@ function finishClock(){
   finished=true;
   running=false;
   overtimeStart = startMs + totalCycle * 1000;
+  finishWall = Date.now() - (performance.now() - overtimeStart);
   setFinalTimerText();
   playCompletionTone();
   haptic('heavy');
@@ -3879,7 +3882,23 @@ function draw(now){
     // Clear only the animation canvas (not the static background)
     ctx.clearRect(0, 0, viewW, viewH);
 
-    const elapsed = running ? (now-startMs)/1000 : pauseMs/1000;
+    let elapsed = running ? (now-startMs)/1000 : pauseMs/1000;
+
+    // Heal the clock after device sleep: performance.now() freezes while
+    // the phone is locked, but the wall clock does not. If they disagree,
+    // trust the wall - and swallow the bells that would have rung, so
+    // waking the phone never triggers a burst of late tones.
+    if (running && startWall){
+      const wallEl = (Date.now() - startWall)/1000;
+      if (Math.abs(wallEl - elapsed) > 1.5){
+        startMs = performance.now() - wallEl*1000;
+        elapsed = wallEl;
+        for (const d of TONE_DEFS) lastToneIdx[d.id] = Math.floor(elapsed / d.interval);
+      }
+    } else if (finished && finishWall){
+      const wallOt = Date.now() - finishWall;
+      if (Math.abs((now - overtimeStart) - wallOt) > 1500) overtimeStart = now - wallOt;
+    }
 
     // One presentation clock: the timer digits and every visualization run
     // exactly one audio-pipeline-latency behind the true clock. Tones keep
