@@ -373,6 +373,10 @@ let muted = false;                    // salvationMute: silence everything, sett
 let volSel = 2;                       // salvationVol: 0 LOW / 1 MED / 2 HIGH
 const VOL_LEVELS = [0.3, 0.6, 1.0];
 let customMins = 20;                  // salvationCustom: minutes for timeMode 3
+let cycleMode = false;                // salvationCycle: tour all nine views, 3 min each
+try {
+  cycleMode = localStorage.getItem('salvationCycle') === "1";
+} catch(e) {}
 try {
   muted = localStorage.getItem('salvationMute') === "1";
   const v = parseInt(localStorage.getItem('salvationVol'), 10);
@@ -3885,6 +3889,13 @@ function draw(now){
     const audioLag = audioCtx ? Math.min(0.35, (audioCtx.outputLatency || 0) + (audioCtx.baseLatency || 0)) : 0;
     const pElapsed = Math.max(0, elapsed - audioLag);
 
+    // CYCLE: tour all nine timer views, three minutes each - a full
+    // tour is exactly 27 minutes. Paused while a diagram is open.
+    if (cycleMode && running && !finished && viewMode <= 8){
+      const dv = Math.floor(pElapsed/180) % 9;
+      if (dv !== viewMode){ gotoView(dv); menuSync(); }
+    }
+
     if (running){
       updateTimerText(pElapsed);
 
@@ -4137,7 +4148,7 @@ TONE_DEFS.forEach(d => {
 function menuSync(){
   const clean = !running && !finished && pauseMs === 0;
   document.querySelectorAll('#menuViews button').forEach((b, i) =>
-    b.classList.toggle('active', i === viewMode));
+    b.classList.toggle('active', i === viewMode || (b.id === 'btnCycle' && cycleMode)));
   document.querySelectorAll('#menuDur button').forEach((b, i) => {
     b.classList.toggle('active', i === timeMode);
     b.classList.toggle('disabled', !clean);
@@ -4158,6 +4169,8 @@ VIEW_NAMES.forEach((n, i) => {
   const b = document.createElement('button');
   b.textContent = n;
   b.onclick = () => {
+    cycleMode = false;
+    try { localStorage.setItem('salvationCycle', "0"); } catch(e) {}
     gotoView(i);
     menuSync();
     menuEl.style.display = 'none';
@@ -4165,6 +4178,21 @@ VIEW_NAMES.forEach((n, i) => {
   };
   document.getElementById('menuViews').appendChild(b);
 });
+{
+  const b = document.createElement('button');
+  b.id = 'btnCycle';
+  b.textContent = 'CYCLE';
+  b.onclick = () => {
+    cycleMode = true;
+    try { localStorage.setItem('salvationCycle', "1"); } catch(e) {}
+    const el = running ? (performance.now() - startMs)/1000 : pauseMs/1000;
+    gotoView(Math.floor(el/180) % 9);
+    menuSync();
+    menuEl.style.display = 'none';
+    haptic('medium');
+  };
+  document.getElementById('menuViews').appendChild(b);
+}
 ["27 MIN","54 MIN","81 MIN"].forEach((n, i) => {
   const b = document.createElement('button');
   b.textContent = n;
@@ -4287,6 +4315,8 @@ const DEFAULT_PRESET = {
   voices: { t1620: 2, t540: 3, t180: 3, t60: 3, t20: 3, t6: 3, t2: 3 },  // ORGAN on 27, E.PIANO elsewhere
 };
 document.getElementById('menuDefault').addEventListener('click', () => {
+  cycleMode = false;
+  try { localStorage.setItem('salvationCycle', "0"); } catch(e) {}
   toneSel   = Object.assign({}, DEFAULT_PRESET.tones);
   toneVoice = Object.assign({}, DEFAULT_PRESET.voices);
   try {
