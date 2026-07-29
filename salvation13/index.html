@@ -1527,10 +1527,12 @@ function triadPos(n){
 // thirds of each minute, but the session no longer changes hue.
 const TRIAD_W = { body: ["#cfd2d6", "#babec5", "#a3a8b1"], core: "#e9ebee", halo: "205,210,220", rim: "#8b919c" };
 const TRIAD_FAM = [TRIAD_W, TRIAD_W, TRIAD_W];
-// FILL patterns: how the bulbs land on the panel.
-const TRIAD_FILLS = ["TRIAD", "SCATTER", "DIAG", "BLOOM"];
+// FILL patterns: how the bulbs land on the panel. LIFE is different in
+// kind: the field is a Conway colony, one generation per 1/81 minute -
+// the bulbs take the turns they take, no filling up.
+const TRIAD_FILLS = ["TRIAD", "SCATTER", "DIAG", "BLOOM", "LIFE"];
 let triadFill = 0;
-try { triadFill = Math.min(3, Math.max(0, parseInt(localStorage.getItem('salvationTriadFill') || "0", 10) || 0)); } catch(e) {}
+try { triadFill = Math.min(4, Math.max(0, parseInt(localStorage.getItem('salvationTriadFill') || "0", 10) || 0)); } catch(e) {}
 let triadOrd = null, triadOrdKey = "";
 function triadOrderArr(L){
   const key = triadFill + ":" + L.rowsLED + ":" + L.N;
@@ -1718,17 +1720,76 @@ function drawTriadStatic(){
   ctxStatic.fillStyle = grad;
   ctxStatic.fillRect(L.px0 - 12*k, L.py0 - 12*k, L.fieldW + 24*k, L.fieldH + 24*k);
 }
+/* LIFE fill: B3/S23 on a torus. Seeded fresh each session (from the
+   session's wall anchor, so it survives resizes and sleep-healing);
+   a fixed soup previews while idle. Newborn cells burn brighter. */
+let lifeGrid = null, lifeBorn = null, lifeGen = 0, lifePop = 0, lifeKey = "", lifeDrawn = "";
+function lifeTo(L, gens){
+  const W = 81, H = L.rowsLED;
+  const seed = (startWall ? Math.abs(Math.floor(startWall)) % 2147483000 : 424243) + 1;
+  const key = seed + ":" + H;
+  if (lifeKey !== key || gens < lifeGen){
+    lifeKey = key;
+    lifeGrid = new Uint8Array(W*H);
+    lifeBorn = new Uint8Array(W*H);
+    let s = seed;
+    for (let i = 0; i < W*H; i++){
+      s = (s * 48271) % 2147483647;
+      lifeGrid[i] = (s % 100) < 32 ? 1 : 0;
+    }
+    lifeGen = 0; lifeDrawn = "";
+  }
+  while (lifeGen < gens){
+    const g = lifeGrid, next = new Uint8Array(W*H), born = new Uint8Array(W*H);
+    for (let y = 0; y < H; y++){
+      const ym = ((y + H - 1) % H)*W, y0 = y*W, yp = ((y + 1) % H)*W;
+      for (let x = 0; x < W; x++){
+        const xm = (x + W - 1) % W, xp = (x + 1) % W;
+        const n = g[ym+xm] + g[ym+x] + g[ym+xp] + g[y0+xm] + g[y0+xp]
+                + g[yp+xm] + g[yp+x] + g[yp+xp];
+        const alive = g[y0+x] ? (n === 2 || n === 3) : n === 3;
+        next[y0+x] = alive ? 1 : 0;
+        if (alive && !g[y0+x]) born[y0+x] = 1;
+      }
+    }
+    lifeGrid = next; lifeBorn = born; lifeGen++;
+  }
+  const dk = lifeKey + ":" + lifeGen + ":" + triadKey;
+  if (lifeDrawn !== dk){
+    lifeDrawn = dk;
+    const c2 = triadCtx2, f = TRIAD_W;
+    c2.clearRect(0, 0, L.fieldW, L.fieldH);
+    lifePop = 0;
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++){
+        const i = y*W + x;
+        if (!lifeGrid[i]) continue;
+        lifePop++;
+        const cx = x*L.ps + L.ps/2, cy = y*L.ps + L.ps/2;
+        c2.fillStyle = "rgba(" + f.halo + ",0.22)";
+        c2.beginPath(); c2.arc(cx, cy, L.ps*0.72, 0, 2*Math.PI); c2.fill();
+        const g2 = c2.createRadialGradient(cx, cy, 0, cx, cy, L.ps*0.41);
+        g2.addColorStop(0, lifeBorn[i] ? "#ffffff" : f.core);
+        g2.addColorStop(0.38, lifeBorn[i] ? f.body[0] : f.body[1]);
+        g2.addColorStop(1, f.rim);
+        c2.fillStyle = g2;
+        c2.beginPath(); c2.arc(cx, cy, L.ps*0.41, 0, 2*Math.PI); c2.fill();
+      }
+  }
+}
 function drawTriad(t){
   const L = triadLayout();
   triadEnsure(L);
   const idle = !running && !finished && pauseMs === 0;
   const T81 = 60/81;
   const lit = finished ? L.N : idle ? 0 : Math.min(L.N, Math.floor(t/T81));
-  triadTo(L, lit);
+  if (triadFill === 4) lifeTo(L, lit);
+  else triadTo(L, lit);
   ctx.drawImage(triadCanvas, L.px0, L.py0);
   // completion flashes: the bulbs of the finished group themselves
   // brighten - 3 for a 1/27 line, 9, 27... whole groups of light
-  if (!idle && !finished && lit > 0){
+  // (not in LIFE mode: a colony has generations, not groups)
+  if (triadFill !== 4 && !idle && !finished && lit > 0){
     const age = t % T81;
     if (age < 0.35){
       let m = lit, lvl = 0;
@@ -1773,7 +1834,10 @@ function drawTriad(t){
   ctx.font = Math.round(10*L.k) + "px monospace";
   ctx.textAlign = "left";
   ctx.fillStyle = "rgba(140,155,170,0.4)";
-  ctx.fillText(Math.floor(doneMin) + " / " + L.totalMin, L.px0 - 4*L.k, L.lampY + 4*L.k);
+  ctx.fillText(triadFill === 4
+                 ? "GEN " + lifeGen + " · " + lifePop
+                 : Math.floor(doneMin) + " / " + L.totalMin,
+               L.px0 - 4*L.k, L.lampY + 4*L.k);
   // consecrated
   if (finished){
     const pulse = 0.5 + 0.5*Math.sin(performance.now()/800);
