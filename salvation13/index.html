@@ -1522,9 +1522,9 @@ function triadPos(n){
   return [x, y];
 }
 const TRIAD_FAM = [
-  { body: ["#59a8ff", "#3f86e8", "#2f64c2"], core: "#e2f2ff", halo: "74,160,255" },
-  { body: ["#ffb14a", "#ef9430", "#cf7a1e"], core: "#fff0d0", halo: "255,170,70" },
-  { body: ["#ff5f4e", "#e04236", "#b8322a"], core: "#ffd8d0", halo: "255,100,80" },
+  { body: ["#59a8ff", "#3f86e8", "#2f64c2"], core: "#e2f2ff", halo: "74,160,255",  rim: "#204a92" },
+  { body: ["#ffb14a", "#ef9430", "#cf7a1e"], core: "#fff0d0", halo: "255,170,70",  rim: "#9a5a14" },
+  { body: ["#ff5f4e", "#e04236", "#b8322a"], core: "#ffd8d0", halo: "255,100,80",  rim: "#8a2620" },
 ];
 function triadLayout(){
   const totalMin = Math.round(totalCycle/60);
@@ -1571,10 +1571,14 @@ function triadTo(L, n){
     const shade = Math.floor(triadN/27) % 3;
     c2.fillStyle = "rgba(" + f.halo + ",0.22)";
     c2.beginPath(); c2.arc(cx, cy, L.ps*0.72, 0, 2*Math.PI); c2.fill();
-    c2.fillStyle = f.body[shade];
+    // lit from within: bright core fading through the body color to a
+    // darker rim, dead-centered - no perspectival glint
+    const g2 = c2.createRadialGradient(cx, cy, 0, cx, cy, L.ps*0.41);
+    g2.addColorStop(0, f.core);
+    g2.addColorStop(0.38, f.body[shade]);
+    g2.addColorStop(1, f.rim);
+    c2.fillStyle = g2;
     c2.beginPath(); c2.arc(cx, cy, L.ps*0.41, 0, 2*Math.PI); c2.fill();
-    c2.fillStyle = f.core;
-    c2.beginPath(); c2.arc(cx - L.ps*0.1, cy - L.ps*0.1, L.ps*0.17, 0, 2*Math.PI); c2.fill();
     triadN++;
   }
 }
