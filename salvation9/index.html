@@ -321,7 +321,7 @@
 const numDials = 7;
 let timeMode = 0; // 0=27-min, 1=54-min, 2=81-min
 let viewMode = 0; // 0=rings, 1=septagram, 2=abacus, 3=fractal
-const VIEW_NAMES = ["RINGS", "STAR", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "SEPT", "DREAM", "GOETIA", "FRAME", "GOAL"];
+const VIEW_NAMES = ["RINGS", "STAR", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "TRIAD", "DREAM", "GOETIA", "FRAME", "GOAL"];
 
 const dotsPerEdge = [1,2];
 const baseIntervals = [4860,1620,540,180,60,20,20/3];
@@ -1499,112 +1499,219 @@ function drawWeave(t){
   ctx.beginPath(); ctx.arc(tx,ty, 0.07*scaleF, 0,Math.PI*2); ctx.fill();
 }
 
-/* --- SEPT: instrument panel of base-3 batteries. One panel per digit,
-   each a stack of three lines (0 bottom, 1 middle, 2 top); the lit line
-   is the digit's value in the app colors. Minutes row (27/9/3/1 as the
-   mode provides) with a standalone 81 lamp that lights at completion;
-   fractions row (1/3, 1/9, 1/27). The 1/27 blinks with each 1/81
-   sub-tick - three blinks, then it changes. --- */
-function septLayout(){
-  const minDials  = timeMode===0 ? [0,1,2] : [0,1,2,3];
-  const minLabels = timeMode===0 ? ["9","3","1"] : ["27","9","3","1"];
-  const fracDials = timeMode===0 ? [3,4,5] : [4,5,6];
-  const fracLabels = ["1/3","1/9","1/27"];
-  const pw=64, gap=14, lampR=11, lineH=12, lineGap=7, padX=8, padY=8;
-  const ph = padY*2 + lineH*3 + lineGap*2;
-  const rowGap = 74;
-  const minW = lampR*2 + gap + minDials.length*pw + (minDials.length-1)*gap;
-  const fracW = 3*pw + 2*gap;
-  const blockH = ph + 22 + rowGap + ph + 22;
-  const top = Math.max(70, (viewH - 250 - blockH)/2);
-  return { minDials, minLabels, fracDials, fracLabels, pw, gap, lampR,
-           lineH, lineGap, padX, padY, ph, rowGap,
-           minX:  (viewW - minW)/2 + lampR*2 + gap,
-           lampX: (viewW - minW)/2 + lampR,
-           fracX: (viewW - fracW)/2,
-           top, fracTop: top + ph + 22 + rowGap, blockH };
-}
 
+/* --- TRIAD: the session as an instrument panel of tiny bulbs. One bulb
+   per 1/81 minute, landing and staying. Threes nest by alternating
+   row/stack: 3 bulbs = a 1/27 line, 3x3 = 1/9, 9x3 = 1/3, 9x9 = one
+   minute-tile, up to an 81x27 band per 27 minutes. Hue = third of the
+   session, shade = third of the minute. Groups flash as they complete. */
 function septRect(c, x, y, w, h, r){
   c.beginPath();
-  if (c.roundRect) c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h);
+  c.moveTo(x+r, y);
+  c.arcTo(x+w, y, x+w, y+h, r); c.arcTo(x+w, y+h, x, y+h, r);
+  c.arcTo(x, y+h, x, y, r);     c.arcTo(x, y, x+w, y, r);
+  c.closePath();
 }
-
-function drawSeptStatic(){
-  const L = septLayout();
-  ctxStatic.lineWidth = 1.5;
-  ctxStatic.strokeStyle = "rgba(0,191,255,0.5)";
-  ctxStatic.fillStyle = "rgba(0,191,255,0.8)";
-  ctxStatic.font = "13px monospace";
-  ctxStatic.textAlign = "center";
-  const frame = (x, y, label) => {
-    septRect(ctxStatic, x, y, L.pw, L.ph, 8);
-    ctxStatic.stroke();
-    ctxStatic.fillText(label, x + L.pw/2, y + L.ph + 16);
-  };
-  L.minLabels.forEach((lab,k)=> frame(L.minX + k*(L.pw+L.gap), L.top, lab));
-  L.fracLabels.forEach((lab,k)=> frame(L.fracX + k*(L.pw+L.gap), L.fracTop, lab));
-  ctxStatic.beginPath();
-  ctxStatic.arc(L.lampX, L.top + L.ph/2, L.lampR, 0, Math.PI*2);
-  ctxStatic.stroke();
-  ctxStatic.fillText("81", L.lampX, L.top + L.ph + 16);
-  ctxStatic.fillStyle = "rgba(120,150,170,0.5)";
-  ctxStatic.font = "11px monospace";
-  ctxStatic.fillText("M I N U T E S", viewW/2, L.top - 14);
-  ctxStatic.fillText("F R A C T I O N S", viewW/2, L.fracTop - 14);
-  // 0/1/2 key beside the fractions row
-  ctxStatic.font = "10px monospace";
-  ctxStatic.textAlign = "right";
-  for (let v=0; v<3; v++){
-    const y = L.fracTop + L.padY + (2-v)*(L.lineH+L.lineGap) + L.lineH - 2;
-    ctxStatic.fillText(String(v), L.fracX - 6, y);
+function triadPos(n){
+  let x = 0, y = 0;
+  const mul = [1, 1, 3, 3, 9, 9, 27, 27];
+  for (let d = 0; d < 8; d++){
+    const dig = n % 3; n = Math.floor(n/3);
+    if (d % 2 === 0) x += dig*mul[d]; else y += dig*mul[d];
   }
-  ctxStatic.textAlign = "left";
+  return [x, y];
 }
-
-function drawSept(t){
-  const L = septLayout();
-  const panel = (x, y, dial, blink) => {
-    const pos = posIndex(dial, t);
-    for (let v=0; v<3; v++){
-      const ly = y + L.padY + (2-v)*(L.lineH + L.lineGap);
-      const lit = (v === pos-1);
-      septRect(ctx, x + L.padX, ly, L.pw - L.padX*2, L.lineH, 6);
-      if (!lit){
-        ctx.fillStyle = "rgba(120,150,170,0.13)";
-        ctx.fill();
-        continue;
-      }
-      ctx.fillStyle = digitColor(pos);
-      ctx.fill();
-      if (blink && running){
-        // three blinks per dwell: one white pulse at each 1/81 sub-tick
-        const subT = ticks[dial] / 3;
-        const sf = (t % subT) / subT;
-        const pulse = Math.max(0, 1 - sf/0.35);
-        if (pulse > 0.01){
-          ctx.fillStyle = `rgba(255,255,255,${(0.75*pulse).toFixed(3)})`;
-          ctx.fill();
+const TRIAD_FAM = [
+  { body: ["#59a8ff", "#3f86e8", "#2f64c2"], core: "#e2f2ff", halo: "74,160,255" },
+  { body: ["#ffb14a", "#ef9430", "#cf7a1e"], core: "#fff0d0", halo: "255,170,70" },
+  { body: ["#ff5f4e", "#e04236", "#b8322a"], core: "#ffd8d0", halo: "255,100,80" },
+];
+function triadLayout(){
+  const k = Math.max(0.62, Math.min(viewW/412, viewH/845, 1.25));
+  const ps = Math.max(3, Math.round(4*k));
+  const totalMin = Math.round(totalCycle/60);
+  const rowsLED = totalMin <= 27 ? 27 : totalMin <= 54 ? 54 : 81;
+  const fieldW = 81*ps, fieldH = rowsLED*ps;
+  const px0 = Math.round((viewW - fieldW)/2);
+  const py0 = Math.round(126*k);
+  return { k, ps, totalMin, rowsLED, fieldW, fieldH, px0, py0,
+           N: Math.min(totalMin, 81)*81,
+           lampY: py0 + fieldH + Math.round(30*k),
+           textY: py0 + fieldH + Math.round(96*k) };
+}
+let triadCanvas = null, triadCtx2 = null, triadN = 0, triadKey = "";
+function triadEnsure(L){
+  const key = L.ps + ":" + L.rowsLED + ":" + L.N;
+  if (triadKey !== key){
+    triadKey = key;
+    triadCanvas = document.createElement('canvas');
+    triadCanvas.width = L.fieldW; triadCanvas.height = L.fieldH;
+    triadCtx2 = triadCanvas.getContext('2d');
+    triadN = 0;
+  }
+}
+function triadTo(L, n){
+  if (n < triadN){ triadCtx2.clearRect(0, 0, L.fieldW, L.fieldH); triadN = 0; }
+  const c2 = triadCtx2;
+  while (triadN < n){
+    const p = triadPos(triadN);
+    const cx = p[0]*L.ps + L.ps/2, cy = p[1]*L.ps + L.ps/2;
+    const f = TRIAD_FAM[Math.min(2, Math.floor(3*triadN/L.N))];
+    const shade = Math.floor(triadN/27) % 3;
+    c2.fillStyle = "rgba(" + f.halo + ",0.22)";
+    c2.beginPath(); c2.arc(cx, cy, L.ps*0.72, 0, 2*Math.PI); c2.fill();
+    c2.fillStyle = f.body[shade];
+    c2.beginPath(); c2.arc(cx, cy, L.ps*0.41, 0, 2*Math.PI); c2.fill();
+    c2.fillStyle = f.core;
+    c2.beginPath(); c2.arc(cx - L.ps*0.1, cy - L.ps*0.1, L.ps*0.17, 0, 2*Math.PI); c2.fill();
+    triadN++;
+  }
+}
+function drawTriadStatic(){
+  const L = triadLayout();
+  const k = L.k;
+  // bezel
+  ctxStatic.fillStyle = "#181c24";
+  septRect(ctxStatic, L.px0 - 22*k, L.py0 - 40*k, L.fieldW + 44*k, L.fieldH + 96*k, 10);
+  ctxStatic.fill();
+  ctxStatic.strokeStyle = "rgba(255,255,255,0.08)";
+  ctxStatic.lineWidth = 1;
+  septRect(ctxStatic, L.px0 - 22*k, L.py0 - 40*k, L.fieldW + 44*k, L.fieldH + 96*k, 10);
+  ctxStatic.stroke();
+  ctxStatic.strokeStyle = "rgba(0,0,0,0.6)";
+  septRect(ctxStatic, L.px0 - 18*k, L.py0 - 36*k, L.fieldW + 36*k, L.fieldH + 88*k, 8);
+  ctxStatic.stroke();
+  // face
+  ctxStatic.fillStyle = "#0b0e13";
+  septRect(ctxStatic, L.px0 - 12*k, L.py0 - 12*k, L.fieldW + 24*k, L.fieldH + 24*k, 6);
+  ctxStatic.fill();
+  // corner screws
+  for (const p of [[L.px0 - 14*k, L.py0 - 32*k], [L.px0 + L.fieldW + 14*k, L.py0 - 32*k],
+                   [L.px0 - 14*k, L.py0 + L.fieldH + 46*k], [L.px0 + L.fieldW + 14*k, L.py0 + L.fieldH + 46*k]]){
+    ctxStatic.fillStyle = "#242a34";
+    ctxStatic.beginPath(); ctxStatic.arc(p[0], p[1], 3.4*k, 0, 2*Math.PI); ctxStatic.fill();
+    ctxStatic.strokeStyle = "rgba(0,0,0,0.7)";
+    ctxStatic.lineWidth = 1;
+    ctxStatic.beginPath();
+    ctxStatic.moveTo(p[0] - 2.2*k, p[1] + 1.2*k);
+    ctxStatic.lineTo(p[0] + 2.2*k, p[1] - 1.2*k);
+    ctxStatic.stroke();
+  }
+  // etched plate
+  ctxStatic.font = Math.round(11*k) + "px monospace";
+  ctxStatic.textAlign = "left";
+  ctxStatic.fillStyle = "rgba(140,155,170,0.55)";
+  ctxStatic.fillText("T R I A D", L.px0 - 4*k, L.py0 - 22*k);
+  ctxStatic.textAlign = "right";
+  ctxStatic.fillStyle = "rgba(140,155,170,0.4)";
+  ctxStatic.fillText("UNIT: " + L.totalMin + " MIN", L.px0 + L.fieldW + 6*k, L.py0 - 22*k);
+  // engraved group channels
+  for (let i = 0; i <= 27; i++){
+    const lvl = (i % 9 === 0) ? 0.085 : (i % 3 === 0) ? 0.055 : 0;
+    if (!lvl) continue;
+    ctxStatic.fillStyle = "rgba(255,255,255," + lvl + ")";
+    ctxStatic.fillRect(L.px0 + i*3*L.ps - 0.5, L.py0 - 6*k, 1, L.fieldH + 12*k);
+    if (i*3 <= L.rowsLED)
+      ctxStatic.fillRect(L.px0 - 6*k, L.py0 + i*3*L.ps - 0.5, L.fieldW + 12*k, 1);
+  }
+  // dark sockets, one per cell
+  ctxStatic.fillStyle = "#151920";
+  for (let y = 0; y < L.rowsLED; y++)
+    for (let x = 0; x < 81; x++){
+      ctxStatic.beginPath();
+      ctxStatic.arc(L.px0 + x*L.ps + L.ps/2, L.py0 + y*L.ps + L.ps/2, L.ps*0.37, 0, 2*Math.PI);
+      ctxStatic.fill();
+    }
+  // milestone lamp labels
+  ctxStatic.font = Math.round(9*k) + "px monospace";
+  ctxStatic.textAlign = "center";
+  ctxStatic.fillStyle = "rgba(140,155,170,0.5)";
+  [["27", 0], ["54", 1], ["81", 2]].forEach(pr => {
+    ctxStatic.fillText(pr[0], L.px0 + L.fieldW - 86*k + pr[1]*34*k, L.lampY + 16*k);
+  });
+  // glass sheen
+  const grad = ctxStatic.createLinearGradient(L.px0, L.py0, L.px0 + L.fieldW, L.py0 + L.fieldH);
+  grad.addColorStop(0, "rgba(255,255,255,0.045)");
+  grad.addColorStop(0.25, "rgba(255,255,255,0)");
+  grad.addColorStop(1, "rgba(255,255,255,0)");
+  ctxStatic.fillStyle = grad;
+  ctxStatic.fillRect(L.px0 - 12*k, L.py0 - 12*k, L.fieldW + 24*k, L.fieldH + 24*k);
+}
+function drawTriad(t){
+  const L = triadLayout();
+  triadEnsure(L);
+  const idle = !running && !finished && pauseMs === 0;
+  const T81 = 60/81;
+  const lit = finished ? L.N : idle ? 0 : Math.min(L.N, Math.floor(t/T81));
+  triadTo(L, lit);
+  ctx.drawImage(triadCanvas, L.px0, L.py0);
+  // the gathering bulb blooms toward its 1/81
+  if (!idle && !finished && lit < L.N){
+    const p = triadPos(lit);
+    const q = (t % T81)/T81;
+    ctx.shadowColor = "rgba(220,240,255," + (0.35 + 0.55*q) + ")";
+    ctx.shadowBlur = 4 + 6*q;
+    ctx.fillStyle = "rgba(244,250,255," + (0.2 + 0.75*q) + ")";
+    ctx.beginPath();
+    ctx.arc(L.px0 + p[0]*L.ps + L.ps/2, L.py0 + p[1]*L.ps + L.ps/2, L.ps*0.48, 0, 2*Math.PI);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+  // nested completion flashes: line, square, tile, band... together
+  if (!idle && !finished && lit > 0){
+    const age = t % T81;
+    if (age < 0.35){
+      let m = lit, lvl = 0;
+      while (lvl < 8 && m % 3 === 0){ m = m/3; lvl++; }
+      if (lvl >= 1){
+        const dimsW = [1, 3, 3, 9, 9, 27, 27, 81, 81];
+        const dimsH = [1, 1, 3, 3, 9, 9, 27, 27, 81];
+        const a0 = 1 - age/0.35;
+        for (let l2 = lvl; l2 >= 1 && l2 >= lvl - 2; l2--){
+          const size = Math.pow(3, l2);
+          const sp = triadPos(lit - size);
+          const alpha = a0*(l2 === lvl ? 0.85 : l2 === lvl - 1 ? 0.45 : 0.22);
+          ctx.strokeStyle = "rgba(230,242,255," + alpha + ")";
+          ctx.lineWidth = l2 === lvl ? 2 : 1.2;
+          ctx.strokeRect(L.px0 + sp[0]*L.ps - 1, L.py0 + sp[1]*L.ps - 1,
+                         dimsW[l2]*L.ps + 2, dimsH[l2]*L.ps + 2);
         }
       }
     }
-  };
-  L.minDials.forEach((d,k)=> panel(L.minX + k*(L.pw+L.gap), L.top, d, false));
-  L.fracDials.forEach((d,k)=> panel(L.fracX + k*(L.pw+L.gap), L.fracTop, d, k===2));
-  // 81 lamp: dark all session, lights at completion
-  const lx = L.lampX, lyc = L.top + L.ph/2;
-  if (finished){
-    const g = ctx.createRadialGradient(lx,lyc,0, lx,lyc, L.lampR*2.6);
-    g.addColorStop(0, "rgba(255,149,0,0.6)");
-    g.addColorStop(1, "rgba(255,149,0,0)");
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(lx,lyc,L.lampR*2.6,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle = "#ff9500";
-  } else {
-    ctx.fillStyle = "rgba(120,150,170,0.10)";
   }
-  ctx.beginPath(); ctx.arc(lx,lyc,L.lampR,0,Math.PI*2); ctx.fill();
+  // milestone lamps
+  const doneMin = finished ? L.totalMin : idle ? 0 : t/60;
+  [[27, 0], [54, 1], [81, 2]].forEach(pr => {
+    const lx = L.px0 + L.fieldW - 86*L.k + pr[1]*34*L.k;
+    if (doneMin >= pr[0] - 0.001){
+      ctx.fillStyle = "rgba(255,170,70,0.25)";
+      ctx.beginPath(); ctx.arc(lx, L.lampY, 7.5*L.k, 0, 2*Math.PI); ctx.fill();
+      ctx.fillStyle = "#ffb14a";
+      ctx.beginPath(); ctx.arc(lx, L.lampY, 4*L.k, 0, 2*Math.PI); ctx.fill();
+      ctx.fillStyle = "#fff0d0";
+      ctx.beginPath(); ctx.arc(lx - L.k, L.lampY - L.k, 1.4*L.k, 0, 2*Math.PI); ctx.fill();
+    } else {
+      ctx.fillStyle = "#151920";
+      ctx.beginPath(); ctx.arc(lx, L.lampY, 4*L.k, 0, 2*Math.PI); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.07)";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(lx, L.lampY, 4*L.k, 0, 2*Math.PI); ctx.stroke();
+    }
+  });
+  // the etched count
+  ctx.font = Math.round(10*L.k) + "px monospace";
+  ctx.textAlign = "left";
+  ctx.fillStyle = "rgba(140,155,170,0.4)";
+  ctx.fillText(Math.floor(doneMin) + " / " + L.totalMin, L.px0 - 4*L.k, L.lampY + 4*L.k);
+  // consecrated
+  if (finished){
+    const pulse = 0.5 + 0.5*Math.sin(performance.now()/800);
+    ctx.strokeStyle = "rgba(255,180,80," + (0.3 + 0.3*pulse) + ")";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(L.px0 - 5, L.py0 - 5, L.fieldW + 10, L.fieldH + 10);
+  }
 }
+
 
 /* --- FRAME: the practice flowchart as an interactive status board. Drag
    the dark space to pan; tap a rectangle to make it the current status,
@@ -3568,7 +3675,7 @@ function drawGoetia(t){
 function getTextY(){
   if (viewMode===2){ const L = abacusLayout();  return L.top + L.gridH + 56; }
   if (viewMode===3){ const F = fractalLayout(); return F.topY + F.triH + 52; }
-  if (viewMode===6){ const L = septLayout();    return L.fracTop + L.ph + 22 + 42; }
+  if (viewMode===6){ const L = triadLayout();   return L.textY; }
   if (viewMode===7){ const L = dreamLayout();   return Math.min(viewH - 170, L.textY); }
   if (viewMode===8){ const L = goetiaLayout();  return L.textY; }
   return viewH/2 - 40;
@@ -3593,7 +3700,7 @@ function drawStaticLayer(){
   if (viewMode===3){ needsStaticRedraw = false; return; } // fractal renders on the anim layer (moving camera)
   if (viewMode===4){ needsStaticRedraw = false; return; } // wheels render on the anim layer (spinning)
   if (viewMode===5){ needsStaticRedraw = false; return; } // weave renders on the anim layer (traveler)
-  if (viewMode===6){ drawSeptStatic(); needsStaticRedraw = false; return; } // sept panel frames
+  if (viewMode===6){ drawTriadStatic(); needsStaticRedraw = false; return; } // triad panel
   if (viewMode===7){ drawDreamDungeon(); needsStaticRedraw = false; return; } // the dungeon is static
   if (viewMode===8){ drawGoetiaStatic(); needsStaticRedraw = false; return; }   // the chamber is static
   if (viewMode>=9){ needsStaticRedraw = false; return; } // frame/goal render on the anim layer (pannable)
@@ -3772,19 +3879,18 @@ function drawSevenSegText(str, baseY, scale){
 
 function drawTimerText(t){
   const y = getTextY();
-  if (viewMode === 2){ // LED readout on ABACUS
-    drawSevenSegText(timerStr, y);
+  let str = timerStr;
+  if ((viewMode === 6 || viewMode === 7 || viewMode === 8) && str.indexOf(":") !== -1){
+    // TRIAD, DREAM and GOETIA read one place deeper: the 1/81 digit
+    const d81 = finished ? 0 : Math.floor(t / (60/81)) % 3;
+    str = str.replace("₃", d81 + "₃");
+  }
+  if (viewMode === 2 || viewMode === 6){ // LED readout on ABACUS and TRIAD
+    drawSevenSegText(str, y);
     if (finished && overtimeStr) drawSevenSegText(overtimeStr, y + (viewW < 500 ? 34 : 42), 0.62);
     return;
   }
   ctx.font = viewW < 500 ? "32px monospace" : "40px monospace";
-
-  let str = timerStr;
-  if ((viewMode === 7 || viewMode === 8) && str.indexOf(":") !== -1){
-    // DREAM and GOETIA read one place deeper: the 1/81-minute digit
-    const d81 = finished ? 0 : Math.floor(t / (60/81)) % 3;
-    str = str.replace("₃", d81 + "₃");
-  }
 
   // Final value and idle keep a single color
   const idle = !running && !finished && pauseMs === 0;
@@ -3975,7 +4081,7 @@ function draw(now){
   } else if (viewMode===5){
     drawWeave(vizT);
   } else if (viewMode===6){
-    drawSept(vizT);
+    drawTriad(vizT);
   } else if (viewMode===7){
     drawDream(vizT);
   } else if (viewMode===8){
