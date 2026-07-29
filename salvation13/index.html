@@ -1522,10 +1522,24 @@ function triadPos(n){
   return [x, y];
 }
 const TRIAD_FAM = [
-  { body: ["#59a8ff", "#3f86e8", "#2f64c2"], core: "#e2f2ff", halo: "74,160,255",  rim: "#204a92" },
-  { body: ["#ffb14a", "#ef9430", "#cf7a1e"], core: "#fff0d0", halo: "255,170,70",  rim: "#9a5a14" },
-  { body: ["#ff5f4e", "#e04236", "#b8322a"], core: "#ffd8d0", halo: "255,100,80",  rim: "#8a2620" },
+  { body: ["#cfd2d6", "#babec5", "#a3a8b1"], core: "#e9ebee", halo: "205,210,220", rim: "#8b919c" },
+  { body: ["#ffc37a", "#ffab4e", "#f79433"], core: "#fff2dc", halo: "255,175,90",  rim: "#d97b1c" },
+  { body: ["#ff8a76", "#ff6a54", "#f04a38"], core: "#ffdcd2", halo: "255,120,95",  rim: "#c23325" },
 ];
+// 54-min sessions fill as three 27-wide columns, left to right - one
+// column per third of the session (18 min), so each column owns one
+// color. Nesting inside a column: 9x9 tile = a minute, 27x27 = 9 min,
+// two squares stacked = the column's 18 minutes.
+function triadPos54(n){
+  const blk = Math.floor(n/1458);
+  let m = n - blk*1458;
+  const d = [];
+  for (let i = 0; i < 7; i++){ d.push(m % 3); m = Math.floor(m/3); }
+  return [blk*27 + d[0] + 3*d[2] + 9*d[4], d[1] + 3*d[3] + 9*d[5] + 27*d[6]];
+}
+function triadPosM(n, rowsLED){
+  return rowsLED === 54 ? triadPos54(n) : triadPos(n);
+}
 function triadLayout(){
   const totalMin = Math.round(totalCycle/60);
   const rowsLED = totalMin <= 27 ? 27 : totalMin <= 54 ? 54 : 81;
@@ -1565,7 +1579,7 @@ function triadTo(L, n){
   if (n < triadN){ triadCtx2.clearRect(0, 0, L.fieldW, L.fieldH); triadN = 0; }
   const c2 = triadCtx2;
   while (triadN < n){
-    const p = triadPos(triadN);
+    const p = triadPosM(triadN, L.rowsLED);
     const cx = p[0]*L.ps + L.ps/2, cy = p[1]*L.ps + L.ps/2;
     const f = TRIAD_FAM[Math.min(2, Math.floor(3*triadN/L.N))];
     const shade = Math.floor(triadN/27) % 3;
@@ -1660,31 +1674,21 @@ function drawTriad(t){
   const lit = finished ? L.N : idle ? 0 : Math.min(L.N, Math.floor(t/T81));
   triadTo(L, lit);
   ctx.drawImage(triadCanvas, L.px0, L.py0);
-  // the gathering bulb blooms toward its 1/81
-  if (!idle && !finished && lit < L.N){
-    const p = triadPos(lit);
-    const q = (t % T81)/T81;
-    ctx.shadowColor = "rgba(220,240,255," + (0.35 + 0.55*q) + ")";
-    ctx.shadowBlur = 4 + 6*q;
-    ctx.fillStyle = "rgba(244,250,255," + (0.2 + 0.75*q) + ")";
-    ctx.beginPath();
-    ctx.arc(L.px0 + p[0]*L.ps + L.ps/2, L.py0 + p[1]*L.ps + L.ps/2, L.ps*0.48, 0, 2*Math.PI);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-  }
   // nested completion flashes: line, square, tile, band... together
   if (!idle && !finished && lit > 0){
     const age = t % T81;
     if (age < 0.35){
       let m = lit, lvl = 0;
       while (lvl < 8 && m % 3 === 0){ m = m/3; lvl++; }
+      // in 54-mode the largest whole group is a 27x27 square (9 min)
+      if (L.rowsLED === 54 && lvl > 6) lvl = 6;
       if (lvl >= 1){
         const dimsW = [1, 3, 3, 9, 9, 27, 27, 81, 81];
         const dimsH = [1, 1, 3, 3, 9, 9, 27, 27, 81];
         const a0 = 1 - age/0.35;
         for (let l2 = lvl; l2 >= 1 && l2 >= lvl - 2; l2--){
           const size = Math.pow(3, l2);
-          const sp = triadPos(lit - size);
+          const sp = triadPosM(lit - size, L.rowsLED);
           const alpha = a0*(l2 === lvl ? 0.85 : l2 === lvl - 1 ? 0.45 : 0.22);
           ctx.strokeStyle = "rgba(230,242,255," + alpha + ")";
           ctx.lineWidth = l2 === lvl ? 2 : 1.2;
@@ -1699,12 +1703,13 @@ function drawTriad(t){
   [[27, 0], [54, 1], [81, 2]].forEach(pr => {
     const lx = L.px0 + L.fieldW - 86*L.k + pr[1]*34*L.k;
     if (doneMin >= pr[0] - 0.001){
-      ctx.fillStyle = "rgba(255,170,70,0.25)";
+      ctx.fillStyle = "rgba(235,244,255,0.25)";
       ctx.beginPath(); ctx.arc(lx, L.lampY, 7.5*L.k, 0, 2*Math.PI); ctx.fill();
-      ctx.fillStyle = "#ffb14a";
+      const lg = ctx.createRadialGradient(lx, L.lampY, 0, lx, L.lampY, 4*L.k);
+      lg.addColorStop(0, "#ffffff");
+      lg.addColorStop(1, "#c8d8ec");
+      ctx.fillStyle = lg;
       ctx.beginPath(); ctx.arc(lx, L.lampY, 4*L.k, 0, 2*Math.PI); ctx.fill();
-      ctx.fillStyle = "#fff0d0";
-      ctx.beginPath(); ctx.arc(lx - L.k, L.lampY - L.k, 1.4*L.k, 0, 2*Math.PI); ctx.fill();
     } else {
       ctx.fillStyle = "#151920";
       ctx.beginPath(); ctx.arc(lx, L.lampY, 4*L.k, 0, 2*Math.PI); ctx.fill();
