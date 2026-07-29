@@ -1527,13 +1527,24 @@ const TRIAD_FAM = [
   { body: ["#ff5f4e", "#e04236", "#b8322a"], core: "#ffd8d0", halo: "255,100,80" },
 ];
 function triadLayout(){
-  const k = Math.max(0.62, Math.min(viewW/412, viewH/845, 1.25));
-  const ps = Math.max(3, Math.round(4*k));
   const totalMin = Math.round(totalCycle/60);
   const rowsLED = totalMin <= 27 ? 27 : totalMin <= 54 ? 54 : 81;
+  // Fill the screen: take the largest bulb pitch whose whole panel -
+  // field, bezel chrome, lamps, readout and overtime line - still fits
+  // between the status line and the button bar, then center what's left.
+  const topPad = 36, botPad = 88;
+  const availW = viewW - 12, availH = viewH - topPad - botPad;
+  let ps = 3, k = 0.75;
+  for (let p = 40; p >= 3; p--){
+    const kk = Math.min(2.6, Math.max(0.62, p/4));
+    if (81*p + 60*kk <= availW && rowsLED*p + 136*kk + 66 <= availH){
+      ps = p; k = kk; break;
+    }
+  }
   const fieldW = 81*ps, fieldH = rowsLED*ps;
   const px0 = Math.round((viewW - fieldW)/2);
-  const py0 = Math.round(126*k);
+  const py0 = Math.round(topPad + 40*k +
+              Math.max(0, (availH - fieldH - 136*k - 66)/2));
   return { k, ps, totalMin, rowsLED, fieldW, fieldH, px0, py0,
            N: Math.min(totalMin, 81)*81,
            lampY: py0 + fieldH + Math.round(30*k),
@@ -4091,7 +4102,7 @@ function draw(now){
   }
   if (viewMode < 9){
     drawTimerText(vizT);
-    if (viewMode !== 8) drawTapHint();
+    if (viewMode !== 8 && viewMode !== 6) drawTapHint();
   }
   drawStatus();
   drawMuteBadge();
