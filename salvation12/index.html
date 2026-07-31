@@ -4303,9 +4303,12 @@ function drawTimerText(t){
   const y = getTextY();
   let str = timerStr;
   if ((viewMode === 6 || viewMode === 7 || viewMode === 8) && str.indexOf(":") !== -1){
-    // TRIAD, DREAM and GOETIA read one place deeper: the 1/81 digit
-    const d81 = finished ? 0 : Math.floor(t / (60/81)) % 3;
-    str = str.replace("₃", d81 + "₃");
+    // TRIAD, DREAM and GOETIA read one place deeper: the 1/81 digit.
+    // The ART panels go one deeper still - 1/243, the dots' own beat.
+    let ext = String(finished ? 0 : Math.floor(t / (60/81)) % 3);
+    if (viewMode === 6 && triadFill >= 6)
+      ext += finished ? 0 : Math.floor(t / (60/243)) % 3;
+    str = str.replace("₃", ext + "₃");
   }
   if (viewMode === 2 || viewMode === 6){ // LED readout on ABACUS and TRIAD
     drawSevenSegText(str, y);
