@@ -825,6 +825,13 @@ function startClock(){
   if (running) return;
   if (finished) resetClock();
   if (pauseMs === 0) dreamVariant = Math.floor(Math.random()*9); // a new dream each session
+  if (pauseMs === 0 && triadFill === 13){
+    // GALLERY: hang the next plate for this session
+    if (galleryRan) galleryIdx = (galleryIdx + 1) % ART_DATA.length;
+    galleryRan = true;
+    try { localStorage.setItem('salvationGalleryIdx', String((galleryIdx + 1) % ART_DATA.length)); } catch(e) {}
+    triadKey = ""; needsStaticRedraw = true;
+  }
   startMs = pauseMs>0 ? performance.now()-pauseMs : performance.now();
   startWall = Date.now() - (performance.now() - startMs);
   running=true;
@@ -1533,9 +1540,13 @@ const TRIAD_FAM = [TRIAD_W, TRIAD_W, TRIAD_W];
 // real constellations - 81 stars, one per 1/81 of the session, a pen
 // of light traveling star to star at whatever speed lands it on the
 // beat (fast over Cygnus's long dive, slow through the Pleiades).
-const TRIAD_FILLS = ["TRIAD", "SCATTER", "DIAG", "BLOOM", "LIFE", "SKY", "DORÉ", "DÜRER", "BLAKE", "BURNE", "BEAST", "THESEUS", "ANCIENT"];
+const TRIAD_FILLS = ["TRIAD", "SCATTER", "DIAG", "BLOOM", "LIFE", "SKY", "DORÉ", "DÜRER", "BLAKE", "BURNE", "BEAST", "THESEUS", "ANCIENT", "GALLERY"];
 let triadFill = 0;
-try { triadFill = Math.min(12, Math.max(0, parseInt(localStorage.getItem('salvationTriadFill') || "0", 10) || 0)); } catch(e) {}
+try { triadFill = Math.min(13, Math.max(0, parseInt(localStorage.getItem('salvationTriadFill') || "0", 10) || 0)); } catch(e) {}
+// GALLERY rotates through every art plate, one per session
+let galleryIdx = 0, galleryRan = false;
+try { galleryIdx = Math.max(0, parseInt(localStorage.getItem('salvationGalleryIdx') || "0", 10) || 0); } catch(e) {}
+function artIdx(){ return triadFill === 13 ? galleryIdx % ART_DATA.length : triadFill - 6; }
 
 /* ART fills: three public-domain works as pointillist panels - 6561
    dots on an ultramarine ground, landing in scattered order so the
@@ -1573,7 +1584,7 @@ function artTone(d){
 }
 function artTo(L, n){
   if (n < triadN){ triadCtx2.clearRect(0, 0, L.fieldW, L.fieldH); triadN = 0; }
-  const A = ART_DATA[triadFill - 6];
+  const A = ART_DATA[artIdx()];
   const g = A.g, ord = artOrderArr(g), cs = L.fieldW/g, c2 = triadCtx2;
   while (triadN < n){
     const i = ord[triadN];
@@ -1884,13 +1895,13 @@ function drawTriadStatic(){
   ctxStatic.fillText("T R I A D", L.px0 - 4*k, L.py0 - 22*k);
   ctxStatic.textAlign = "right";
   ctxStatic.fillStyle = "rgba(140,155,170,0.4)";
-  ctxStatic.fillText(triadFill >= 6 ? ART_DATA[triadFill - 6].n
+  ctxStatic.fillText(triadFill >= 6 ? ART_DATA[artIdx()].n
                                     : "UNIT: " + L.totalMin + " MIN",
                      L.px0 + L.fieldW + 6*k, L.py0 - 22*k);
   if (triadFill >= 6){
     // ART: an ultramarine ground - the dots themselves are the image
     // (the closeup plates sit on a slightly deeper blue)
-    ctxStatic.fillStyle = ART_DATA[triadFill - 6].h ? "#10148f" : "#141a8f";
+    ctxStatic.fillStyle = ART_DATA[artIdx()].h ? "#10148f" : "#141a8f";
     septRect(ctxStatic, L.px0 - 12*k, L.py0 - 12*k, L.fieldW + 24*k, L.fieldH + 24*k, 6);
     ctxStatic.fill();
   } else if (triadFill === 5){
@@ -2021,7 +2032,7 @@ function drawTriad(t){
   if (triadFill >= 6){
     // ART: the image develops out of noise, one dot per grid-cell's
     // share of the session (1/6561 or, for the fine panels, 1/59049)
-    const AG = ART_DATA[triadFill - 6].g, AN = AG*AG;
+    const AG = ART_DATA[artIdx()].g, AN = AG*AG;
     const TA = totalCycle/AN;
     artDone = finished ? AN : idle ? 0 : Math.min(AN, Math.floor(t/TA));
     artTo(L, artDone);
@@ -2142,7 +2153,7 @@ function drawTriad(t){
   ctx.textAlign = "left";
   ctx.fillStyle = "rgba(140,155,170,0.4)";
   ctx.fillText(triadFill >= 6
-                 ? artDone + " / " + (ART_DATA[triadFill - 6].g*ART_DATA[triadFill - 6].g)
+                 ? artDone + " / " + (ART_DATA[artIdx()].g*ART_DATA[artIdx()].g)
                  : triadFill === 5
                  ? skyDone + " / 81 ★ · " + skyWhole + " WHOLE"
                  : triadFill === 4
