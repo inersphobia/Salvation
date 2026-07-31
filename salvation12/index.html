@@ -1529,10 +1529,139 @@ const TRIAD_W = { body: ["#cfd2d6", "#babec5", "#a3a8b1"], core: "#e9ebee", halo
 const TRIAD_FAM = [TRIAD_W, TRIAD_W, TRIAD_W];
 // FILL patterns: how the bulbs land on the panel. LIFE is different in
 // kind: the field is a Conway colony, one generation per 1/81 minute -
-// the bulbs take the turns they take, no filling up.
-const TRIAD_FILLS = ["TRIAD", "SCATTER", "DIAG", "BLOOM", "LIFE"];
+// the bulbs take the turns they take, no filling up. SKY draws nine
+// real constellations - 81 stars, one per 1/81 of the session, a pen
+// of light traveling star to star at whatever speed lands it on the
+// beat (fast over Cygnus's long dive, slow through the Pleiades).
+const TRIAD_FILLS = ["TRIAD", "SCATTER", "DIAG", "BLOOM", "LIFE", "SKY"];
 let triadFill = 0;
-try { triadFill = Math.min(4, Math.max(0, parseInt(localStorage.getItem('salvationTriadFill') || "0", 10) || 0)); } catch(e) {}
+try { triadFill = Math.min(5, Math.max(0, parseInt(localStorage.getItem('salvationTriadFill') || "0", 10) || 0)); } catch(e) {}
+
+/* Nine constellations from real J2000 coordinates: s = [RA hours, Dec
+   degrees, size], l = the stick-figure edges, o = lighting order,
+   f = the already-lit star each leg draws FROM (-1 = the pen lifts and
+   this star ignites out of the dark), c = closing lines that snap shut
+   [a, b, trigger star]. Star counts: 8+7+5+9+9+15+12+7+9 = 81. */
+const SKY_DATA = [
+  { n:"ORION",
+    s:[[5.919,7.41,3],[5.419,6.35,2.4],[5.585,9.93,1.8],[5.679,-1.94,2.2],
+       [5.604,-1.2,2.2],[5.533,-0.3,2.2],[5.796,-9.67,2.4],[5.242,-8.2,3]],
+    o:[0,2,1,5,4,3,6,7], f:[-1,0,2,1,5,4,3,5], c:[[0,3,3]] },
+  { n:"URSA MAJOR",
+    s:[[11.062,61.75,2.6],[11.031,56.38,2.4],[11.897,53.69,2.4],[12.257,57.03,2],
+       [12.9,55.96,2.4],[13.399,54.93,2.4],[13.792,49.31,2.6]],
+    o:[0,1,2,3,4,5,6], f:[-1,0,1,2,3,4,5], c:[[3,0,3]] },
+  { n:"CASSIOPEIA",
+    s:[[0.153,59.15,2.4],[0.675,56.54,2.6],[0.945,60.72,2.4],[1.43,60.24,2.2],
+       [1.907,63.67,2]],
+    o:[0,1,2,3,4], f:[-1,0,1,2,3], c:[] },
+  { n:"CYGNUS",
+    s:[[20.69,45.28,3],[20.371,40.26,2.4],[19.938,35.08,1.8],[19.512,27.96,2.2],
+       [19.285,53.37,1.8],[19.496,51.73,1.8],[19.749,45.13,2.2],[20.77,33.97,2.2],
+       [21.216,30.23,1.8]],
+    o:[0,1,6,5,4,2,3,7,8], f:[-1,0,1,6,5,1,2,1,7], c:[] },
+  { n:"LEO",
+    s:[[10.139,11.97,3],[10.122,16.76,1.8],[10.333,19.84,2.4],[10.278,23.42,2],
+       [9.879,26.01,2],[9.764,23.77,2.2],[11.237,15.43,2.2],[11.235,20.52,2.2],
+       [11.818,14.57,2.6]],
+    o:[0,1,2,3,4,5,6,7,8], f:[-1,0,1,2,3,4,0,6,7], c:[[8,6,8],[2,7,7]] },
+  { n:"SCORPIUS",
+    s:[[16.091,-19.81,2.2],[16.006,-22.62,2.2],[15.981,-26.11,2],[16.353,-25.59,2],
+       [16.49,-26.43,3.2],[16.598,-28.22,2],[16.836,-34.29,2.4],[16.864,-38.05,2],
+       [16.909,-42.36,2],[17.202,-43.24,2],[17.622,-43,2.4],[17.793,-40.13,2],
+       [17.708,-39.03,2.2],[17.513,-37.3,2],[17.56,-37.1,2.6]],
+    o:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],
+    f:[-1,0,1,1,3,4,5,6,7,8,9,10,11,12,13], c:[] },
+  { n:"GEMINI",
+    s:[[7.577,31.89,2.6],[7.755,28.03,3],[6.879,33.96,2],[6.732,25.13,2.2],
+       [6.383,22.51,2.2],[6.248,22.51,2],[7.741,24.4,2],[7.335,21.98,2.2],
+       [7.069,20.57,2],[6.629,16.4,2.6],[7.301,16.54,2],[6.754,12.9,2]],
+    o:[0,2,3,4,5,1,6,7,8,9,10,11],
+    f:[-1,0,0,3,4,-1,1,1,7,8,7,10], c:[] },
+  { n:"PLEIADES",
+    s:[[3.7914,24.105,2.4],[3.8194,24.053,2],[3.8225,24.136,1.8],[3.7723,23.948,2],
+       [3.7479,24.113,2],[3.7636,24.368,2],[3.7534,24.467,2]],
+    o:[0,3,4,5,6,1,2], f:[-1,0,3,4,5,0,1], c:[] },
+  { n:"TAURUS",
+    s:[[4.599,16.51,3],[5.627,21.14,2.2],[5.438,28.61,2.6],[4.477,19.18,2.2],
+       [4.383,17.54,2],[4.33,15.63,2.2],[4.478,15.87,2],[4.011,12.49,2],
+       [3.413,9.03,2]],
+    o:[8,7,5,6,0,1,4,3,2], f:[-1,8,7,5,6,0,5,4,3], c:[] },
+];
+const SKY_FLAT = [], SKY_BASE = [];
+SKY_DATA.forEach((C, ci) => {
+  SKY_BASE.push(SKY_FLAT.length);
+  C.o.forEach((s2, k) => SKY_FLAT.push({ ci, s: s2, from: C.f[k] }));
+});
+let skyPts = null, skyPtsKey = "";
+function skyGeom(L){
+  const key = L.ps + ":" + L.rowsLED;
+  if (skyPtsKey === key && skyPts) return skyPts;
+  skyPtsKey = key;
+  const cell = L.fieldW/3;
+  skyPts = SKY_DATA.map((C, ci) => {
+    let raMin = 99, raMax = -99, deMin = 99, deMax = -99;
+    for (const st of C.s){
+      raMin = Math.min(raMin, st[0]); raMax = Math.max(raMax, st[0]);
+      deMin = Math.min(deMin, st[1]); deMax = Math.max(deMax, st[1]);
+    }
+    const kRA = 15*Math.cos((deMin + deMax)/2*Math.PI/180);
+    const spanX = Math.max(0.0001, (raMax - raMin)*kRA);
+    const spanY = Math.max(0.0001, deMax - deMin);
+    const avail = cell*0.68;
+    const sc = Math.min(avail/spanX, avail/spanY);
+    const cx0 = (ci % 3)*cell + cell/2, cy0 = Math.floor(ci/3)*cell + (cell - 10)/2;
+    // star-chart convention: east (increasing RA) to the left
+    return C.s.map(st => [
+      cx0 + ((raMax - st[0])*kRA - spanX/2)*sc,
+      cy0 + ((deMax - st[1]) - spanY/2)*sc + 5
+    ]);
+  });
+  return skyPts;
+}
+function skyStar(c2, x, y, r){
+  c2.fillStyle = "rgba(205,210,220,0.18)";
+  c2.beginPath(); c2.arc(x, y, r*2.1, 0, 2*Math.PI); c2.fill();
+  const gr = c2.createRadialGradient(x, y, 0, x, y, r);
+  gr.addColorStop(0, "#ffffff");
+  gr.addColorStop(0.5, "#cfd2d6");
+  gr.addColorStop(1, "rgba(139,145,156,0.4)");
+  c2.fillStyle = gr;
+  c2.beginPath(); c2.arc(x, y, r, 0, 2*Math.PI); c2.fill();
+}
+function skyTo(L, n){
+  if (n < triadN){ triadCtx2.clearRect(0, 0, L.fieldW, L.fieldH); triadN = 0; }
+  const G = skyGeom(L), c2 = triadCtx2;
+  while (triadN < n){
+    const st = SKY_FLAT[triadN];
+    const C = SKY_DATA[st.ci], P = G[st.ci];
+    const to = P[st.s];
+    c2.strokeStyle = "rgba(200,215,235,0.38)";
+    c2.lineWidth = Math.max(1, 0.9*L.k);
+    if (st.from >= 0){
+      const fr = P[st.from];
+      c2.beginPath(); c2.moveTo(fr[0], fr[1]); c2.lineTo(to[0], to[1]); c2.stroke();
+    }
+    for (const cl of C.c){
+      if (cl[2] === st.s){
+        c2.beginPath();
+        c2.moveTo(P[cl[0]][0], P[cl[0]][1]);
+        c2.lineTo(P[cl[1]][0], P[cl[1]][1]);
+        c2.stroke();
+      }
+    }
+    skyStar(c2, to[0], to[1], C.s[st.s][2]*L.k);
+    if (triadN - SKY_BASE[st.ci] === C.o.length - 1){
+      const cell = L.fieldW/3;
+      c2.font = Math.round(8*L.k) + "px monospace";
+      c2.textAlign = "center";
+      c2.fillStyle = "rgba(200,212,225,0.6)";
+      c2.fillText(C.n, (st.ci % 3)*cell + cell/2,
+                  Math.floor(st.ci/3)*cell + cell - 4*L.k);
+    }
+    triadN++;
+  }
+}
 let triadOrd = null, triadOrdKey = "";
 function triadOrderArr(L){
   const key = triadFill + ":" + L.rowsLED + ":" + L.N;
@@ -1595,7 +1724,8 @@ function triadPosM(n, rowsLED){
 }
 function triadLayout(){
   const totalMin = Math.round(totalCycle/60);
-  const rowsLED = totalMin <= 27 ? 27 : totalMin <= 54 ? 54 : 81;
+  // SKY is always the full square - a sky has no duration
+  const rowsLED = triadFill === 5 ? 81 : totalMin <= 27 ? 27 : totalMin <= 54 ? 54 : 81;
   // Fill the screen: take the largest bulb pitch whose whole panel -
   // field, bezel chrome, lamps, readout and overtime line - still fits
   // between the status line and the button bar, then center what's left.
@@ -1688,6 +1818,34 @@ function drawTriadStatic(){
   ctxStatic.textAlign = "right";
   ctxStatic.fillStyle = "rgba(140,155,170,0.4)";
   ctxStatic.fillText("UNIT: " + L.totalMin + " MIN", L.px0 + L.fieldW + 6*k, L.py0 - 22*k);
+  if (triadFill === 5){
+    // SKY: faint dust, dark star sockets, ghost names
+    const G = skyGeom(L);
+    let sd = 777;
+    for (let i = 0; i < 130; i++){
+      sd = (sd*48271) % 2147483647; const dx = sd/2147483647;
+      sd = (sd*48271) % 2147483647; const dy = sd/2147483647;
+      sd = (sd*48271) % 2147483647; const da = sd/2147483647;
+      ctxStatic.fillStyle = "rgba(190,205,220," + (0.03 + da*0.05).toFixed(3) + ")";
+      ctxStatic.beginPath();
+      ctxStatic.arc(L.px0 + dx*L.fieldW, L.py0 + dy*L.fieldH, 0.6*k, 0, 2*Math.PI);
+      ctxStatic.fill();
+    }
+    ctxStatic.font = Math.round(8*k) + "px monospace";
+    ctxStatic.textAlign = "center";
+    const cell = L.fieldW/3;
+    SKY_DATA.forEach((C, ci) => {
+      ctxStatic.fillStyle = "#151920";
+      for (const pt of G[ci]){
+        ctxStatic.beginPath();
+        ctxStatic.arc(L.px0 + pt[0], L.py0 + pt[1], 1.3*k, 0, 2*Math.PI);
+        ctxStatic.fill();
+      }
+      ctxStatic.fillStyle = "rgba(140,155,170,0.22)";
+      ctxStatic.fillText(C.n, L.px0 + (ci % 3)*cell + cell/2,
+                         L.py0 + Math.floor(ci/3)*cell + cell - 4*k);
+    });
+  } else {
   // engraved group channels
   for (let i = 0; i <= 27; i++){
     const lvl = (i % 9 === 0) ? 0.085 : (i % 3 === 0) ? 0.055 : 0;
@@ -1705,6 +1863,7 @@ function drawTriadStatic(){
       ctxStatic.arc(L.px0 + x*L.ps + L.ps/2, L.py0 + y*L.ps + L.ps/2, L.ps*0.37, 0, 2*Math.PI);
       ctxStatic.fill();
     }
+  }
   // milestone lamp labels
   ctxStatic.font = Math.round(9*k) + "px monospace";
   ctxStatic.textAlign = "center";
@@ -1783,13 +1942,64 @@ function drawTriad(t){
   const idle = !running && !finished && pauseMs === 0;
   const T81 = 60/81;
   const lit = finished ? L.N : idle ? 0 : Math.min(L.N, Math.floor(t/T81));
+  let skyDone = 0, skyWhole = 0;
+  if (triadFill === 5){
+    // SKY: one star per 1/81 of the session; the pen flies each leg at
+    // whatever speed lands it exactly on the beat
+    const T3 = totalCycle/81;
+    skyDone = finished ? 81 : idle ? 0 : Math.min(81, Math.floor(t/T3));
+    skyWhole = SKY_BASE.filter((b, ci) => b + SKY_DATA[ci].o.length <= skyDone).length;
+    skyTo(L, skyDone);
+    ctx.drawImage(triadCanvas, L.px0, L.py0);
+    const G = skyGeom(L);
+    if (!idle && !finished && skyDone < 81){
+      const st = SKY_FLAT[skyDone], P = G[st.ci];
+      const to = P[st.s], q = (t % T3)/T3;
+      if (st.from >= 0){
+        const fr = P[st.from];
+        const hx = fr[0] + (to[0] - fr[0])*q, hy = fr[1] + (to[1] - fr[1])*q;
+        ctx.strokeStyle = "rgba(220,232,248,0.55)";
+        ctx.lineWidth = Math.max(1, 0.9*L.k);
+        ctx.beginPath();
+        ctx.moveTo(L.px0 + fr[0], L.py0 + fr[1]);
+        ctx.lineTo(L.px0 + hx, L.py0 + hy);
+        ctx.stroke();
+        ctx.shadowColor = "rgba(220,240,255,0.9)";
+        ctx.shadowBlur = 8*L.k;
+        ctx.fillStyle = "#f4faff";
+        ctx.beginPath(); ctx.arc(L.px0 + hx, L.py0 + hy, 1.7*L.k, 0, 2*Math.PI); ctx.fill();
+        ctx.shadowBlur = 0;
+      } else {
+        // a new constellation: its first star gathers out of the dark
+        ctx.fillStyle = "rgba(233,235,238," + (0.1 + 0.5*q).toFixed(3) + ")";
+        ctx.beginPath();
+        ctx.arc(L.px0 + to[0], L.py0 + to[1],
+                SKY_DATA[st.ci].s[st.s][2]*L.k*(0.4 + 0.6*q), 0, 2*Math.PI);
+        ctx.fill();
+      }
+    }
+    // landing flash on the newest star
+    if (!idle && !finished && skyDone > 0){
+      const age = t % T3;
+      if (age < 0.5){
+        const st = SKY_FLAT[skyDone - 1], p = G[st.ci][st.s];
+        const a0 = 1 - age/0.5;
+        ctx.strokeStyle = "rgba(235,245,255," + (0.7*a0).toFixed(3) + ")";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(L.px0 + p[0], L.py0 + p[1], (3 + 6*(1 - a0))*L.k, 0, 2*Math.PI);
+        ctx.stroke();
+      }
+    }
+  } else {
   if (triadFill === 4) lifeTo(L, lit);
   else triadTo(L, lit);
   ctx.drawImage(triadCanvas, L.px0, L.py0);
+  }
   // completion flashes: the bulbs of the finished group themselves
   // brighten - 3 for a 1/27 line, 9, 27... whole groups of light
-  // (not in LIFE mode: a colony has generations, not groups)
-  if (triadFill !== 4 && !idle && !finished && lit > 0){
+  // (not in LIFE or SKY mode: those have their own events)
+  if (triadFill < 4 && !idle && !finished && lit > 0){
     const age = t % T81;
     if (age < 0.35){
       let m = lit, lvl = 0;
@@ -1834,7 +2044,9 @@ function drawTriad(t){
   ctx.font = Math.round(10*L.k) + "px monospace";
   ctx.textAlign = "left";
   ctx.fillStyle = "rgba(140,155,170,0.4)";
-  ctx.fillText(triadFill === 4
+  ctx.fillText(triadFill === 5
+                 ? skyDone + " / 81 ★ · " + skyWhole + " WHOLE"
+                 : triadFill === 4
                  ? "GEN " + lifeGen + " · " + lifePop
                  : Math.floor(doneMin) + " / " + L.totalMin,
                L.px0 - 4*L.k, L.lampY + 4*L.k);
@@ -4462,6 +4674,7 @@ TRIAD_FILLS.forEach((n, i) => {
     triadFill = i;
     try { localStorage.setItem('salvationTriadFill', String(i)); } catch(e) {}
     triadKey = ""; // replot the panel in the new order
+    needsStaticRedraw = true; // SKY has its own faceplate
     if (viewMode !== 6){ cycleMode = false; try { localStorage.setItem('salvationCycle', "0"); } catch(e) {} gotoView(6); }
     menuSync();
     menuEl.style.display = 'none';
