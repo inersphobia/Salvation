@@ -4308,6 +4308,40 @@ function drawSevenSegText(str, baseY, scale){
     }
     x += wOf(ch) + GAP;
   }
+  return total;
+}
+
+/* The 1/243 stack: one column of three cells beside the counter on
+   the ART plates. The dot's position IS the 1/243 digit, rising
+   bottom (0) -> middle (1) -> top (2); as it wraps, the column
+   blinks once - the 1/81 has landed. */
+function drawTriadStack(t, x0, baseY){
+  const H = viewW < 500 ? 30 : 38;
+  const s = Math.max(11, Math.round(H*0.5));
+  const cy = baseY - H/2 + 8;                    // counter's vertical middle
+  const T81 = 60/81, T243 = 60/243;
+  const val = Math.floor((t % T81) / T243) % 3;  // 0, 1, 2 within the 1/81
+  const flash = running && (t % T81) < 0.12;
+  for (let i = 0; i < 3; i++){
+    ctx.strokeStyle = flash ? "rgba(255,120,100,0.9)" : "rgba(255,80,60,0.5)";
+    ctx.lineWidth = flash ? 2 : 1.5;
+    ctx.strokeRect(x0, cy + (i - 1.5)*s, s, s);
+  }
+  if (flash){
+    ctx.fillStyle = "rgba(255,70,50,0.28)";
+    ctx.fillRect(x0, cy - 1.5*s, s, 3*s);
+    return;
+  }
+  const row = 2 - val;                           // bottom-up
+  ctx.fillStyle = "rgba(255,70,50,0.16)";
+  ctx.fillRect(x0 + 1.5, cy + (row - 1.5)*s + 1.5, s - 3, s - 3);
+  const dy = cy + (row - 1)*s;
+  ctx.shadowColor = SEG_RED; ctx.shadowBlur = 8;
+  ctx.fillStyle = "#ff5a42";
+  ctx.beginPath(); ctx.arc(x0 + s/2, dy, s*0.2, 0, 2*Math.PI); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#ffd9d2";
+  ctx.beginPath(); ctx.arc(x0 + s/2, dy, s*0.07, 0, 2*Math.PI); ctx.fill();
 }
 
 function drawTimerText(t){
@@ -4315,14 +4349,15 @@ function drawTimerText(t){
   let str = timerStr;
   if ((viewMode === 6 || viewMode === 7 || viewMode === 8) && str.indexOf(":") !== -1){
     // TRIAD, DREAM and GOETIA read one place deeper: the 1/81 digit.
-    // The ART panels go one deeper still - 1/243, the dots' own beat.
-    let ext = String(finished ? 0 : Math.floor(t / (60/81)) % 3);
-    if (viewMode === 6 && triadFill >= 6)
-      ext += finished ? 0 : Math.floor(t / (60/243)) % 3;
-    str = str.replace("₃", ext + "₃");
+    // (On the ART plates the 1/243 place is the STACK beside the
+    // counter - a dot rising through three cells - not a digit.)
+    const d81 = finished ? 0 : Math.floor(t / (60/81)) % 3;
+    str = str.replace("₃", d81 + "₃");
   }
   if (viewMode === 2 || viewMode === 6){ // LED readout on ABACUS and TRIAD
-    drawSevenSegText(str, y);
+    const segW = drawSevenSegText(str, y);
+    if (viewMode === 6 && triadFill >= 6 && !finished)
+      drawTriadStack(t, viewW/2 + segW/2 + 16, y);
     if (finished && overtimeStr) drawSevenSegText(overtimeStr, y + (viewW < 500 ? 34 : 42), 0.62);
     return;
   }
