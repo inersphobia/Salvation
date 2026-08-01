@@ -1,4 +1,4 @@
-const CACHE_NAME = 'salvation13-v14';
+const CACHE_NAME = 'salvation13-v15';
 const urlsToCache = [
   './',
   './index.html',
@@ -11,8 +11,7 @@ const urlsToCache = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache)
-        .then(() => cache.add('../audio/dreams-become-real.mp3').catch(() => {})))
+      .then(cache => cache.addAll(urlsToCache))
   );
   self.skipWaiting();
 });
