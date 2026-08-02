@@ -281,6 +281,8 @@
   </div>
   <div class="set-title">T R I A D &nbsp; F I L L</div>
   <div class="menu-grid" id="menuFill"></div>
+  <div class="set-title">S T A G E</div>
+  <div class="menu-grid" id="menuStage"></div>
   <div class="set-title">C O U N T E R</div>
   <div class="menu-grid" id="menuCounter"></div>
   <div class="set-title">F R A C T I O N S</div>
@@ -1586,6 +1588,9 @@ const TRIAD_FAM = [TRIAD_W, TRIAD_W, TRIAD_W];
 const TRIAD_FILLS = ["TRIAD", "SCATTER", "DIAG", "BLOOM", "LIFE", "SKY", "DORÉ", "DÜRER", "BLAKE", "BURNE", "BEAST", "THESEUS", "ANCIENT", "FIRMAMENT", "ASCENT", "GALLERY", "STORY", "SAGA"];
 let triadFill = 0;
 try { triadFill = Math.min(17, Math.max(0, parseInt(localStorage.getItem('salvationTriadFill') || "0", 10) || 0)); } catch(e) {}
+// STAGE: 0 = klein blue ground, 1 = near-black night
+let stageDark = 0;
+try { stageDark = localStorage.getItem('salvationStage') === "1" ? 1 : 0; } catch(e) {}
 // SAGA reads the sheet one scene per session, in order
 let sagaIdx = 0, sagaRan = false;
 try { sagaIdx = Math.min(26, Math.max(0, parseInt(localStorage.getItem('salvationSaga') || "0", 10) || 0)); } catch(e) {}
@@ -2058,15 +2063,15 @@ function drawTriadStatic(){
                      : "UNIT: " + L.totalMin + " MIN",
                      L.px0 + L.fieldW + 6*k, L.py0 - 22*k);
   if (triadFill >= 16){
-    // STORY / SAGA: the scenes live on the same deep klein blue
-    // as the closeup plates
-    ctxStatic.fillStyle = "#10148f";
+    // STORY / SAGA: klein blue, or near-black night if chosen
+    ctxStatic.fillStyle = stageDark ? "#0a0d30" : "#10148f";
     septRect(ctxStatic, L.px0 - 12*k, L.py0 - 12*k, L.fieldW + 24*k, L.fieldH + 24*k, 6);
     ctxStatic.fill();
   } else if (triadFill >= 6){
     // ART: an ultramarine ground - the dots themselves are the image
     // (the closeup plates sit on a slightly deeper blue)
-    ctxStatic.fillStyle = ART_DATA[artIdx()].h ? "#10148f" : "#141a8f";
+    ctxStatic.fillStyle = stageDark ? "#0a0d30"
+                        : ART_DATA[artIdx()].h ? "#10148f" : "#141a8f";
     septRect(ctxStatic, L.px0 - 12*k, L.py0 - 12*k, L.fieldW + 24*k, L.fieldH + 24*k, 6);
     ctxStatic.fill();
   } else if (triadFill === 5){
@@ -5063,6 +5068,8 @@ function menuSync(){
     b.classList.toggle('active', i === volSel));
   document.querySelectorAll('#menuFill button').forEach((b, i) =>
     b.classList.toggle('active', i === triadFill));
+  document.querySelectorAll('#menuStage button').forEach((b, i) =>
+    b.classList.toggle('active', i === stageDark));
   document.querySelectorAll('#menuCounter button').forEach((b, i) =>
     b.classList.toggle('active', i === stackCounter));
   document.querySelectorAll('#menuFrac button').forEach((b, i) =>
@@ -5111,6 +5118,19 @@ TRIAD_FILLS.forEach((n, i) => {
     haptic('light');
   };
   document.getElementById('menuFill').appendChild(b);
+});
+["BLUE","NIGHT"].forEach((n, i) => {
+  const b = document.createElement('button');
+  b.textContent = n;
+  b.onclick = () => {
+    stageDark = i;
+    try { localStorage.setItem('salvationStage', String(i)); } catch(e) {}
+    needsStaticRedraw = true;
+    menuSync();
+    menuEl.style.display = 'none';
+    haptic('light');
+  };
+  document.getElementById('menuStage').appendChild(b);
 });
 ["DIGITS","STACKS","LEDS"].forEach((n, i) => {
   const b = document.createElement('button');
@@ -5275,6 +5295,8 @@ document.getElementById('menuDefault').addEventListener('click', () => {
   try { localStorage.setItem('salvationStacks', "0"); } catch(e) {}
   fracDepth = 0;
   try { localStorage.setItem('salvationFracDepth', "0"); } catch(e) {}
+  stageDark = 0;
+  try { localStorage.setItem('salvationStage', "0"); } catch(e) {}
   gotoView(DEFAULT_PRESET.view);
   setDuration(DEFAULT_PRESET.dur); // duration stays reset-gated: no-op mid-session
   menuSync();
