@@ -282,6 +282,8 @@
   <div class="menu-grid" id="menuFill"></div>
   <div class="set-title">C O U N T E R</div>
   <div class="menu-grid" id="menuCounter"></div>
+  <div class="set-title">F R A C T I O N S</div>
+  <div class="menu-grid" id="menuFrac"></div>
   <div class="set-title">S O U N D</div>
   <button id="muteBar">&#128266;&nbsp; MUTE</button>
   <div class="menu-grid" id="menuVol"></div>
@@ -993,20 +995,44 @@ function drawRingDots(t){
   }
 }
 
-/* --- abacus: 7 rows of 3 cells, top row = slowest digit --- */
-const ABACUS_ROWS = 7;   // fixed register: 27/9/3/1 minutes + 1/3, 1/9, 1/27
-const ABACUS_LABELS = ["27","9","3","1","1/3","1/9","1/27"];
-function abacusMinRows(){ return 4; }
-function abacusRowDial(i){ // -1 = the 27s place in 27-min mode (rests at 0)
-  return timeMode === 0 ? (i === 0 ? -1 : i - 1) : i;
+/* --- abacus: the register IS the counter. One row per ternary place
+   (every minute place including the waiting final one, fractions to
+   the chosen depth), each row two lamp slots read as a tally:
+   dark-dark 0, one lit 1, both lit 2. --- */
+function abacusRows(){
+  const mw = minutesWidth();
+  const fr = 3 + (fracDepth === 1 ? 1 : fracDepth === 2 ? 2 : 0);
+  return { mw, fr, total: mw + fr };
+}
+function abacusMinRows(){ return abacusRows().mw; }
+function abacusLabel(i){
+  const R = abacusRows();
+  if (i < R.mw) return String(Math.pow(3, R.mw - 1 - i));
+  return "1/" + Math.pow(3, i - R.mw + 1);
+}
+function abacusUnit(i){ // seconds per increment of row i's place
+  const R = abacusRows();
+  if (i < R.mw) return Math.pow(3, R.mw - 1 - i)*60;
+  return 60/Math.pow(3, i - R.mw + 1);
+}
+function abacusDigit(i, t){
+  const R = abacusRows();
+  if (finished){
+    if (i < R.mw)
+      return Math.floor(Math.round(totalCycle/60) / Math.pow(3, R.mw - 1 - i)) % 3;
+    return 0;
+  }
+  if (!running && pauseMs === 0) return 0;
+  if (i < R.mw) return Math.floor(Math.floor(t/60) / Math.pow(3, R.mw - 1 - i)) % 3;
+  return Math.floor(t / abacusUnit(i)) % 3;
 }
 function abacusLayout(){
   const w = viewW, h = viewH;
   const gap = 6, sectionGap = 40;
-  const R = ABACUS_ROWS;
+  const R = abacusRows().total;
   const cell = Math.max(18, Math.min(44,
-    Math.floor(Math.min((w*0.7 - 2*gap)/3, (h - 330 - (R-1)*gap - sectionGap)/R))));
-  const gridW = 3*cell + 2*gap;
+    Math.floor(Math.min((w*0.7 - gap)/2, (h - 330 - (R-1)*gap - sectionGap)/R))));
+  const gridW = 2*cell + gap;
   const gridH = R*cell + (R-1)*gap + sectionGap;
   return { cell, gap, sectionGap, gridW, gridH, rows: R,
            left: (w - gridW)/2,
@@ -1037,7 +1063,7 @@ function drawAbacusStatic(){
   // recessed instrument slots + row labels
   for (let i=0;i<L.rows;i++){
     const y = abacusRowY(L, i);
-    for (let k=0;k<3;k++){
+    for (let k=0;k<2;k++){
       const x = L.left + k*(L.cell + L.gap);
       const cx = x + L.cell/2, cy = y + L.cell/2;
       ctxStatic.fillStyle = "rgba(0,191,255,0.04)";
@@ -1050,7 +1076,7 @@ function drawAbacusStatic(){
     ctxStatic.fillStyle = "rgba(0,191,255,0.5)";
     ctxStatic.font = "10px monospace";
     ctxStatic.textAlign = "right";
-    ctxStatic.fillText(ABACUS_LABELS[i], L.left - 10, y + L.cell/2 + 3);
+    ctxStatic.fillText(abacusLabel(i), L.left - 10, y + L.cell/2 + 3);
   }
   // section captions + column key
   ctxStatic.textAlign = "center";
@@ -1060,8 +1086,8 @@ function drawAbacusStatic(){
   ctxStatic.fillText("F R A C T I O N S", viewW/2, abacusRowY(L, mr) - 12);
   ctxStatic.fillStyle = "rgba(0,191,255,0.4)";
   ctxStatic.font = "10px monospace";
-  for (let k=0;k<3;k++){
-    ctxStatic.fillText(String(k), L.left + k*(L.cell+L.gap) + L.cell/2, L.top - 30);
+  for (let k=0;k<2;k++){
+    ctxStatic.fillText(String(k+1), L.left + k*(L.cell+L.gap) + L.cell/2, L.top - 30);
   }
   // mode completion lamps off to the side: 27 / 54 / 81
   const MODE_LABELS = ["27","54","81"];
@@ -1103,13 +1129,12 @@ function lampMix(rgb, u){ // u>0 mixes toward white (hot core); u<0 darkens (rim
 
 function drawAbacusDots(t){
   const L = abacusLayout();
-  const idle = !running && !finished && pauseMs === 0;
   const T27 = 60/27; // every flash decays at the 1/27-minute rate
-  const lamp = (col, row, pos, frac, still, T) => {
+  const lamp = (col, row, frac, U) => {
     const x = L.left + col*(L.cell + L.gap), y = abacusRowY(L, row);
     const cx = x + L.cell/2, cy = y + L.cell/2;
-    const base = idle ? "rgb(215,220,225)" : ABACUS_COL[pos-1];
-    const pulse = (running && !still) ? Math.max(0, 1 - (frac*T)/T27) : 0;
+    const base = finished ? "rgb(255,170,50)" : "rgb(245,242,228)";
+    const pulse = running ? Math.max(0, 1 - (frac*U)/T27) : 0;
     // generous halo around the lit lamp
     const R = L.cell * (1.25 + 0.55*pulse);
     const g = ctx.createRadialGradient(cx,cy,0, cx,cy,R);
@@ -1134,26 +1159,23 @@ function drawAbacusDots(t){
     ctx.beginPath();
     ctx.ellipse(cx - lr*0.35, cy - lr*0.42, lr*0.17, lr*0.1, -0.6, 0, Math.PI*2);
     ctx.fill();
-    // dwell arc: creeps around the bezel, a countdown to the hop
-    if (running){
-      ctx.strokeStyle = "rgba(255,255,255,0.3)";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(cx, cy, L.cell*0.46, -Math.PI/2, -Math.PI/2 + frac*Math.PI*2);
-      ctx.stroke();
-    }
   };
-  for (let i=0;i<ABACUS_ROWS;i++){
-    const dial = abacusRowDial(i);
-    let pos, frac;
-    if (dial < 0){
-      pos = 1;                                     // 27s place rests at 0
-      frac = Math.min(1, (finished ? totalCycle : t) / totalCycle);
-    } else {
-      pos = posIndex(dial, t);
-      frac = (t % ticks[dial]) / ticks[dial];
-    }
-    lamp(pos-1, i, pos, frac, dial < 0, dial < 0 ? totalCycle : ticks[dial]);
+  // dwell arc on the first slot: a countdown to the row's next hop
+  const dwell = (row, frac) => {
+    const x = L.left, y = abacusRowY(L, row);
+    const cx = x + L.cell/2, cy = y + L.cell/2;
+    ctx.strokeStyle = "rgba(255,255,255,0.3)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, L.cell*0.46, -Math.PI/2, -Math.PI/2 + frac*Math.PI*2);
+    ctx.stroke();
+  };
+  for (let i=0;i<L.rows;i++){
+    const d = abacusDigit(i, t);
+    const U = abacusUnit(i);
+    const frac = (running || finished) ? (((finished ? totalCycle : t) % U) / U) : 0;
+    for (let k=0;k<d;k++) lamp(k, i, frac, U);
+    if (running) dwell(i, frac);
   }
   // milestone lamps: each lights the moment its mark is hit, and stays lit
   const eNow = finished ? totalCycle : t;
@@ -1565,6 +1587,10 @@ function artIdx(){ return triadFill === 15 ? galleryIdx % ART_DATA.length : tria
 // 2 = LEDs (two lamps per place: dark-dark 0, one lit 1, both lit 2)
 let stackCounter = 0;
 try { stackCounter = Math.min(2, Math.max(0, parseInt(localStorage.getItem('salvationStacks') || "0", 10) || 0)); } catch(e) {}
+// FRACTION depth: 0 = auto (three places; the deep views add 1/81),
+// 1 = always to 1/81, 2 = always to 1/243
+let fracDepth = 0;
+try { fracDepth = Math.min(2, Math.max(0, parseInt(localStorage.getItem('salvationFracDepth') || "0", 10) || 0)); } catch(e) {}
 
 /* ART fills: three public-domain works as pointillist panels - 6561
    dots on an ultramarine ground, landing in scattered order so the
@@ -4368,7 +4394,7 @@ function drawStackCounter(str, baseY, t){
     else if (ch === ":") items.push({ colon: true });
   }
   // on the ART plates the 1/243 place joins the row as a live stack
-  if (viewMode === 6 && triadFill >= 6 && !finished && (running || pauseMs > 0)){
+  if (viewMode === 6 && triadFill >= 6 && !finished && fracDepth !== 2 && (running || pauseMs > 0)){
     const val = Math.floor((t % (60/81)) / (60/243)) % 3;
     items.push({ v: val, live: true });
   }
@@ -4414,7 +4440,7 @@ function drawLedCounter(str, baseY, t){
     if (ch >= "0" && ch <= "2") items.push({ v: +ch });
     else if (ch === ":") items.push({ colon: true });
   }
-  if (viewMode === 6 && triadFill >= 6 && !finished && (running || pauseMs > 0)){
+  if (viewMode === 6 && triadFill >= 6 && !finished && fracDepth !== 2 && (running || pauseMs > 0)){
     const val = Math.floor((t % (60/81)) / (60/243)) % 3;
     items.push({ v: val, live: true });
   }
@@ -4463,12 +4489,22 @@ function drawLedCounter(str, baseY, t){
 function drawTimerText(t){
   const y = getTextY();
   let str = timerStr;
-  if ((viewMode === 6 || viewMode === 7 || viewMode === 8) && str.indexOf(":") !== -1){
-    // TRIAD, DREAM and GOETIA read one place deeper: the 1/81 digit.
-    // (On the ART plates the 1/243 place is the STACK beside the
-    // counter - a dot rising through three cells - not a digit.)
-    const d81 = finished ? 0 : Math.floor(t / (60/81)) % 3;
-    str = str.replace("₃", d81 + "₃");
+  if (str.indexOf(":") !== -1){
+    // fraction depth: AUTO gives the deep views (TRIAD, DREAM,
+    // GOETIA) their 1/81; the explicit settings deepen every view
+    const deep = viewMode === 6 || viewMode === 7 || viewMode === 8;
+    let ext = "";
+    if (fracDepth === 1 || (fracDepth === 0 && deep))
+      ext = String(finished ? 0 : Math.floor(t / (60/81)) % 3);
+    else if (fracDepth === 2)
+      ext = String(finished ? 0 : Math.floor(t / (60/81)) % 3)
+          + String(finished ? 0 : Math.floor(t / (60/243)) % 3);
+    if (ext) str = str.replace("₃", ext + "₃");
+  }
+  if (viewMode === 2){
+    // the abacus register IS the counter - only overtime prints
+    if (finished && overtimeStr) drawSevenSegText(overtimeStr, y, 0.62);
+    return;
   }
   if (stackCounter){
     if (stackCounter === 2) drawLedCounter(str, y, t);
@@ -4481,9 +4517,14 @@ function drawTimerText(t){
     }
     return;
   }
-  if (viewMode === 2 || viewMode === 6){ // LED readout on ABACUS and TRIAD
+  if (viewMode === 2){
+    // the abacus register IS the counter - only overtime prints
+    if (finished && overtimeStr) drawSevenSegText(overtimeStr, y, 0.62);
+    return;
+  }
+  if (viewMode === 6){ // LED readout on TRIAD
     const segW = drawSevenSegText(str, y);
-    if (viewMode === 6 && triadFill >= 6 && !finished)
+    if (viewMode === 6 && triadFill >= 6 && !finished && fracDepth !== 2)
       drawTriadStack(t, viewW/2 + segW/2 + 16, y);
     if (finished && overtimeStr) drawSevenSegText(overtimeStr, y + (viewW < 500 ? 34 : 42), 0.62);
     return;
@@ -4510,10 +4551,13 @@ function drawTimerText(t){
   const DIGIT_COLORS = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"];
   ctx.textAlign = "left";
   let x = viewW/2 - ctx.measureText(str).width/2;
-  let di = 0; // digits appear in dial order (minutes then fractions)
+  // digits appear in dial order (minutes then fractions), but pad
+  // digits (the waiting final place) and depth digits (1/81, 1/243)
+  // have no dial behind them - they wear plain value colors
+  let di = -Math.max(0, minutesWidth() - (timeMode === 0 ? 3 : 4));
   for (const ch of str){
     if (ch >= "0" && ch <= "2"){
-      if (viewMode === 0 || viewMode === 4){
+      if ((viewMode === 0 || viewMode === 4) && di >= 0 && di < numDials){
         const T = ticks[di];
         ctx.fillStyle = ringLerp(posIndex(di, t), (t % T)/T);
       } else {
@@ -4692,7 +4736,7 @@ function draw(now){
   }
   if (viewMode < 9){
     drawTimerText(vizT);
-    if (viewMode !== 8 && viewMode !== 6) drawTapHint();
+    if (viewMode !== 8 && viewMode !== 6 && viewMode !== 2) drawTapHint();
   }
   drawStatus();
   drawMuteBadge();
@@ -4892,6 +4936,8 @@ function menuSync(){
     b.classList.toggle('active', i === triadFill));
   document.querySelectorAll('#menuCounter button').forEach((b, i) =>
     b.classList.toggle('active', i === stackCounter));
+  document.querySelectorAll('#menuFrac button').forEach((b, i) =>
+    b.classList.toggle('active', i === fracDepth));
   document.getElementById('menuTones').classList.toggle('muted', muted);
 }
 VIEW_NAMES.forEach((n, i) => {
@@ -4948,6 +4994,19 @@ TRIAD_FILLS.forEach((n, i) => {
     haptic('light');
   };
   document.getElementById('menuCounter').appendChild(b);
+});
+["AUTO","1/81","1/243"].forEach((n, i) => {
+  const b = document.createElement('button');
+  b.textContent = n;
+  b.onclick = () => {
+    fracDepth = i;
+    try { localStorage.setItem('salvationFracDepth', String(i)); } catch(e) {}
+    needsStaticRedraw = true; // the abacus register follows the depth
+    menuSync();
+    menuEl.style.display = 'none';
+    haptic('light');
+  };
+  document.getElementById('menuFrac').appendChild(b);
 });
 ["27 MIN","54 MIN","81 MIN"].forEach((n, i) => {
   const b = document.createElement('button');
@@ -5085,6 +5144,8 @@ document.getElementById('menuDefault').addEventListener('click', () => {
   triadKey = "";
   stackCounter = 0;
   try { localStorage.setItem('salvationStacks', "0"); } catch(e) {}
+  fracDepth = 0;
+  try { localStorage.setItem('salvationFracDepth', "0"); } catch(e) {}
   gotoView(DEFAULT_PRESET.view);
   setDuration(DEFAULT_PRESET.dur); // duration stays reset-gated: no-op mid-session
   menuSync();
