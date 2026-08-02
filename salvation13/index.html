@@ -73,6 +73,7 @@
   #btnReset  { background:#e03131; }
   #btnMenu   { background:#008b8b; }
   #btnPlay   { background:#0074ff; min-width: 110px; }
+  #btnPlay.disabled { opacity: 0.35; }
 
   #ui button.pulse {
     box-shadow: 0 0 16px rgba(255,255,255,0.6);
@@ -838,7 +839,7 @@ function setFinalTimerText(){
 /* ---------- CLOCK CONTROL ---------- */
 function startClock(){
   if (running) return;
-  if (finished) resetClock();
+  if (finished) return; // completion is a full stop - RESET, then START
   if (pauseMs === 0) dreamVariant = Math.floor(Math.random()*9); // a new dream each session
   if (pauseMs === 0 && triadFill === 15){
     // GALLERY: hang the next plate for this session
@@ -4740,8 +4741,10 @@ function draw(now){
   }
   drawStatus();
   drawMuteBadge();
-  const playLbl = running ? "PAUSE" : finished ? "RESTART" : pauseMs > 0 ? "RESUME" : "START";
+  const playLbl = running ? "PAUSE" : pauseMs > 0 ? "RESUME" : "START";
   if (btnPlay.textContent !== playLbl) btnPlay.textContent = playLbl;
+  // completion is a full stop: START sleeps until RESET clears the bell
+  btnPlay.classList.toggle('disabled', finished);
 
   } catch (err) {
     console.error('Draw loop error:', err);
@@ -4751,8 +4754,9 @@ function draw(now){
 
 /* ---------- TAP THE CLOCK: start -> pause -> resume ---------- */
 function toggleClock(){
-  if (running) pauseClock();
-  else startClock(); // startClock() itself restarts fresh after a finished cycle
+  if (running){ pauseClock(); }
+  else if (finished){ haptic('light'); return; } // RESET first, then START
+  else startClock();
   haptic('medium');
 }
 // The tap target sits on the icon itself (tap-to-start / pause / play),
