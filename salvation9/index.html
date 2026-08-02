@@ -342,6 +342,7 @@ let centerColor=[], centerSize=[], glowAlpha=[];
 let running=false, finished=false;
 let startMs=0, pauseMs=0;
 let startWall=0, finishWall=0;  // wall-clock anchors: Date.now() survives device sleep
+let audioLagSm = 0;             // smoothed audio-pipeline latency (presentation clock)
 let lastBeepMinute = 0;
 let lastToneIdx = {};
 const TONE_DEFS = [
@@ -4321,16 +4322,17 @@ function drawTriadStack(t, x0, baseY){
   const cy = baseY - H/2 + 8;                    // counter's vertical middle
   const T81 = 60/81, T243 = 60/243;
   const val = Math.floor((t % T81) / T243) % 3;  // 0, 1, 2 within the 1/81
-  const flash = running && (t % T81) < 0.12;
+  const flash = running && (t % T81) < 0.1;
   for (let i = 0; i < 3; i++){
     ctx.strokeStyle = flash ? "rgba(255,120,100,0.9)" : "rgba(255,80,60,0.5)";
     ctx.lineWidth = flash ? 2 : 1.5;
     ctx.strokeRect(x0, cy + (i - 1.5)*s, s, s);
   }
   if (flash){
+    // the wrap-blink washes the column but never hides the dot -
+    // every cell keeps its full 1/243 of dwell time
     ctx.fillStyle = "rgba(255,70,50,0.28)";
     ctx.fillRect(x0, cy - 1.5*s, s, 3*s);
-    return;
   }
   const row = 2 - val;                           // bottom-up
   ctx.fillStyle = "rgba(255,70,50,0.16)";
@@ -4482,8 +4484,12 @@ function draw(now){
     // firing on the true clock, so by the time a bell reaches the ear the
     // screen is showing the very instant it belongs to. Self-calibrating
     // per device (re-read each frame; adapts if output latency changes).
-    const audioLag = audioCtx ? Math.min(0.35, (audioCtx.outputLatency || 0) + (audioCtx.baseLatency || 0)) : 0;
-    const pElapsed = Math.max(0, elapsed - audioLag);
+    const audioLagTarget = audioCtx ? Math.min(0.35, (audioCtx.outputLatency || 0) + (audioCtx.baseLatency || 0)) : 0;
+    // smoothed: some devices report a jittery outputLatency, and any
+    // jitter here would wobble every visual cadence (the 1/243 stack
+    // made it visible). Ease toward the target instead of jumping.
+    audioLagSm += (audioLagTarget - audioLagSm) * 0.05;
+    const pElapsed = Math.max(0, elapsed - audioLagSm);
 
     // CYCLE: tour all nine timer views, three minutes each - a full
     // tour is exactly 27 minutes. Paused while a diagram is open.
