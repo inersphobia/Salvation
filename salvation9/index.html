@@ -282,6 +282,8 @@
   <div class="menu-grid" id="menuFill"></div>
   <div class="set-title">C O U N T E R</div>
   <div class="menu-grid" id="menuCounter"></div>
+  <div class="set-title">F R A C T I O N S</div>
+  <div class="menu-grid" id="menuFrac"></div>
   <div class="set-title">S O U N D</div>
   <button id="muteBar">&#128266;&nbsp; MUTE</button>
   <div class="menu-grid" id="menuVol"></div>
@@ -1565,6 +1567,10 @@ function artIdx(){ return triadFill === 15 ? galleryIdx % ART_DATA.length : tria
 // 2 = LEDs (two lamps per place: dark-dark 0, one lit 1, both lit 2)
 let stackCounter = 0;
 try { stackCounter = Math.min(2, Math.max(0, parseInt(localStorage.getItem('salvationStacks') || "0", 10) || 0)); } catch(e) {}
+// FRACTION depth: 0 = auto (three places; the deep views add 1/81),
+// 1 = always to 1/81, 2 = always to 1/243
+let fracDepth = 0;
+try { fracDepth = Math.min(2, Math.max(0, parseInt(localStorage.getItem('salvationFracDepth') || "0", 10) || 0)); } catch(e) {}
 
 /* ART fills: three public-domain works as pointillist panels - 6561
    dots on an ultramarine ground, landing in scattered order so the
@@ -4368,7 +4374,7 @@ function drawStackCounter(str, baseY, t){
     else if (ch === ":") items.push({ colon: true });
   }
   // on the ART plates the 1/243 place joins the row as a live stack
-  if (viewMode === 6 && triadFill >= 6 && !finished && (running || pauseMs > 0)){
+  if (viewMode === 6 && triadFill >= 6 && !finished && fracDepth !== 2 && (running || pauseMs > 0)){
     const val = Math.floor((t % (60/81)) / (60/243)) % 3;
     items.push({ v: val, live: true });
   }
@@ -4414,7 +4420,7 @@ function drawLedCounter(str, baseY, t){
     if (ch >= "0" && ch <= "2") items.push({ v: +ch });
     else if (ch === ":") items.push({ colon: true });
   }
-  if (viewMode === 6 && triadFill >= 6 && !finished && (running || pauseMs > 0)){
+  if (viewMode === 6 && triadFill >= 6 && !finished && fracDepth !== 2 && (running || pauseMs > 0)){
     const val = Math.floor((t % (60/81)) / (60/243)) % 3;
     items.push({ v: val, live: true });
   }
@@ -4463,12 +4469,17 @@ function drawLedCounter(str, baseY, t){
 function drawTimerText(t){
   const y = getTextY();
   let str = timerStr;
-  if ((viewMode === 6 || viewMode === 7 || viewMode === 8) && str.indexOf(":") !== -1){
-    // TRIAD, DREAM and GOETIA read one place deeper: the 1/81 digit.
-    // (On the ART plates the 1/243 place is the STACK beside the
-    // counter - a dot rising through three cells - not a digit.)
-    const d81 = finished ? 0 : Math.floor(t / (60/81)) % 3;
-    str = str.replace("₃", d81 + "₃");
+  if (str.indexOf(":") !== -1){
+    // fraction depth: AUTO gives the deep views (TRIAD, DREAM,
+    // GOETIA) their 1/81; the explicit settings deepen every view
+    const deep = viewMode === 6 || viewMode === 7 || viewMode === 8;
+    let ext = "";
+    if (fracDepth === 1 || (fracDepth === 0 && deep))
+      ext = String(finished ? 0 : Math.floor(t / (60/81)) % 3);
+    else if (fracDepth === 2)
+      ext = String(finished ? 0 : Math.floor(t / (60/81)) % 3)
+          + String(finished ? 0 : Math.floor(t / (60/243)) % 3);
+    if (ext) str = str.replace("₃", ext + "₃");
   }
   if (stackCounter){
     if (stackCounter === 2) drawLedCounter(str, y, t);
@@ -4483,7 +4494,7 @@ function drawTimerText(t){
   }
   if (viewMode === 2 || viewMode === 6){ // LED readout on ABACUS and TRIAD
     const segW = drawSevenSegText(str, y);
-    if (viewMode === 6 && triadFill >= 6 && !finished)
+    if (viewMode === 6 && triadFill >= 6 && !finished && fracDepth !== 2)
       drawTriadStack(t, viewW/2 + segW/2 + 16, y);
     if (finished && overtimeStr) drawSevenSegText(overtimeStr, y + (viewW < 500 ? 34 : 42), 0.62);
     return;
@@ -4510,10 +4521,13 @@ function drawTimerText(t){
   const DIGIT_COLORS = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"];
   ctx.textAlign = "left";
   let x = viewW/2 - ctx.measureText(str).width/2;
-  let di = 0; // digits appear in dial order (minutes then fractions)
+  // digits appear in dial order (minutes then fractions), but pad
+  // digits (the waiting final place) and depth digits (1/81, 1/243)
+  // have no dial behind them - they wear plain value colors
+  let di = -Math.max(0, minutesWidth() - (timeMode === 0 ? 3 : 4));
   for (const ch of str){
     if (ch >= "0" && ch <= "2"){
-      if (viewMode === 0 || viewMode === 4){
+      if ((viewMode === 0 || viewMode === 4) && di >= 0 && di < numDials){
         const T = ticks[di];
         ctx.fillStyle = ringLerp(posIndex(di, t), (t % T)/T);
       } else {
@@ -4892,6 +4906,8 @@ function menuSync(){
     b.classList.toggle('active', i === triadFill));
   document.querySelectorAll('#menuCounter button').forEach((b, i) =>
     b.classList.toggle('active', i === stackCounter));
+  document.querySelectorAll('#menuFrac button').forEach((b, i) =>
+    b.classList.toggle('active', i === fracDepth));
   document.getElementById('menuTones').classList.toggle('muted', muted);
 }
 VIEW_NAMES.forEach((n, i) => {
@@ -4948,6 +4964,18 @@ TRIAD_FILLS.forEach((n, i) => {
     haptic('light');
   };
   document.getElementById('menuCounter').appendChild(b);
+});
+["AUTO","1/81","1/243"].forEach((n, i) => {
+  const b = document.createElement('button');
+  b.textContent = n;
+  b.onclick = () => {
+    fracDepth = i;
+    try { localStorage.setItem('salvationFracDepth', String(i)); } catch(e) {}
+    menuSync();
+    menuEl.style.display = 'none';
+    haptic('light');
+  };
+  document.getElementById('menuFrac').appendChild(b);
 });
 ["27 MIN","54 MIN","81 MIN"].forEach((n, i) => {
   const b = document.createElement('button');
@@ -5085,6 +5113,8 @@ document.getElementById('menuDefault').addEventListener('click', () => {
   triadKey = "";
   stackCounter = 0;
   try { localStorage.setItem('salvationStacks', "0"); } catch(e) {}
+  fracDepth = 0;
+  try { localStorage.setItem('salvationFracDepth', "0"); } catch(e) {}
   gotoView(DEFAULT_PRESET.view);
   setDuration(DEFAULT_PRESET.dur); // duration stays reset-gated: no-op mid-session
   menuSync();
