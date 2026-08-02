@@ -790,6 +790,14 @@ function updateLedPosition(i,elapsed){
 }
 
 /* ---------- TIMER TEXT ---------- */
+// The minutes field is always as wide as its completion value, so the
+// final place exists from the first second - 27 runs as 0102:101 and
+// rolls to 1000:000 without a new place appearing from nowhere.
+function minutesWidth(){
+  let mins = Math.round(totalCycle/60), w = 0;
+  while (mins > 0){ w++; mins = Math.floor(mins/3); }
+  return Math.max(1, w);
+}
 function updateTimerText(el){
   let minsIdx, fracIdx;
 
@@ -801,7 +809,10 @@ function updateTimerText(el){
     fracIdx=[4,5,6];
   }
 
-  const m=minsIdx.map(i=>posIndex(i,el)-1).join("");
+  let m=minsIdx.map(i=>posIndex(i,el)-1).join("");
+  const w = minutesWidth();
+  while (m.length < w) m = "0" + m;
+  if (m.length > w) m = m.slice(m.length - w);
   const f=fracIdx.map(i=>posIndex(i,el)-1).join("");
   timerStr=m+":"+f+"₃";
 }
@@ -818,8 +829,7 @@ function setFinalTimerText(){
   // whole cycle: 27 -> 1000, 54 -> 2000, 81 -> 10000.
   let mins = Math.round(totalCycle / 60), m = "";
   while (mins > 0){ m = (mins % 3) + m; mins = Math.floor(mins / 3); }
-  const width = timeMode === 0 ? 3 : 4;
-  while (m.length < width) m = "0" + m;
+  while (m.length < minutesWidth()) m = "0" + m;
   timerStr = m + ":000₃";
 }
 
