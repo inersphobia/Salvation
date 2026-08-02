@@ -1,4 +1,4 @@
-const CACHE_NAME = 'salvation9-v52';
+const CACHE_NAME = 'salvation9-v53';
 const urlsToCache = [
   './',
   './index.html',
@@ -11,7 +11,8 @@ const urlsToCache = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
+      .then(cache => cache.addAll(urlsToCache)
+        .then(() => cache.add('../brothers-sheet.webp').catch(() => {})))
   );
   self.skipWaiting();
 });

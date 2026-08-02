@@ -848,6 +848,13 @@ function startClock(){
     try { localStorage.setItem('salvationGalleryIdx', String((galleryIdx + 1) % ART_DATA.length)); } catch(e) {}
     triadKey = ""; needsStaticRedraw = true;
   }
+  if (pauseMs === 0 && triadFill === 17){
+    // SAGA: the story turns one scene per session
+    if (sagaRan) sagaIdx = (sagaIdx + 1) % 27;
+    sagaRan = true;
+    try { localStorage.setItem('salvationSaga', String(sagaIdx)); } catch(e) {}
+    triadKey = ""; needsStaticRedraw = true;
+  }
   startMs = pauseMs>0 ? performance.now()-pauseMs : performance.now();
   startWall = Date.now() - (performance.now() - startMs);
   running=true;
@@ -1576,9 +1583,12 @@ const TRIAD_FAM = [TRIAD_W, TRIAD_W, TRIAD_W];
 // real constellations - 81 stars, one per 1/81 of the session, a pen
 // of light traveling star to star at whatever speed lands it on the
 // beat (fast over Cygnus's long dive, slow through the Pleiades).
-const TRIAD_FILLS = ["TRIAD", "SCATTER", "DIAG", "BLOOM", "LIFE", "SKY", "DORÉ", "DÜRER", "BLAKE", "BURNE", "BEAST", "THESEUS", "ANCIENT", "FIRMAMENT", "ASCENT", "GALLERY"];
+const TRIAD_FILLS = ["TRIAD", "SCATTER", "DIAG", "BLOOM", "LIFE", "SKY", "DORÉ", "DÜRER", "BLAKE", "BURNE", "BEAST", "THESEUS", "ANCIENT", "FIRMAMENT", "ASCENT", "GALLERY", "STORY", "SAGA"];
 let triadFill = 0;
-try { triadFill = Math.min(15, Math.max(0, parseInt(localStorage.getItem('salvationTriadFill') || "0", 10) || 0)); } catch(e) {}
+try { triadFill = Math.min(17, Math.max(0, parseInt(localStorage.getItem('salvationTriadFill') || "0", 10) || 0)); } catch(e) {}
+// SAGA reads the sheet one scene per session, in order
+let sagaIdx = 0, sagaRan = false;
+try { sagaIdx = Math.min(26, Math.max(0, parseInt(localStorage.getItem('salvationSaga') || "0", 10) || 0)); } catch(e) {}
 // GALLERY rotates through every art plate, one per session
 let galleryIdx = 0, galleryRan = false;
 try { galleryIdx = Math.max(0, parseInt(localStorage.getItem('salvationGalleryIdx') || "0", 10) || 0); } catch(e) {}
@@ -1847,6 +1857,106 @@ function triadPos54(n){
 function triadPosM(n, rowsLED){
   return rowsLED === 54 ? triadPos54(n) : triadPos(n);
 }
+/* --- STORY / SAGA: the brothers sheet, pointillized at runtime.
+   28 panels in reading order - 27 scenes and the finale (the owl on
+   the table, panel 1000 = 27). STORY walks all 27 in one session,
+   one scene per 1/27; SAGA gives each scene a whole session. Dots
+   exist only where the image has light - the dark stays dark, and
+   each plate lands however many dots its scene wants. */
+const STORY_G = 243;
+const STORY_PANELS = [
+  "001","002","010","011","012","022","012","020","021","102","100","110",
+  "111","112","120","121","111","120","121","200","201","210","212","220",
+  "221","222","1000","1000"];
+let storyImg = null, storyReady = false;
+const storyCache = {};
+let storyScene = -1, storyPlotted = 0;
+function storyBoot(){
+  if (storyImg) return;
+  storyImg = new Image();
+  storyImg.onload = () => { storyReady = true; };
+  storyImg.onerror = () => {};
+  storyImg.src = (/\/salvation\d/i.test(location.pathname) ? "../" : "./") + "brothers-sheet.webp";
+}
+function storyPlate(idx){
+  if (!storyReady) return null;
+  if (storyCache[idx]) return storyCache[idx];
+  const W = storyImg.width, H = storyImg.height;
+  const gx0 = 0.048, gx1 = 0.955, gy0 = 0.049, gy1 = 0.965;
+  const cw = (gx1 - gx0)/4, chh = (gy1 - gy0)/7;
+  const inL = 0.075, inT = 0.06, inB = 0.31 + (idx === 21 ? 0.13 : idx === 10 ? 0.03 : 0);
+  const r = Math.floor(idx/4), c = idx % 4;
+  const x = (gx0 + c*cw + cw*inL)*W, y = (gy0 + r*chh + chh*inT)*H;
+  const w = cw*(1 - 2*0.075)*W, h = chh*(1 - inT - inB)*H;
+  const side = Math.min(w, h);
+  const off = document.createElement('canvas');
+  off.width = STORY_G; off.height = STORY_G;
+  const oc = off.getContext('2d');
+  oc.drawImage(storyImg, x + (w - side)/2, y + (h - side)/2, side, side, 0, 0, STORY_G, STORY_G);
+  const px = oc.getImageData(0, 0, STORY_G, STORY_G).data;
+  const lums = [];
+  for (let i = 0; i < STORY_G*STORY_G; i++)
+    lums.push((0.2126*px[i*4] + 0.7152*px[i*4+1] + 0.0722*px[i*4+2])/255);
+  const srt = lums.slice().sort((a, b) => a - b);
+  const lo = srt[Math.floor(lums.length*0.04)], hi = srt[Math.floor(lums.length*0.97)];
+  const pos = [], lum = [];
+  for (let i = 0; i < lums.length; i++){
+    const L = Math.max(0, Math.min(1, (lums[i] - lo)/(hi - lo)));
+    if (L < 0.14) continue;              // the dark stays dark
+    pos.push(i); lum.push(L);
+  }
+  // one fixed scattered landing order per scene
+  let sd = 1000 + idx*7919;
+  for (let i = pos.length - 1; i > 0; i--){
+    sd = (sd * 48271) % 2147483647;
+    const j = sd % (i + 1);
+    let t2 = pos[i]; pos[i] = pos[j]; pos[j] = t2;
+    t2 = lum[i]; lum[i] = lum[j]; lum[j] = t2;
+  }
+  storyCache[idx] = { pos, lum, n: pos.length };
+  return storyCache[idx];
+}
+function drawTriadStory(L, t, idle){
+  storyBoot();
+  const isSaga = triadFill === 17;
+  const sceneDur = isSaga ? totalCycle : totalCycle/27;
+  let k, q;
+  if (finished){ k = isSaga ? (sagaIdx === 26 ? 27 : sagaIdx) : 27; q = 1; }
+  else if (idle){ k = isSaga ? sagaIdx : 0; q = 0; }
+  else {
+    const kk = Math.min(26, Math.floor(t/sceneDur));
+    k = isSaga ? sagaIdx : kk;
+    q = Math.min(1, (t - (isSaga ? 0 : kk*sceneDur))/sceneDur);
+  }
+  const P = storyPlate(k);
+  const cs = L.fieldW/STORY_G, c2 = triadCtx2;
+  if (P){
+    const want = finished ? P.n : Math.floor(P.n * q);
+    if (storyScene !== k || want < storyPlotted){
+      c2.clearRect(0, 0, L.fieldW, L.fieldH);
+      storyScene = k; storyPlotted = 0;
+    }
+    while (storyPlotted < want){
+      const i = P.pos[storyPlotted], Lv = P.lum[storyPlotted];
+      const x = i % STORY_G, y = (i - x)/STORY_G;
+      c2.fillStyle = "rgba(224,232,250," + (0.5 + 0.45*Lv).toFixed(2) + ")";
+      c2.beginPath();
+      c2.arc((x + 0.5)*cs, (y + 0.5)*cs,
+             cs*(0.05 + 0.17*Lv + 0.3*Math.pow(Lv, 3)), 0, 2*Math.PI);
+      c2.fill();
+      storyPlotted++;
+    }
+  }
+  ctx.drawImage(triadCanvas, L.px0, L.py0);
+  // the scene's ternary number, etched on the bezel plate
+  ctx.font = Math.round(11*L.k) + "px monospace";
+  ctx.textAlign = "right";
+  ctx.fillStyle = "rgba(150,160,220,0.55)";
+  ctx.fillText((isSaga ? "SAGA" : "STORY") + " · " + STORY_PANELS[k],
+               L.px0 + L.fieldW + 6*L.k, L.py0 - 22*L.k);
+  return { k, isSaga };
+}
+
 function triadLayout(){
   const totalMin = Math.round(totalCycle/60);
   // SKY and the ART panels are always the full square
@@ -1881,6 +1991,7 @@ function triadEnsure(L){
     triadCanvas.width = L.fieldW; triadCanvas.height = L.fieldH;
     triadCtx2 = triadCanvas.getContext('2d');
     triadN = 0;
+    storyScene = -1; storyPlotted = 0;
   }
 }
 function triadTo(L, n){
@@ -1942,10 +2053,16 @@ function drawTriadStatic(){
   ctxStatic.fillText("T R I A D", L.px0 - 4*k, L.py0 - 22*k);
   ctxStatic.textAlign = "right";
   ctxStatic.fillStyle = "rgba(140,155,170,0.4)";
-  ctxStatic.fillText(triadFill >= 6 ? ART_DATA[artIdx()].n
-                                    : "UNIT: " + L.totalMin + " MIN",
+  ctxStatic.fillText(triadFill >= 16 ? ""
+                     : triadFill >= 6 ? ART_DATA[artIdx()].n
+                     : "UNIT: " + L.totalMin + " MIN",
                      L.px0 + L.fieldW + 6*k, L.py0 - 22*k);
-  if (triadFill >= 6){
+  if (triadFill >= 16){
+    // STORY / SAGA: a near-black indigo stage for the scenes
+    ctxStatic.fillStyle = "#0a0d30";
+    septRect(ctxStatic, L.px0 - 12*k, L.py0 - 12*k, L.fieldW + 24*k, L.fieldH + 24*k, 6);
+    ctxStatic.fill();
+  } else if (triadFill >= 6){
     // ART: an ultramarine ground - the dots themselves are the image
     // (the closeup plates sit on a slightly deeper blue)
     ctxStatic.fillStyle = ART_DATA[artIdx()].h ? "#10148f" : "#141a8f";
@@ -2075,8 +2192,10 @@ function drawTriad(t){
   const idle = !running && !finished && pauseMs === 0;
   const T81 = 60/81;
   const lit = finished ? L.N : idle ? 0 : Math.min(L.N, Math.floor(t/T81));
-  let skyDone = 0, skyWhole = 0, artDone = 0;
-  if (triadFill >= 6){
+  let skyDone = 0, skyWhole = 0, artDone = 0, storyState = null;
+  if (triadFill >= 16){
+    storyState = drawTriadStory(L, t, idle);
+  } else if (triadFill >= 6){
     // ART: the image develops out of noise, one dot per grid-cell's
     // share of the session (1/6561 or, for the fine panels, 1/59049)
     const AG = ART_DATA[artIdx()].g, AN = AG*AG;
@@ -2199,7 +2318,11 @@ function drawTriad(t){
   ctx.font = Math.round(10*L.k) + "px monospace";
   ctx.textAlign = "left";
   ctx.fillStyle = "rgba(140,155,170,0.4)";
-  ctx.fillText(triadFill >= 6
+  ctx.fillText(triadFill >= 16
+                 ? (storyState && storyState.isSaga
+                     ? "CHAPTER " + (Math.min(sagaIdx, 26) + 1) + " / 27"
+                     : "SCENE " + (storyState ? Math.min(storyState.k, 26) + 1 : 1) + " / 27")
+                 : triadFill >= 6
                  ? artDone + " / " + (ART_DATA[artIdx()].g*ART_DATA[artIdx()].g)
                  : triadFill === 5
                  ? skyDone + " / 81 ★ · " + skyWhole + " WHOLE"
@@ -4395,7 +4518,7 @@ function drawStackCounter(str, baseY, t){
     else if (ch === ":") items.push({ colon: true });
   }
   // on the ART plates the 1/243 place joins the row as a live stack
-  if (viewMode === 6 && triadFill >= 6 && !finished && fracDepth !== 2 && (running || pauseMs > 0)){
+  if (viewMode === 6 && triadFill >= 6 && triadFill <= 15 && !finished && fracDepth !== 2 && (running || pauseMs > 0)){
     const val = Math.floor((t % (60/81)) / (60/243)) % 3;
     items.push({ v: val, live: true });
   }
@@ -4441,7 +4564,7 @@ function drawLedCounter(str, baseY, t){
     if (ch >= "0" && ch <= "2") items.push({ v: +ch });
     else if (ch === ":") items.push({ colon: true });
   }
-  if (viewMode === 6 && triadFill >= 6 && !finished && fracDepth !== 2 && (running || pauseMs > 0)){
+  if (viewMode === 6 && triadFill >= 6 && triadFill <= 15 && !finished && fracDepth !== 2 && (running || pauseMs > 0)){
     const val = Math.floor((t % (60/81)) / (60/243)) % 3;
     items.push({ v: val, live: true });
   }
@@ -4525,7 +4648,7 @@ function drawTimerText(t){
   }
   if (viewMode === 6){ // LED readout on TRIAD
     const segW = drawSevenSegText(str, y);
-    if (viewMode === 6 && triadFill >= 6 && !finished && fracDepth !== 2)
+    if (viewMode === 6 && triadFill >= 6 && triadFill <= 15 && !finished && fracDepth !== 2)
       drawTriadStack(t, viewW/2 + segW/2 + 16, y);
     if (finished && overtimeStr) drawSevenSegText(overtimeStr, y + (viewW < 500 ? 34 : 42), 0.62);
     return;
