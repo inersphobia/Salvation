@@ -1951,7 +1951,7 @@ function drawTriadStory(L, t, idle){
   // the scene's ternary number, etched on the bezel plate
   ctx.font = Math.round(11*L.k) + "px monospace";
   ctx.textAlign = "right";
-  ctx.fillStyle = "rgba(150,160,220,0.55)";
+  ctx.fillStyle = "rgba(190,200,255,0.6)";
   ctx.fillText((isSaga ? "SAGA" : "STORY") + " · " + STORY_PANELS[k],
                L.px0 + L.fieldW + 6*L.k, L.py0 - 22*L.k);
   return { k, isSaga };
@@ -2058,8 +2058,9 @@ function drawTriadStatic(){
                      : "UNIT: " + L.totalMin + " MIN",
                      L.px0 + L.fieldW + 6*k, L.py0 - 22*k);
   if (triadFill >= 16){
-    // STORY / SAGA: a near-black indigo stage for the scenes
-    ctxStatic.fillStyle = "#0a0d30";
+    // STORY / SAGA: the scenes live on the same deep klein blue
+    // as the closeup plates
+    ctxStatic.fillStyle = "#10148f";
     septRect(ctxStatic, L.px0 - 12*k, L.py0 - 12*k, L.fieldW + 24*k, L.fieldH + 24*k, 6);
     ctxStatic.fill();
   } else if (triadFill >= 6){
