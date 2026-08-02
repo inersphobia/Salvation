@@ -280,6 +280,8 @@
   </div>
   <div class="set-title">T R I A D &nbsp; F I L L</div>
   <div class="menu-grid" id="menuFill"></div>
+  <div class="set-title">C O U N T E R</div>
+  <div class="menu-grid" id="menuCounter"></div>
   <div class="set-title">S O U N D</div>
   <button id="muteBar">&#128266;&nbsp; MUTE</button>
   <div class="menu-grid" id="menuVol"></div>
@@ -1548,6 +1550,10 @@ try { triadFill = Math.min(15, Math.max(0, parseInt(localStorage.getItem('salvat
 let galleryIdx = 0, galleryRan = false;
 try { galleryIdx = Math.max(0, parseInt(localStorage.getItem('salvationGalleryIdx') || "0", 10) || 0); } catch(e) {}
 function artIdx(){ return triadFill === 15 ? galleryIdx % ART_DATA.length : triadFill - 6; }
+// COUNTER mode: 0 = digits, 1 = stacks (every place a three-cell
+// column, the dot's position being the digit - 0 low, 1 mid, 2 high)
+let stackCounter = 0;
+try { stackCounter = localStorage.getItem('salvationStacks') === "1" ? 1 : 0; } catch(e) {}
 
 /* ART fills: three public-domain works as pointillist panels - 6561
    dots on an ultramarine ground, landing in scattered order so the
@@ -4322,17 +4328,10 @@ function drawTriadStack(t, x0, baseY){
   const cy = baseY - H/2 + 8;                    // counter's vertical middle
   const T81 = 60/81, T243 = 60/243;
   const val = Math.floor((t % T81) / T243) % 3;  // 0, 1, 2 within the 1/81
-  const flash = running && (t % T81) < 0.1;
   for (let i = 0; i < 3; i++){
-    ctx.strokeStyle = flash ? "rgba(255,120,100,0.9)" : "rgba(255,80,60,0.5)";
-    ctx.lineWidth = flash ? 2 : 1.5;
+    ctx.strokeStyle = "rgba(255,80,60,0.5)";
+    ctx.lineWidth = 1.5;
     ctx.strokeRect(x0, cy + (i - 1.5)*s, s, s);
-  }
-  if (flash){
-    // the wrap-blink washes the column but never hides the dot -
-    // every cell keeps its full 1/243 of dwell time
-    ctx.fillStyle = "rgba(255,70,50,0.28)";
-    ctx.fillRect(x0, cy - 1.5*s, s, 3*s);
   }
   const row = 2 - val;                           // bottom-up
   ctx.fillStyle = "rgba(255,70,50,0.16)";
@@ -4346,6 +4345,55 @@ function drawTriadStack(t, x0, baseY){
   ctx.beginPath(); ctx.arc(x0 + s/2, dy, s*0.07, 0, 2*Math.PI); ctx.fill();
 }
 
+/* The stack counter: every ternary place rendered as a column of
+   three cells, the dot's position being the digit - bottom 0,
+   middle 1, top 2. Dots wear the digit colors (0 blue, 1 orange,
+   2 red); idle and finished fall back to the usual single colors. */
+function drawStackCounter(str, baseY, t){
+  const s = viewW < 500 ? 13 : 16, gap = Math.round(s*0.6);
+  const items = [];
+  for (const ch of str){
+    if (ch >= "0" && ch <= "2") items.push({ v: +ch });
+    else if (ch === ":") items.push({ colon: true });
+  }
+  // on the ART plates the 1/243 place joins the row as a live stack
+  if (viewMode === 6 && triadFill >= 6 && !finished && (running || pauseMs > 0)){
+    const val = Math.floor((t % (60/81)) / (60/243)) % 3;
+    items.push({ v: val, live: true });
+  }
+  const wOf = it => it.colon ? Math.round(s*0.5) : s;
+  let total = -gap;
+  for (const it of items) total += wOf(it) + gap + (it.live ? gap : 0);
+  let x = viewW/2 - total/2;
+  const cy = baseY - 1.5*s;               // column center on the text line
+  const idle = !running && !finished && pauseMs === 0;
+  const DIGIT_COLORS = ["rgb(0,120,255)", "rgb(255,160,0)", "rgb(255,70,70)"];
+  for (const it of items){
+    if (it.live) x += gap;                // breathe before the 1/243 place
+    if (it.colon){
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      const r = Math.max(1.5, s*0.11);
+      ctx.beginPath(); ctx.arc(x + wOf(it)/2, cy - s*0.55, r, 0, 2*Math.PI); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + wOf(it)/2, cy + s*0.55, r, 0, 2*Math.PI); ctx.fill();
+    } else {
+      for (let i = 0; i < 3; i++){
+        ctx.strokeStyle = "rgba(255,255,255,0.2)";
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(x, cy + (i - 1.5)*s, s, s);
+      }
+      const row = 2 - it.v;
+      const col = finished ? "#ff9500" : idle ? "#e8edf4" : DIGIT_COLORS[it.v];
+      ctx.fillStyle = col;
+      ctx.shadowColor = col; ctx.shadowBlur = 6;
+      ctx.beginPath(); ctx.arc(x + s/2, cy + (row - 1)*s, s*0.22, 0, 2*Math.PI); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.beginPath(); ctx.arc(x + s/2, cy + (row - 1)*s, s*0.07, 0, 2*Math.PI); ctx.fill();
+    }
+    x += wOf(it) + gap;
+  }
+}
+
 function drawTimerText(t){
   const y = getTextY();
   let str = timerStr;
@@ -4355,6 +4403,16 @@ function drawTimerText(t){
     // counter - a dot rising through three cells - not a digit.)
     const d81 = finished ? 0 : Math.floor(t / (60/81)) % 3;
     str = str.replace("₃", d81 + "₃");
+  }
+  if (stackCounter){
+    drawStackCounter(str, y, t);
+    if (finished && overtimeStr){
+      ctx.font = viewW < 500 ? "19px monospace" : "23px monospace";
+      ctx.fillStyle = "rgba(255,149,0,0.7)";
+      ctx.textAlign = "center";
+      ctx.fillText(overtimeStr, viewW/2, y + (viewW < 500 ? 30 : 36));
+    }
+    return;
   }
   if (viewMode === 2 || viewMode === 6){ // LED readout on ABACUS and TRIAD
     const segW = drawSevenSegText(str, y);
@@ -4765,6 +4823,8 @@ function menuSync(){
     b.classList.toggle('active', i === volSel));
   document.querySelectorAll('#menuFill button').forEach((b, i) =>
     b.classList.toggle('active', i === triadFill));
+  document.querySelectorAll('#menuCounter button').forEach((b, i) =>
+    b.classList.toggle('active', i === stackCounter));
   document.getElementById('menuTones').classList.toggle('muted', muted);
 }
 VIEW_NAMES.forEach((n, i) => {
@@ -4809,6 +4869,18 @@ TRIAD_FILLS.forEach((n, i) => {
     haptic('light');
   };
   document.getElementById('menuFill').appendChild(b);
+});
+["DIGITS","STACKS"].forEach((n, i) => {
+  const b = document.createElement('button');
+  b.textContent = n;
+  b.onclick = () => {
+    stackCounter = i;
+    try { localStorage.setItem('salvationStacks', String(i)); } catch(e) {}
+    menuSync();
+    menuEl.style.display = 'none';
+    haptic('light');
+  };
+  document.getElementById('menuCounter').appendChild(b);
 });
 ["27 MIN","54 MIN","81 MIN"].forEach((n, i) => {
   const b = document.createElement('button');
@@ -4944,6 +5016,8 @@ document.getElementById('menuDefault').addEventListener('click', () => {
   triadFill = 0;
   try { localStorage.setItem('salvationTriadFill', "0"); } catch(e) {}
   triadKey = "";
+  stackCounter = 0;
+  try { localStorage.setItem('salvationStacks', "0"); } catch(e) {}
   gotoView(DEFAULT_PRESET.view);
   setDuration(DEFAULT_PRESET.dur); // duration stays reset-gated: no-op mid-session
   menuSync();
