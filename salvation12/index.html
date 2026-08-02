@@ -1551,9 +1551,10 @@ let galleryIdx = 0, galleryRan = false;
 try { galleryIdx = Math.max(0, parseInt(localStorage.getItem('salvationGalleryIdx') || "0", 10) || 0); } catch(e) {}
 function artIdx(){ return triadFill === 15 ? galleryIdx % ART_DATA.length : triadFill - 6; }
 // COUNTER mode: 0 = digits, 1 = stacks (every place a three-cell
-// column, the dot's position being the digit - 0 low, 1 mid, 2 high)
+// column, the dot's position being the digit - 0 low, 1 mid, 2 high),
+// 2 = LEDs (two lamps per place: dark-dark 0, one lit 1, both lit 2)
 let stackCounter = 0;
-try { stackCounter = localStorage.getItem('salvationStacks') === "1" ? 1 : 0; } catch(e) {}
+try { stackCounter = Math.min(2, Math.max(0, parseInt(localStorage.getItem('salvationStacks') || "0", 10) || 0)); } catch(e) {}
 
 /* ART fills: three public-domain works as pointillist panels - 6561
    dots on an ultramarine ground, landing in scattered order so the
@@ -4394,6 +4395,61 @@ function drawStackCounter(str, baseY, t){
   }
 }
 
+/* The LED counter: two lamps per place, read as a tally - both dark
+   is 0, the lower lit is 1, both lit is 2. Zero is nothing. */
+function drawLedCounter(str, baseY, t){
+  const s = viewW < 500 ? 15 : 18, gap = Math.round(s*0.5);
+  const items = [];
+  for (const ch of str){
+    if (ch >= "0" && ch <= "2") items.push({ v: +ch });
+    else if (ch === ":") items.push({ colon: true });
+  }
+  if (viewMode === 6 && triadFill >= 6 && !finished && (running || pauseMs > 0)){
+    const val = Math.floor((t % (60/81)) / (60/243)) % 3;
+    items.push({ v: val, live: true });
+  }
+  const wOf = it => it.colon ? Math.round(s*0.45) : s;
+  let total = -gap;
+  for (const it of items) total += wOf(it) + gap + (it.live ? gap : 0);
+  let x = viewW/2 - total/2;
+  const cy = baseY - s;                    // lamp column center
+  const r = s*0.34;
+  for (const it of items){
+    if (it.live) x += gap;
+    if (it.colon){
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      const rc = Math.max(1.4, s*0.09);
+      ctx.beginPath(); ctx.arc(x + wOf(it)/2, cy - s*0.5, rc, 0, 2*Math.PI); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + wOf(it)/2, cy + s*0.5, rc, 0, 2*Math.PI); ctx.fill();
+    } else {
+      // two lamps, filling bottom-up: lamp 0 is the lower
+      for (let lamp = 0; lamp < 2; lamp++){
+        const ly = cy + (lamp === 0 ? s*0.55 : -s*0.55);
+        const on = it.v > lamp;
+        if (on){
+          const core = finished ? "#ffb14a" : "#ffffff";
+          const rim  = finished ? "#b87724" : "#c8d8ec";
+          const halo = finished ? "255,177,74" : "225,238,255";
+          ctx.fillStyle = "rgba(" + halo + ",0.22)";
+          ctx.beginPath(); ctx.arc(x + s/2, ly, r*1.9, 0, 2*Math.PI); ctx.fill();
+          const lg = ctx.createRadialGradient(x + s/2, ly, 0, x + s/2, ly, r);
+          lg.addColorStop(0, core);
+          lg.addColorStop(1, rim);
+          ctx.fillStyle = lg;
+          ctx.beginPath(); ctx.arc(x + s/2, ly, r, 0, 2*Math.PI); ctx.fill();
+        } else {
+          ctx.fillStyle = "#14181f";
+          ctx.beginPath(); ctx.arc(x + s/2, ly, r, 0, 2*Math.PI); ctx.fill();
+          ctx.strokeStyle = "rgba(255,255,255,0.1)";
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(x + s/2, ly, r, 0, 2*Math.PI); ctx.stroke();
+        }
+      }
+    }
+    x += wOf(it) + gap;
+  }
+}
+
 function drawTimerText(t){
   const y = getTextY();
   let str = timerStr;
@@ -4405,7 +4461,8 @@ function drawTimerText(t){
     str = str.replace("₃", d81 + "₃");
   }
   if (stackCounter){
-    drawStackCounter(str, y, t);
+    if (stackCounter === 2) drawLedCounter(str, y, t);
+    else drawStackCounter(str, y, t);
     if (finished && overtimeStr){
       ctx.font = viewW < 500 ? "19px monospace" : "23px monospace";
       ctx.fillStyle = "rgba(255,149,0,0.7)";
@@ -4870,7 +4927,7 @@ TRIAD_FILLS.forEach((n, i) => {
   };
   document.getElementById('menuFill').appendChild(b);
 });
-["DIGITS","STACKS"].forEach((n, i) => {
+["DIGITS","STACKS","LEDS"].forEach((n, i) => {
   const b = document.createElement('button');
   b.textContent = n;
   b.onclick = () => {
