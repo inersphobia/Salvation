@@ -279,6 +279,8 @@
       <button id="custPlus">+</button>
     </div>
   </div>
+  <div class="set-title">S T A R</div>
+  <div class="menu-grid" id="menuStar"></div>
   <div class="set-title">T R I A D &nbsp; F I L L</div>
   <div class="menu-grid" id="menuFill"></div>
   <div class="set-title">S T A G E</div>
@@ -1588,6 +1590,11 @@ const TRIAD_FAM = [TRIAD_W, TRIAD_W, TRIAD_W];
 const TRIAD_FILLS = ["TRIAD", "SCATTER", "DIAG", "BLOOM", "LIFE", "SKY", "DORÉ", "DÜRER", "BLAKE", "BURNE", "BEAST", "THESEUS", "ANCIENT", "FIRMAMENT", "ASCENT", "GALLERY", "STORY", "SAGA"];
 let triadFill = 0;
 try { triadFill = Math.min(17, Math.max(0, parseInt(localStorage.getItem('salvationTriadFill') || "0", 10) || 0)); } catch(e) {}
+// STAR options: additive corners (dots stay and the zero corner
+// wipes them) and white-only lights
+let starAdd = 0, starWhite = 0;
+try { starAdd = localStorage.getItem('salvationStarAdd') === "1" ? 1 : 0; } catch(e) {}
+try { starWhite = localStorage.getItem('salvationStarWhite') === "1" ? 1 : 0; } catch(e) {}
 // STAGE: 0 = klein blue ground, 1 = near-black night
 let stageDark = 0;
 try { stageDark = localStorage.getItem('salvationStage') === "1" ? 1 : 0; } catch(e) {}
@@ -4358,6 +4365,7 @@ function drawCenterDots(now){
     }
 
     ctx.fillStyle=
+      (viewMode === 1 && starWhite) ? "rgb(238,243,250)" :
       centerColor[i]==="blue"   ? "rgb(0,120,255)" :
       centerColor[i]==="orange" ? "rgb(255,160,0)" :
       centerColor[i]==="red"    ? "rgb(255,70,70)" :
@@ -4369,7 +4377,46 @@ function drawCenterDots(now){
   }
 }
 
+const STAR_WHITE = "rgb(238,243,250)";
 function drawLEDs(t){
+  if (starAdd){
+    // additive corners: the dot lands and STAYS - bottom-right at 1,
+    // bottom-left joins at 2, and the top corner is zero: reaching it
+    // wipes the pair with a blink
+    for (let i=0;i<numDials;i++){
+      const T = ticks[i];
+      const d = posIndex(i, t) - 1;                  // 0, 1, 2
+      const age = (t % T)/T;
+      const pulse = running ? Math.max(0, 1 - age/0.25) : 0;
+      for (let k = 1; k <= 2; k++){
+        if (d < k) continue;
+        const P = ledPath[i][k], sp = worldToScreen(P.x, P.y);
+        const col = starWhite ? STAR_WHITE : digitColor(k + 1);
+        if (d === k && pulse > 0.01){
+          const R = 7 + 20*pulse;
+          const g = ctx.createRadialGradient(sp.x,sp.y,0, sp.x,sp.y, R);
+          g.addColorStop(0, `rgba(255,255,255,${(0.9*pulse).toFixed(3)})`);
+          g.addColorStop(0.4, withA(col, (0.5*pulse).toFixed(3)));
+          g.addColorStop(1, withA(col, "0"));
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(sp.x,sp.y, R, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.fillStyle = col;
+        ctx.beginPath(); ctx.arc(sp.x,sp.y, 6, 0, Math.PI*2); ctx.fill();
+      }
+      if (d === 0 && running && pulse > 0.01){
+        // the zero corner blinks as it erases
+        const P = ledPath[i][0], sp = worldToScreen(P.x, P.y);
+        const R = 6 + 16*pulse;
+        const g = ctx.createRadialGradient(sp.x,sp.y,0, sp.x,sp.y, R);
+        g.addColorStop(0, `rgba(255,255,255,${(0.8*pulse).toFixed(3)})`);
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(sp.x,sp.y, R, 0, Math.PI*2); ctx.fill();
+      }
+    }
+    return;
+  }
   for (let i=0;i<numDials;i++){
     const idx=activeIdx[i];
     const P=ledPath[i][idx];
@@ -4381,7 +4428,7 @@ function drawLEDs(t){
     const subFrac = (t % subT) / subT;               // 0..1 within this color
     const pulse = running ? Math.max(0, 1 - subFrac/0.4) : 0;
     if (pulse > 0.01){
-      const gc = WEAVE_COL[sub];
+      const gc = starWhite ? STAR_WHITE : WEAVE_COL[sub];
       const R = 7 + 20*pulse;
       const g = ctx.createRadialGradient(s.x,s.y,0, s.x,s.y, R);
       g.addColorStop(0,   `rgba(255,255,255,${(0.9*pulse).toFixed(3)})`);
@@ -4390,7 +4437,7 @@ function drawLEDs(t){
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(s.x,s.y, R, 0, Math.PI*2); ctx.fill();
     }
-    ctx.fillStyle = digitColor(sub + 1);             // blue/orange/red (white when idle)
+    ctx.fillStyle = starWhite ? STAR_WHITE : digitColor(sub + 1); // blue/orange/red (white when idle)
     ctx.beginPath(); ctx.arc(s.x,s.y, 6, 0, Math.PI*2); ctx.fill();
     if (pulse > 0.01){
       ctx.fillStyle = `rgba(255,255,255,${pulse.toFixed(3)})`;
@@ -4425,7 +4472,7 @@ function drawSubCounter(elapsed){
 
   // Single dot; color depends on which box it's in
   const dotColors = ['rgb(0,120,255)', 'rgb(255,160,0)', 'rgb(255,70,70)'];
-  ctx.fillStyle = finished ? '#ff9500' : dotColors[pos];
+  ctx.fillStyle = finished ? '#ff9500' : starWhite ? 'rgb(238,243,250)' : dotColors[pos];
   ctx.beginPath();
   ctx.arc(left + pos * cellW + cellW / 2, top + cellH / 2, dotR, 0, Math.PI * 2);
   ctx.fill();
@@ -5068,6 +5115,9 @@ function menuSync(){
     b.classList.toggle('active', i === volSel));
   document.querySelectorAll('#menuFill button').forEach((b, i) =>
     b.classList.toggle('active', i === triadFill));
+  const sb = document.querySelectorAll('#menuStar button');
+  if (sb[0]) sb[0].classList.toggle('active', !!starAdd);
+  if (sb[1]) sb[1].classList.toggle('active', !!starWhite);
   document.querySelectorAll('#menuStage button').forEach((b, i) =>
     b.classList.toggle('active', i === stageDark));
   document.querySelectorAll('#menuCounter button').forEach((b, i) =>
@@ -5118,6 +5168,18 @@ TRIAD_FILLS.forEach((n, i) => {
     haptic('light');
   };
   document.getElementById('menuFill').appendChild(b);
+});
+[["ADDITIVE", () => starAdd, v => { starAdd = v; try { localStorage.setItem('salvationStarAdd', String(v)); } catch(e) {} }],
+ ["WHITE",    () => starWhite, v => { starWhite = v; try { localStorage.setItem('salvationStarWhite', String(v)); } catch(e) {} }]
+].forEach(([n, get, set]) => {
+  const b = document.createElement('button');
+  b.textContent = n;
+  b.onclick = () => {
+    set(get() ? 0 : 1);
+    menuSync();
+    haptic('light');
+  };
+  document.getElementById('menuStar').appendChild(b);
 });
 ["BLUE","NIGHT"].forEach((n, i) => {
   const b = document.createElement('button');
@@ -5297,6 +5359,11 @@ document.getElementById('menuDefault').addEventListener('click', () => {
   try { localStorage.setItem('salvationFracDepth', "0"); } catch(e) {}
   stageDark = 0;
   try { localStorage.setItem('salvationStage', "0"); } catch(e) {}
+  starAdd = 0; starWhite = 0;
+  try {
+    localStorage.setItem('salvationStarAdd', "0");
+    localStorage.setItem('salvationStarWhite', "0");
+  } catch(e) {}
   gotoView(DEFAULT_PRESET.view);
   setDuration(DEFAULT_PRESET.dur); // duration stays reset-gated: no-op mid-session
   menuSync();
