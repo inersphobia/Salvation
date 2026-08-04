@@ -279,6 +279,10 @@
       <button id="custPlus">+</button>
     </div>
   </div>
+  <div class="set-title">S T A R</div>
+  <div class="menu-grid" id="menuStar"></div>
+  <div class="set-title">A B A C U S</div>
+  <div class="menu-grid" id="menuAbacus"></div>
   <div class="set-title">T R I A D &nbsp; F I L L</div>
   <div class="menu-grid" id="menuFill"></div>
   <div class="set-title">S T A G E</div>
@@ -1056,7 +1060,316 @@ function abacusSideY(L, k){
   return L.top + L.gridH/2 + (k - 1) * 46;
 }
 
+/* --- the WIDE abacus: two hardware registers on a riveted bulkhead.
+   Minutes (REG-A) bolted above fractions (REG-B); places as columns,
+   two jewel lamps each, tally read bottom-up; slow places left, the
+   action at the right edge, carries rippling leftward. --- */
+function abacusWideScale(){
+  return Math.max(0.7, Math.min(viewW/412, viewH/915, 1.35));
+}
+function abacusWideUnits(){
+  const sc = abacusWideScale();
+  const x0 = (viewW - 412*sc)/2;
+  const R = abacusRows();
+  const mk = (cy, n, wide) => {
+    const cell = (n >= 5 ? 38 : 42)*sc, gapX = 11*sc, gapY = 8*sc;
+    const padX = 22*sc, padTop = 33*sc, padBot = 25*sc;
+    const w = n*cell + (n-1)*gapX + 2*padX + (wide ? 52*sc : 0);
+    const h = 2*cell + gapY + padTop + padBot;
+    const ux = viewW/2 - w/2, uy = cy*sc - h/2;
+    const cols = [];
+    for (let i = 0; i < n; i++)
+      cols.push(ux + padX + i*(cell + gapX) + cell/2);
+    return { x0: ux, y0: uy, w, h, cols, cell,
+             yTop: uy + padTop + cell/2 - 8*sc,
+             yBot: uy + padTop + cell + gapY + cell/2 - 8*sc };
+  };
+  return { sc, x0, R,
+           A: mk(356, R.mw, true),
+           B: mk(516, R.fr, false),
+           telem: { x: x0 + 60*sc, y: 700*sc, w: 292*sc, h: 34*sc } };
+}
+function wideScrew(c, x, y, sc){
+  c.fillStyle = "#242a34";
+  c.beginPath(); c.arc(x, y, 3.2*sc, 0, 2*Math.PI); c.fill();
+  c.strokeStyle = "rgba(0,0,0,0.7)"; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(x - 2*sc, y + 1.1*sc); c.lineTo(x + 2*sc, y - 1.1*sc); c.stroke();
+}
+function drawAbacusWideStatic(){
+  const U = abacusWideUnits(), sc = U.sc, x0 = U.x0, c = ctxStatic;
+  let sd = 77031;
+  const rr = () => { sd = (sd*48271) % 2147483647; return sd/2147483647; };
+  const wallH = 262*sc;
+  let gr = c.createLinearGradient(0, 0, 0, wallH);
+  gr.addColorStop(0, "#1a1e27"); gr.addColorStop(0.4, "#151820"); gr.addColorStop(1, "#0d0f15");
+  c.fillStyle = gr; c.fillRect(0, 0, viewW, wallH);
+  for (let i = 0; i < 420; i++){
+    const y = rr()*wallH, x = rr()*viewW;
+    c.strokeStyle = "rgba(255,255,255," + (0.004 + rr()*0.014).toFixed(4) + ")";
+    c.lineWidth = 1;
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x + (20 + rr()*90)*sc, y + (rr() - 0.5)*2); c.stroke();
+  }
+  for (let i = 0; i < 240; i++){
+    c.fillStyle = "rgba(0,0,0," + (0.05 + rr()*0.12).toFixed(3) + ")";
+    c.fillRect(rr()*viewW, rr()*wallH, 1 + rr()*1.6, 1 + rr()*1.4);
+  }
+  for (const hy of [86*sc, 196*sc]){
+    c.strokeStyle = "rgba(0,0,0,0.65)"; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(0, hy); c.lineTo(viewW, hy); c.stroke();
+    c.strokeStyle = "rgba(255,255,255,0.05)";
+    c.beginPath(); c.moveTo(0, hy + 2); c.lineTo(viewW, hy + 2); c.stroke();
+  }
+  for (const vx of [x0 + 138*sc, x0 + 286*sc]){
+    c.strokeStyle = "rgba(0,0,0,0.6)"; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(vx, 0); c.lineTo(vx, wallH); c.stroke();
+    c.strokeStyle = "rgba(255,255,255,0.04)";
+    c.beginPath(); c.moveTo(vx + 2, 0); c.lineTo(vx + 2, wallH); c.stroke();
+  }
+  const rivet = (x, y) => {
+    const rg = c.createRadialGradient(x - 0.8, y - 0.8, 0, x, y, 3.2*sc);
+    rg.addColorStop(0, "rgba(210,225,245,0.35)");
+    rg.addColorStop(0.5, "rgba(120,135,155,0.25)");
+    rg.addColorStop(1, "rgba(0,0,0,0.5)");
+    c.fillStyle = rg;
+    c.beginPath(); c.arc(x, y, 3.2*sc, 0, 2*Math.PI); c.fill();
+  };
+  for (let x = 14*sc; x < viewW; x += 28*sc){ rivet(x, 78*sc); rivet(x, 204*sc); }
+  for (let y = 16*sc; y < wallH; y += 30*sc){ rivet(x0 + 130*sc, y); rivet(x0 + 294*sc, y); }
+  for (let i = 0; i < 26; i++){
+    const x = rr()*viewW, y = (80 + rr()*100)*sc, len = (20 + rr()*70)*sc;
+    const w2 = c.createLinearGradient(0, y, 0, y + len);
+    w2.addColorStop(0, "rgba(0,0,0," + (0.05 + rr()*0.08).toFixed(3) + ")");
+    w2.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = w2;
+    c.fillRect(x, y, (1.6 + rr()*2.4)*sc, len);
+  }
+  c.font = Math.round(10*sc) + "px monospace"; c.textAlign = "left";
+  c.fillStyle = "rgba(190,200,215,0.14)";
+  c.fillText("BULKHEAD 27-C · REGISTER BAY", x0 + 152*sc, 118*sc);
+  c.fillStyle = "rgba(190,200,215,0.09)";
+  c.fillText("AUTH · TYRELL-CLASS INSTRUMENTATION", x0 + 152*sc, 134*sc);
+  c.fillStyle = "#0a0d12";
+  c.beginPath(); c.roundRect(x0 + 324*sc, 106*sc, 66*sc, 44*sc, 4); c.fill();
+  c.strokeStyle = "rgba(255,255,255,0.06)"; c.lineWidth = 1;
+  c.strokeRect(x0 + 324*sc, 106*sc, 66*sc, 44*sc);
+  for (let k = 0; k < 5; k++){
+    c.fillStyle = "rgba(0,0,0,0.65)";
+    c.fillRect(x0 + 330*sc, (112 + k*7)*sc, 54*sc, 3*sc);
+    c.fillStyle = "rgba(255,255,255,0.035)";
+    c.fillRect(x0 + 330*sc, (115 + k*7)*sc, 54*sc, 1*sc);
+  }
+  c.strokeStyle = "#10141b"; c.lineWidth = 6*sc;
+  c.beginPath(); c.moveTo(0, 22*sc); c.lineTo(viewW, 22*sc); c.stroke();
+  c.strokeStyle = "rgba(255,255,255,0.06)"; c.lineWidth = 1.2;
+  c.beginPath(); c.moveTo(0, 19.5*sc); c.lineTo(viewW, 19.5*sc); c.stroke();
+  for (const bx of [x0 + 60*sc, viewW/2, x0 + 352*sc]){
+    c.fillStyle = "#171b23";
+    c.fillRect(bx - 5*sc, 14*sc, 10*sc, 16*sc);
+    c.strokeStyle = "rgba(0,0,0,0.5)"; c.strokeRect(bx - 5*sc, 14*sc, 10*sc, 16*sc);
+  }
+  let fr2 = c.createLinearGradient(0, 240*sc, 0, wallH);
+  fr2.addColorStop(0, "rgba(0,0,0,0)"); fr2.addColorStop(1, "rgba(0,0,0,0.55)");
+  c.fillStyle = fr2; c.fillRect(0, 240*sc, viewW, wallH - 240*sc);
+  gr = c.createLinearGradient(0, 250*sc, 0, viewH);
+  gr.addColorStop(0, "#0c0f16"); gr.addColorStop(0.35, "#111520"); gr.addColorStop(1, "#07090e");
+  c.fillStyle = gr; c.fillRect(0, 250*sc, viewW, viewH - 250*sc);
+  for (let i = 0; i < 250; i++){
+    const y = 255*sc + rr()*(viewH - 260*sc);
+    c.strokeStyle = "rgba(255,255,255," + (0.004 + rr()*0.012).toFixed(4) + ")";
+    c.lineWidth = 1;
+    c.beginPath(); c.moveTo(rr()*80*sc, y); c.lineTo(viewW - rr()*82*sc, y + (rr() - 0.5)*6); c.stroke();
+  }
+  c.strokeStyle = "rgba(0,0,0,0.55)"; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(0, 262*sc); c.lineTo(viewW, 262*sc); c.stroke();
+  c.strokeStyle = "rgba(255,255,255,0.04)";
+  c.beginPath(); c.moveTo(0, 264*sc); c.lineTo(viewW, 264*sc); c.stroke();
+  c.fillStyle = "#0a0d13";
+  c.beginPath(); c.roundRect(x0 + 8*sc, 480*sc, 52*sc, 150*sc, 6); c.fill();
+  c.strokeStyle = "rgba(255,255,255,0.05)"; c.strokeRect(x0 + 8*sc, 480*sc, 52*sc, 150*sc);
+  for (let k = 0; k < 5; k++){
+    const y = (498 + k*26)*sc;
+    c.fillStyle = "#151a22";
+    c.beginPath(); c.roundRect(x0 + 18*sc, y, 32*sc, 12*sc, 3); c.fill();
+    c.fillStyle = k < 2 ? "rgba(255,160,0,0.5)" : "rgba(120,140,160,0.25)";
+    c.beginPath(); c.arc(x0 + 24*sc, y + 6*sc, 2.2*sc, 0, 2*Math.PI); c.fill();
+  }
+  c.fillStyle = "#0a0d13";
+  c.beginPath(); c.roundRect(x0 + 352*sc, 490*sc, 52*sc, 130*sc, 6); c.fill();
+  for (let k = 0; k < 6; k++){
+    c.fillStyle = "rgba(0,0,0,0.6)";
+    c.fillRect(x0 + 360*sc, (500 + k*19)*sc, 36*sc, 8*sc);
+    c.fillStyle = "rgba(255,255,255,0.03)";
+    c.fillRect(x0 + 360*sc, (508 + k*19)*sc, 36*sc, 1.5*sc);
+  }
+  c.fillStyle = "#0b0a06";
+  c.beginPath(); c.roundRect(U.telem.x, U.telem.y, U.telem.w, U.telem.h, 5); c.fill();
+  c.strokeStyle = "rgba(255,170,60,0.25)"; c.lineWidth = 1;
+  c.strokeRect(U.telem.x, U.telem.y, U.telem.w, U.telem.h);
+  c.strokeStyle = "#0e1218"; c.lineWidth = 9*sc;
+  c.beginPath(); c.moveTo(viewW/2, 250*sc); c.quadraticCurveTo(viewW/2 - 10*sc, 300*sc, viewW/2, U.A.y0 + 2); c.stroke();
+  c.strokeStyle = "rgba(255,255,255,0.05)"; c.lineWidth = 1.5;
+  c.beginPath(); c.moveTo(viewW/2 - 3*sc, 252*sc); c.quadraticCurveTo(viewW/2 - 13*sc, 300*sc, viewW/2 - 3*sc, U.A.y0); c.stroke();
+  const unit = (u, title, sub, labels, wide) => {
+    const ds = c.createRadialGradient(u.x0 + u.w/2, u.y0 + u.h + 6, 10, u.x0 + u.w/2, u.y0 + u.h + 6, u.w*0.7);
+    ds.addColorStop(0, "rgba(0,0,0,0.55)"); ds.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = ds;
+    c.beginPath(); c.ellipse(u.x0 + u.w/2, u.y0 + u.h + 8, u.w*0.62, 16*sc, 0, 0, 2*Math.PI); c.fill();
+    const hg = c.createLinearGradient(0, u.y0, 0, u.y0 + u.h);
+    hg.addColorStop(0, "#232a36"); hg.addColorStop(0.25, "#181c24"); hg.addColorStop(1, "#101318");
+    c.fillStyle = hg;
+    c.beginPath(); c.roundRect(u.x0, u.y0, u.w, u.h, 9); c.fill();
+    c.strokeStyle = "rgba(160,190,235,0.13)"; c.lineWidth = 1;
+    c.beginPath(); c.roundRect(u.x0, u.y0, u.w, u.h, 9); c.stroke();
+    c.strokeStyle = "rgba(0,0,0,0.6)";
+    c.beginPath(); c.roundRect(u.x0 + 4, u.y0 + 4, u.w - 8, u.h - 8, 7); c.stroke();
+    c.fillStyle = "#0a0d12";
+    c.beginPath(); c.roundRect(u.x0 + 13*sc, u.y0 + 25*sc, u.w - 26*sc - (wide ? 52*sc : 0), u.h - 34*sc, 5); c.fill();
+    wideScrew(c, u.x0 + 10*sc, u.y0 + 10*sc, sc); wideScrew(c, u.x0 + u.w - 10*sc, u.y0 + 10*sc, sc);
+    wideScrew(c, u.x0 + 10*sc, u.y0 + u.h - 10*sc, sc); wideScrew(c, u.x0 + u.w - 10*sc, u.y0 + u.h - 10*sc, sc);
+    c.font = Math.round(10*sc) + "px monospace"; c.textAlign = "left";
+    c.fillStyle = "rgba(150,165,185,0.6)";
+    c.fillText(title, u.x0 + 16*sc, u.y0 + 18*sc);
+    c.textAlign = "right";
+    c.fillStyle = "rgba(150,165,185,0.35)";
+    c.fillText(sub, u.x0 + u.w - 16*sc, u.y0 + 18*sc);
+    for (let i = 0; i < u.cols.length; i++){
+      for (const yy of [u.yTop, u.yBot]){
+        c.fillStyle = "#0d1016";
+        c.beginPath(); c.arc(u.cols[i], yy, u.cell*0.38, 0, 2*Math.PI); c.fill();
+        c.strokeStyle = "rgba(255,255,255,0.08)"; c.lineWidth = 1;
+        c.beginPath(); c.arc(u.cols[i], yy, u.cell*0.38, 0, 2*Math.PI); c.stroke();
+        c.fillStyle = "rgba(140,170,220,0.05)";
+        c.beginPath(); c.ellipse(u.cols[i] - u.cell*0.1, yy - u.cell*0.14, u.cell*0.16, u.cell*0.08, -0.5, 0, 2*Math.PI); c.fill();
+      }
+      c.font = Math.round(9*sc) + "px monospace"; c.textAlign = "center";
+      c.fillStyle = "rgba(150,165,185,0.5)";
+      c.fillText(labels[i], u.cols[i], u.y0 + u.h - 9*sc);
+    }
+    const sh = c.createLinearGradient(u.x0, u.y0, u.x0 + u.w*0.9, u.y0 + u.h);
+    sh.addColorStop(0, "rgba(190,215,255,0.05)"); sh.addColorStop(0.35, "rgba(255,255,255,0)");
+    c.fillStyle = sh;
+    c.beginPath(); c.roundRect(u.x0 + 13*sc, u.y0 + 25*sc, u.w - 26*sc, u.h - 34*sc, 5); c.fill();
+  };
+  const mwL = [], frL = [];
+  for (let i = 0; i < U.R.mw; i++) mwL.push(abacusLabel(i));
+  for (let i = 0; i < U.R.fr; i++) frL.push(abacusLabel(U.R.mw + i));
+  unit(U.A, "M I N U T E S", "REG · A", mwL, true);
+  c.fillStyle = "#10141b";
+  c.fillRect(viewW/2 - 66*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
+  c.fillRect(viewW/2 + 38*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
+  c.strokeStyle = "rgba(255,255,255,0.05)"; c.lineWidth = 1;
+  c.strokeRect(viewW/2 - 66*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
+  c.strokeRect(viewW/2 + 38*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
+  wideScrew(c, viewW/2 - 52*sc, U.A.y0 + U.A.h + 7*sc, sc);
+  wideScrew(c, viewW/2 + 52*sc, U.A.y0 + U.A.h + 7*sc, sc);
+  unit(U.B, "F R A C T I O N S", "REG · B", frL, false);
+  const MODE = ["27","54","81"];
+  for (let k = 0; k < 3; k++){
+    const ly = U.A.y0 + 33*sc + k*31*sc, lx = U.A.x0 + U.A.w - 38*sc;
+    c.fillStyle = "#0d1016";
+    c.beginPath(); c.arc(lx, ly, 6*sc, 0, 2*Math.PI); c.fill();
+    c.strokeStyle = "rgba(255,255,255,0.08)"; c.lineWidth = 1;
+    c.beginPath(); c.arc(lx, ly, 6*sc, 0, 2*Math.PI); c.stroke();
+    c.font = Math.round(8*sc) + "px monospace"; c.textAlign = "left";
+    c.fillStyle = "rgba(150,165,185,0.45)";
+    c.fillText(MODE[k], lx + 11*sc, ly + 3*sc);
+  }
+  for (let i = 0; i < 3; i++){
+    const y = (300 + i*160 + rr()*40)*sc;
+    const sm = c.createLinearGradient(0, y - 30*sc, 0, y + 30*sc);
+    sm.addColorStop(0, "rgba(120,140,180,0)");
+    sm.addColorStop(0.5, "rgba(120,140,180," + (0.035 - i*0.008).toFixed(3) + ")");
+    sm.addColorStop(1, "rgba(120,140,180,0)");
+    c.fillStyle = sm;
+    c.fillRect(0, y - 30*sc, viewW, 60*sc);
+  }
+  const key = c.createLinearGradient(0, wallH, 0, 700*sc);
+  key.addColorStop(0, "rgba(150,190,255,0.05)"); key.addColorStop(1, "rgba(150,190,255,0)");
+  c.fillStyle = key; c.fillRect(0, wallH, viewW, 700*sc - wallH);
+  const vg = c.createRadialGradient(viewW/2, 440*sc, 120*sc, viewW/2, 440*sc, 480*sc);
+  vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.55)");
+  c.fillStyle = vg; c.fillRect(0, 0, viewW, viewH);
+  c.globalAlpha = 0.05;
+  c.fillStyle = "#000";
+  for (let y = 0; y < viewH; y += 3) c.fillRect(0, y, viewW, 1);
+  c.globalAlpha = 1;
+}
+function drawAbacusWideDots(t){
+  const U = abacusWideUnits(), sc = U.sc;
+  const T27 = 60/27;
+  const jewel = (cx, cy, cell, pulse) => {
+    const base = finished ? "rgb(255,170,50)" : "rgb(245,240,222)";
+    const R = cell*(1.35 + 0.5*(pulse || 0));
+    const gr = ctx.createRadialGradient(cx,cy,0, cx,cy,R);
+    gr.addColorStop(0, withA(base, "0.45"));
+    gr.addColorStop(0.5, withA(base, "0.13"));
+    gr.addColorStop(1, withA(base, "0"));
+    ctx.fillStyle = gr;
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,2*Math.PI); ctx.fill();
+    const lr = cell*0.32;
+    const lg = ctx.createRadialGradient(cx,cy,0, cx,cy,lr);
+    lg.addColorStop(0, lampMix(base, 0.94));
+    lg.addColorStop(0.35, lampMix(base, 0.55));
+    lg.addColorStop(0.75, base);
+    lg.addColorStop(1, lampMix(base, -0.45));
+    ctx.fillStyle = lg;
+    ctx.beginPath(); ctx.arc(cx, cy, lr, 0, 2*Math.PI); ctx.fill();
+    ctx.strokeStyle = lampMix(base, -0.55); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, lr, 0, 2*Math.PI); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.beginPath(); ctx.ellipse(cx - lr*0.35, cy - lr*0.42, lr*0.17, lr*0.1, -0.6, 0, 2*Math.PI); ctx.fill();
+  };
+  const eNow = finished ? totalCycle : t;
+  const drawUnit = (u, base) => {
+    let lit = 0;
+    for (let i = 0; i < u.cols.length; i++){
+      const gi = base + i;
+      const d = abacusDigit(gi, t);
+      const Uu = abacusUnit(gi);
+      const frac = (running || finished) ? ((eNow % Uu)/Uu) : 0;
+      const pulse = running ? Math.max(0, 1 - (frac*Uu)/T27) : 0;
+      if (d >= 1){ jewel(u.cols[i], u.yBot, u.cell, pulse); lit++; }
+      if (d >= 2){ jewel(u.cols[i], u.yTop, u.cell, pulse*0.6); lit++; }
+      if (running && i === u.cols.length - 1){
+        ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(u.cols[i], u.yBot, u.cell*0.46, -Math.PI/2, -Math.PI/2 + frac*2*Math.PI);
+        ctx.stroke();
+      }
+    }
+    if (lit){
+      const sp = ctx.createRadialGradient(u.x0 + u.w/2, u.y0 + u.h, 0, u.x0 + u.w/2, u.y0 + u.h, u.w*0.8);
+      sp.addColorStop(0, "rgba(255,238,200," + Math.min(0.12, 0.03*lit).toFixed(3) + ")");
+      sp.addColorStop(1, "rgba(255,238,200,0)");
+      ctx.fillStyle = sp;
+      ctx.beginPath(); ctx.arc(u.x0 + u.w/2, u.y0 + u.h, u.w*0.8, 0, 2*Math.PI); ctx.fill();
+    }
+  };
+  drawUnit(U.A, 0);
+  drawUnit(U.B, U.R.mw);
+  for (let k = 0; k < 3; k++){
+    if (eNow < (k + 1)*27*60) break;
+    const ly = U.A.y0 + 33*sc + k*31*sc, lx = U.A.x0 + U.A.w - 38*sc;
+    const g2 = ctx.createRadialGradient(lx, ly, 0, lx, ly, 18*sc);
+    g2.addColorStop(0, "rgba(255,149,0,0.55)"); g2.addColorStop(1, "rgba(255,149,0,0)");
+    ctx.fillStyle = g2;
+    ctx.beginPath(); ctx.arc(lx, ly, 18*sc, 0, 2*Math.PI); ctx.fill();
+    ctx.fillStyle = "#ff9500";
+    ctx.beginPath(); ctx.arc(lx, ly, 5*sc, 0, 2*Math.PI); ctx.fill();
+  }
+  ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
+  ctx.fillStyle = "rgba(255,170,60,0.55)";
+  ctx.fillText("REG-A LINK OK   REG-B LINK OK   CYCLE " + timerStr,
+               U.telem.x + 12*sc, U.telem.y + 14*sc);
+  ctx.fillStyle = "rgba(255,170,60,0.3)";
+  ctx.fillText(finished
+      ? "PWR 27.54.81    DRIFT " + overtimeStr + "    ESPER HOLD"
+      : "PWR 27.54.81    DRIFT +0.000    ESPER STANDBY",
+    U.telem.x + 12*sc, U.telem.y + 26*sc);
+}
+
 function drawAbacusStatic(){
+  if (abacusWide){ drawAbacusWideStatic(); return; }
   const L = abacusLayout();
   const mr = abacusMinRows();
   const bx0 = L.left - 46, bx1 = L.left + L.gridW + 92;
@@ -1138,6 +1451,7 @@ function lampMix(rgb, u){ // u>0 mixes toward white (hot core); u<0 darkens (rim
 }
 
 function drawAbacusDots(t){
+  if (abacusWide){ drawAbacusWideDots(t); return; }
   const L = abacusLayout();
   const T27 = 60/27; // every flash decays at the 1/27-minute rate
   const lamp = (col, row, frac, U) => {
@@ -1588,6 +1902,15 @@ const TRIAD_FAM = [TRIAD_W, TRIAD_W, TRIAD_W];
 const TRIAD_FILLS = ["TRIAD", "SCATTER", "DIAG", "BLOOM", "LIFE", "SKY", "DORÉ", "DÜRER", "BLAKE", "BURNE", "BEAST", "THESEUS", "ANCIENT", "FIRMAMENT", "ASCENT", "GALLERY", "STORY", "SAGA"];
 let triadFill = 0;
 try { triadFill = Math.min(17, Math.max(0, parseInt(localStorage.getItem('salvationTriadFill') || "0", 10) || 0)); } catch(e) {}
+// ABACUS layout: 0 = the tall register, 1 = the WIDE two-unit
+// console (minutes riding on fractions, blade-runner bulkhead scene)
+let abacusWide = 0;
+try { abacusWide = localStorage.getItem('salvationAbacusWide') === "1" ? 1 : 0; } catch(e) {}
+// STAR options: additive corners (dots stay and the zero corner
+// wipes them) and white-only lights
+let starAdd = 0, starWhite = 0;
+try { starAdd = localStorage.getItem('salvationStarAdd') === "1" ? 1 : 0; } catch(e) {}
+try { starWhite = localStorage.getItem('salvationStarWhite') === "1" ? 1 : 0; } catch(e) {}
 // STAGE: 0 = klein blue ground, 1 = near-black night
 let stageDark = 0;
 try { stageDark = localStorage.getItem('salvationStage') === "1" ? 1 : 0; } catch(e) {}
@@ -4280,7 +4603,10 @@ function drawGoetia(t){
 }
 
 function getTextY(){
-  if (viewMode===2){ const L = abacusLayout();  return L.top + L.gridH + 56; }
+  if (viewMode===2){
+    if (abacusWide) return Math.round(788*abacusWideScale());
+    const L = abacusLayout();  return L.top + L.gridH + 56;
+  }
   if (viewMode===3){ const F = fractalLayout(); return F.topY + F.triH + 52; }
   if (viewMode===6){ const L = triadLayout();   return L.textY; }
   if (viewMode===7){ const L = dreamLayout();   return Math.min(viewH - 170, L.textY); }
@@ -4358,6 +4684,7 @@ function drawCenterDots(now){
     }
 
     ctx.fillStyle=
+      (viewMode === 1 && starWhite) ? "rgb(238,243,250)" :
       centerColor[i]==="blue"   ? "rgb(0,120,255)" :
       centerColor[i]==="orange" ? "rgb(255,160,0)" :
       centerColor[i]==="red"    ? "rgb(255,70,70)" :
@@ -4369,7 +4696,46 @@ function drawCenterDots(now){
   }
 }
 
+const STAR_WHITE = "rgb(238,243,250)";
 function drawLEDs(t){
+  if (starAdd){
+    // additive corners: the dot lands and STAYS - bottom-right at 1,
+    // bottom-left joins at 2, and the top corner is zero: reaching it
+    // wipes the pair with a blink
+    for (let i=0;i<numDials;i++){
+      const T = ticks[i];
+      const d = posIndex(i, t) - 1;                  // 0, 1, 2
+      const age = (t % T)/T;
+      const pulse = running ? Math.max(0, 1 - age/0.25) : 0;
+      for (let k = 1; k <= 2; k++){
+        if (d < k) continue;
+        const P = ledPath[i][k], sp = worldToScreen(P.x, P.y);
+        const col = starWhite ? STAR_WHITE : digitColor(k + 1);
+        if (d === k && pulse > 0.01){
+          const R = 7 + 20*pulse;
+          const g = ctx.createRadialGradient(sp.x,sp.y,0, sp.x,sp.y, R);
+          g.addColorStop(0, `rgba(255,255,255,${(0.9*pulse).toFixed(3)})`);
+          g.addColorStop(0.4, withA(col, (0.5*pulse).toFixed(3)));
+          g.addColorStop(1, withA(col, "0"));
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(sp.x,sp.y, R, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.fillStyle = col;
+        ctx.beginPath(); ctx.arc(sp.x,sp.y, 6, 0, Math.PI*2); ctx.fill();
+      }
+      if (d === 0 && running && pulse > 0.01){
+        // the zero corner blinks as it erases
+        const P = ledPath[i][0], sp = worldToScreen(P.x, P.y);
+        const R = 6 + 16*pulse;
+        const g = ctx.createRadialGradient(sp.x,sp.y,0, sp.x,sp.y, R);
+        g.addColorStop(0, `rgba(255,255,255,${(0.8*pulse).toFixed(3)})`);
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(sp.x,sp.y, R, 0, Math.PI*2); ctx.fill();
+      }
+    }
+    return;
+  }
   for (let i=0;i<numDials;i++){
     const idx=activeIdx[i];
     const P=ledPath[i][idx];
@@ -4381,7 +4747,7 @@ function drawLEDs(t){
     const subFrac = (t % subT) / subT;               // 0..1 within this color
     const pulse = running ? Math.max(0, 1 - subFrac/0.4) : 0;
     if (pulse > 0.01){
-      const gc = WEAVE_COL[sub];
+      const gc = starWhite ? STAR_WHITE : WEAVE_COL[sub];
       const R = 7 + 20*pulse;
       const g = ctx.createRadialGradient(s.x,s.y,0, s.x,s.y, R);
       g.addColorStop(0,   `rgba(255,255,255,${(0.9*pulse).toFixed(3)})`);
@@ -4390,7 +4756,7 @@ function drawLEDs(t){
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(s.x,s.y, R, 0, Math.PI*2); ctx.fill();
     }
-    ctx.fillStyle = digitColor(sub + 1);             // blue/orange/red (white when idle)
+    ctx.fillStyle = starWhite ? STAR_WHITE : digitColor(sub + 1); // blue/orange/red (white when idle)
     ctx.beginPath(); ctx.arc(s.x,s.y, 6, 0, Math.PI*2); ctx.fill();
     if (pulse > 0.01){
       ctx.fillStyle = `rgba(255,255,255,${pulse.toFixed(3)})`;
@@ -4425,7 +4791,7 @@ function drawSubCounter(elapsed){
 
   // Single dot; color depends on which box it's in
   const dotColors = ['rgb(0,120,255)', 'rgb(255,160,0)', 'rgb(255,70,70)'];
-  ctx.fillStyle = finished ? '#ff9500' : dotColors[pos];
+  ctx.fillStyle = finished ? '#ff9500' : starWhite ? 'rgb(238,243,250)' : dotColors[pos];
   ctx.beginPath();
   ctx.arc(left + pos * cellW + cellW / 2, top + cellH / 2, dotR, 0, Math.PI * 2);
   ctx.fill();
@@ -4504,10 +4870,8 @@ function drawTriadStack(t, x0, baseY){
   ctx.fillStyle = "rgba(255,70,50,0.16)";
   ctx.fillRect(x0 + 1.5, cy + (row - 1.5)*s + 1.5, s - 3, s - 3);
   const dy = cy + (row - 1)*s;
-  ctx.shadowColor = SEG_RED; ctx.shadowBlur = 8;
   ctx.fillStyle = "#ff5a42";
   ctx.beginPath(); ctx.arc(x0 + s/2, dy, s*0.2, 0, 2*Math.PI); ctx.fill();
-  ctx.shadowBlur = 0;
   ctx.fillStyle = "#ffd9d2";
   ctx.beginPath(); ctx.arc(x0 + s/2, dy, s*0.07, 0, 2*Math.PI); ctx.fill();
 }
@@ -5068,6 +5432,11 @@ function menuSync(){
     b.classList.toggle('active', i === volSel));
   document.querySelectorAll('#menuFill button').forEach((b, i) =>
     b.classList.toggle('active', i === triadFill));
+  document.querySelectorAll('#menuAbacus button').forEach((b, i) =>
+    b.classList.toggle('active', i === abacusWide));
+  const sb = document.querySelectorAll('#menuStar button');
+  if (sb[0]) sb[0].classList.toggle('active', !!starAdd);
+  if (sb[1]) sb[1].classList.toggle('active', !!starWhite);
   document.querySelectorAll('#menuStage button').forEach((b, i) =>
     b.classList.toggle('active', i === stageDark));
   document.querySelectorAll('#menuCounter button').forEach((b, i) =>
@@ -5118,6 +5487,31 @@ TRIAD_FILLS.forEach((n, i) => {
     haptic('light');
   };
   document.getElementById('menuFill').appendChild(b);
+});
+["TALL","WIDE"].forEach((n, i) => {
+  const b = document.createElement('button');
+  b.textContent = n;
+  b.onclick = () => {
+    abacusWide = i;
+    try { localStorage.setItem('salvationAbacusWide', String(i)); } catch(e) {}
+    needsStaticRedraw = true;
+    menuSync();
+    menuEl.style.display = 'none';
+    haptic('light');
+  };
+  document.getElementById('menuAbacus').appendChild(b);
+});
+[["ADDITIVE", () => starAdd, v => { starAdd = v; try { localStorage.setItem('salvationStarAdd', String(v)); } catch(e) {} }],
+ ["WHITE",    () => starWhite, v => { starWhite = v; try { localStorage.setItem('salvationStarWhite', String(v)); } catch(e) {} }]
+].forEach(([n, get, set]) => {
+  const b = document.createElement('button');
+  b.textContent = n;
+  b.onclick = () => {
+    set(get() ? 0 : 1);
+    menuSync();
+    haptic('light');
+  };
+  document.getElementById('menuStar').appendChild(b);
 });
 ["BLUE","NIGHT"].forEach((n, i) => {
   const b = document.createElement('button');
@@ -5297,6 +5691,13 @@ document.getElementById('menuDefault').addEventListener('click', () => {
   try { localStorage.setItem('salvationFracDepth', "0"); } catch(e) {}
   stageDark = 0;
   try { localStorage.setItem('salvationStage', "0"); } catch(e) {}
+  abacusWide = 0;
+  try { localStorage.setItem('salvationAbacusWide', "0"); } catch(e) {}
+  starAdd = 0; starWhite = 0;
+  try {
+    localStorage.setItem('salvationStarAdd', "0");
+    localStorage.setItem('salvationStarWhite', "0");
+  } catch(e) {}
   gotoView(DEFAULT_PRESET.view);
   setDuration(DEFAULT_PRESET.dur); // duration stays reset-gated: no-op mid-session
   menuSync();
