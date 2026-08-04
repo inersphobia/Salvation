@@ -74,6 +74,7 @@
   #btnMenu   { background:#008b8b; }
   #btnPlay   { background:#0074ff; min-width: 110px; }
   #btnPlay.disabled { opacity: 0.35; }
+  #btnReset.disabled { opacity: 0.35; }
 
   #ui button.pulse {
     box-shadow: 0 0 16px rgba(255,255,255,0.6);
@@ -1014,9 +1015,10 @@ function drawRingDots(t){
    the chosen depth), each row two lamp slots read as a tally:
    dark-dark 0, one lit 1, both lit 2. --- */
 function abacusRows(){
+  // the abacus always reads to 1/243 - the register shows every place
+  // (the FRACTIONS setting governs the other views' counters)
   const mw = minutesWidth();
-  const fr = 3 + (fracDepth === 1 ? 1 : fracDepth === 2 ? 2 : 0);
-  return { mw, fr, total: mw + fr };
+  return { mw, fr: 5, total: mw + 5 };
 }
 function abacusMinRows(){ return abacusRows().mw; }
 function abacusLabel(i){
@@ -1071,10 +1073,17 @@ function abacusWideUnits(){
   const sc = abacusWideScale();
   const x0 = (viewW - 412*sc)/2;
   const R = abacusRows();
+  // both modules share one width and fill the screen: the widest
+  // content sets the lamp size, the other spreads its columns
+  const target = Math.min(viewW - 24, 860);
+  const padX = 22*sc, gap0 = 11*sc, bay = 52*sc;
+  const fitCell = (n, hasBay) =>
+    (target - 2*padX - (hasBay ? bay : 0) - (n - 1)*gap0)/n;
+  const cell = Math.min(fitCell(R.mw, true), fitCell(R.fr, false), 60*sc);
   const mk = (cy, n, wide) => {
-    const cell = (n >= 5 ? 38 : 42)*sc, gapX = 11*sc, gapY = 8*sc;
-    const padX = 22*sc, padTop = 33*sc, padBot = 25*sc;
-    const w = n*cell + (n-1)*gapX + 2*padX + (wide ? 52*sc : 0);
+    const gapX = (target - 2*padX - (wide ? bay : 0) - n*cell)/Math.max(1, n - 1);
+    const gapY = 8*sc, padTop = 33*sc, padBot = 25*sc;
+    const w = target;
     const h = 2*cell + gapY + padTop + padBot;
     const ux = viewW/2 - w/2, uy = cy*sc - h/2;
     const cols = [];
@@ -1087,7 +1096,7 @@ function abacusWideUnits(){
   return { sc, x0, R,
            A: mk(356, R.mw, true),
            B: mk(516, R.fr, false),
-           telem: { x: x0 + 60*sc, y: 700*sc, w: 292*sc, h: 34*sc } };
+           telem: { x: viewW/2 - target/2, y: 700*sc, w: target, h: 34*sc } };
 }
 function wideScrew(c, x, y, sc){
   c.fillStyle = "#242a34";
@@ -5239,6 +5248,8 @@ function draw(now){
   if (btnPlay.textContent !== playLbl) btnPlay.textContent = playLbl;
   // completion is a full stop: START sleeps until RESET clears the bell
   btnPlay.classList.toggle('disabled', finished);
+  // and RESET grays out once there is nothing left to reset
+  btnReset.classList.toggle('disabled', !running && !finished && pauseMs === 0);
 
   } catch (err) {
     console.error('Draw loop error:', err);
@@ -5865,7 +5876,10 @@ updateTimerText(0);
 drawStaticLayer();
 
 /* ---------- BUTTON HOOKS ---------- */
-btnReset.onclick = ()=>{ pulseButton(btnReset); resetClock(); };
+btnReset.onclick = ()=>{
+  if (!running && !finished && pauseMs === 0){ haptic('light'); return; } // spent
+  pulseButton(btnReset); resetClock();
+};
 btnPlay.onclick = ()=>{
   btnPlay.classList.add('pulse');
   setTimeout(()=>btnPlay.classList.remove('pulse'), 150);
