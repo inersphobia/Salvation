@@ -1140,18 +1140,27 @@ function abacusWideUnits(){
     scr: { x: dt0.x, y: dt0.y, w: dt0.w - panW - 6*sc, h: dt0.h },
     pan: { x: dt0.x + dt0.w - panW, y: dt0.y, w: panW, h: dt0.h }
   };
-  dgm.w1 = { x: dgm.pan.x + 5*sc, y: dgm.pan.y + 10*sc, w: panW - 10*sc, h: 34*sc };
-  dgm.w2 = { x: dgm.pan.x + 5*sc, y: dgm.pan.y + 52*sc, w: panW - 10*sc, h: 34*sc };
-  dgm.sel = { x: dgm.pan.x + 5*sc, y: dgm.pan.y + 94*sc, w: panW - 10*sc, h: 20*sc };
-  const jr = Math.min(19*sc, panW/2 - 3);
-  dgm.joy = { cx: dgm.pan.x + panW/2, cy: dgm.pan.y + dgm.pan.h - jr - 10*sc, r: jr };
+  // the device stack breathes: arrow / wheel / arrow, twice, then SEL,
+  // then the stick; pu compresses it all on unusually short glass
+  const pu = sc*Math.min(1, dgm.pan.h/(186*sc));
+  const px5 = dgm.pan.x + 5*sc, pw5 = panW - 10*sc;
+  dgm.w1u = { x: px5, y: dgm.pan.y + 8*pu,   w: pw5, h: 13*pu };
+  dgm.w1  = { x: px5, y: dgm.pan.y + 24*pu,  w: pw5, h: 30*pu };
+  dgm.w1d = { x: px5, y: dgm.pan.y + 57*pu,  w: pw5, h: 13*pu };
+  dgm.w2u = { x: px5, y: dgm.pan.y + 82*pu,  w: pw5, h: 13*pu };
+  dgm.w2  = { x: px5, y: dgm.pan.y + 98*pu,  w: pw5, h: 30*pu };
+  dgm.w2d = { x: px5, y: dgm.pan.y + 131*pu, w: pw5, h: 13*pu };
+  dgm.sel = { x: px5, y: dgm.pan.y + 152*pu, w: pw5, h: 20*pu };
+  const jr = Math.min(19*pu, panW/2 - 3);
+  dgm.joy = { cx: dgm.pan.x + panW/2, cy: dgm.pan.y + dgm.pan.h - jr - 10*pu, r: jr };
   const ventEnd = x0 + 116*sc, knobStart = x0 + target - 92*sc;
-  const dbw = 54*sc, dbh = 17*sc, dbg = 10*sc;
-  const dbx = (ventEnd + knobStart)/2 - dbw - dbg/2;
-  const dgmBtns = [
-    { x: dbx, y: monTop + monH - 27*sc, w: dbw, h: dbh },
-    { x: dbx + dbw + dbg, y: monTop + monH - 27*sc, w: dbw, h: dbh }
-  ];
+  const nCh = mon2 ? 4 : 3;
+  const dbw = 48*sc, dbh = 17*sc, dbg = 8*sc;
+  const rowW = nCh*dbw + (nCh - 1)*dbg;
+  const dbx = (ventEnd + knobStart)/2 - rowW/2;
+  const dgmBtns = [];
+  for (let i = 0; i < nCh; i++)
+    dgmBtns.push({ x: dbx + i*(dbw + dbg), y: monTop + monH - 27*sc, w: dbw, h: dbh });
   return { sc, x0, R, A, B, Cd, keys, bayX, faceR, monTop, monH, mon, mon2,
            dgm, dgmBtns,
            ext: { x: extX, y: A.y0 + A.h - 42*sc,
@@ -1221,7 +1230,7 @@ function drawAbacusWideStatic(){
     c.fillText((!U.mon2 && abDgm >= 0) ? "D I A G R A M" : "S T O R Y", U.x0 + 16*sc, My0 + 18*sc);
     if (U.mon2){
       c.fillStyle = "rgba(150,165,185,0.5)";
-      c.fillText(abDgm >= 0 ? "D I A G R A M" : "L E T T E R", U.mon2.x - 4, My0 + 18*sc);
+      c.fillText(abDgm >= 0 ? "D I A G R A M" : abStoryE ? "S T O R Y" : "L E T T E R", U.mon2.x - 4, My0 + 18*sc);
     }
     c.textAlign = "right";
     c.fillStyle = "rgba(150,165,185,0.35)";
@@ -1479,9 +1488,9 @@ function drawAbacusWideDots(t){
       ctx.fillText(K.lb, b.x + b.w/2 + 5*sc, b.y + py + b.h/2 + 4*sc);
     }
   }
-  // MON-D plays the sheet, one scene per minute; the owl at the bell
-  if (U.mon2 || abDgm < 0){
-    const M = U.mon;
+  // MON-D plays the sheet, one scene per minute; the owl at the bell.
+  // The STORY channel can put the same scene big on the wide glass.
+  const abMonStory = (M) => {
     const idle2 = !running && !finished && pauseMs === 0;
     const minute = Math.floor((finished ? totalCycle : idle2 ? 0 : t)/60);
     const idx = finished ? 27 : (minute % 27);
@@ -1501,10 +1510,12 @@ function drawAbacusWideDots(t){
     ctx.textAlign = "right";
     ctx.fillText("CYCLE " + timerStr + (finished && overtimeStr ? "  " + overtimeStr : ""),
                  M.x + M.w - 8*sc, M.y + M.h - 8*sc);
-  }
+  };
+  if (U.mon2 || abDgm < 0) abMonStory(U.mon);
+  if (U.mon2 && abDgm < 0 && abStoryE) abMonStory(U.mon2);
   // MON-E: beside the story the letter crawls - one full transmission
   // per 27 minutes, re-sent from the top on every EXTEND
-  if (U.mon2 && abDgm < 0){
+  if (U.mon2 && abDgm < 0 && !abStoryE){
     const E = U.mon2;
     const idle3 = !running && !finished && pauseMs === 0;
     const per = 27*60;
@@ -1526,20 +1537,25 @@ function drawAbacusWideDots(t){
     const ln = Math.min(abLetterN, Math.max(1, Math.floor((scr + E.h)/abLetterLH)));
     ctx.fillText("LN " + ln + "/" + abLetterN, E.x + E.w - 8*sc, E.y + E.h - 8*sc);
   }
-  // FRAME / GOAL: the diagram keys on the bezel foot
-  for (let i = 0; i < 2; i++){
-    const b = U.dgmBtns[i], on = abDgm === i;
-    const kg2 = ctx.createLinearGradient(0, b.y, 0, b.y + b.h);
-    kg2.addColorStop(0, on ? "#3a3323" : "#262c38");
-    kg2.addColorStop(1, on ? "#241d10" : "#141821");
-    ctx.fillStyle = kg2;
-    ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.fill();
-    ctx.strokeStyle = on ? "rgba(255,170,60,0.7)" : "rgba(255,255,255,0.12)";
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.stroke();
-    ctx.font = Math.round(8*sc) + "px monospace"; ctx.textAlign = "center";
-    ctx.fillStyle = on ? "rgba(255,190,90,0.95)" : "rgba(150,165,185,0.6)";
-    ctx.fillText(i ? "GOAL" : "FRAME", b.x + b.w/2, b.y + b.h/2 + 3*sc);
+  // the channel row on the bezel foot: what does the tube show?
+  {
+    const chans = abChanDefs(!!U.mon2);
+    for (let i = 0; i < chans.length; i++){
+      const b = U.dgmBtns[i], ch = chans[i];
+      const on = ch.d === abDgm &&
+                 (ch.e === undefined || (abDgm < 0 && abStoryE === ch.e));
+      const kg2 = ctx.createLinearGradient(0, b.y, 0, b.y + b.h);
+      kg2.addColorStop(0, on ? "#3a3323" : "#262c38");
+      kg2.addColorStop(1, on ? "#241d10" : "#141821");
+      ctx.fillStyle = kg2;
+      ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.fill();
+      ctx.strokeStyle = on ? "rgba(255,170,60,0.7)" : "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.stroke();
+      ctx.font = Math.round(8*sc) + "px monospace"; ctx.textAlign = "center";
+      ctx.fillStyle = on ? "rgba(255,190,90,0.95)" : "rgba(150,165,185,0.6)";
+      ctx.fillText(ch.lb, b.x + b.w/2, b.y + b.h/2 + 3*sc);
+    }
   }
   // the DIAGRAM DECK: flowchart in phosphor, wheels, SEL, the stick
   if (abDgm >= 0){
@@ -1614,6 +1630,21 @@ function drawAbacusWideDots(t){
       ctx.fillText(String.fromCharCode(65 + cur), wr.x + wr.w/2, wr.y + wr.h/2 + 4*sc);
     };
     wheel(D.w1, 0); wheel(D.w2, 1);
+    const arrow = (ar, kk, up2) => {
+      const pr = abDgmFlash.k === kk && performance.now() < abDgmFlash.until;
+      ctx.fillStyle = pr ? "#141a24" : "#222b39";
+      ctx.beginPath(); ctx.roundRect(ar.x, ar.y, ar.w, ar.h, 3); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.1)";
+      ctx.beginPath(); ctx.roundRect(ar.x, ar.y, ar.w, ar.h, 3); ctx.stroke();
+      ctx.fillStyle = "rgba(200,215,235,0.75)";
+      const mx = ar.x + ar.w/2, my = ar.y + ar.h/2, aw = 4*sc, ah = 2.6*sc;
+      ctx.beginPath();
+      if (up2){ ctx.moveTo(mx, my - ah); ctx.lineTo(mx - aw, my + ah); ctx.lineTo(mx + aw, my + ah); }
+      else { ctx.moveTo(mx, my + ah); ctx.lineTo(mx - aw, my - ah); ctx.lineTo(mx + aw, my - ah); }
+      ctx.closePath(); ctx.fill();
+    };
+    arrow(D.w1u, "w0u", true); arrow(D.w1d, "w0d", false);
+    arrow(D.w2u, "w1u", true); arrow(D.w2d, "w1d", false);
     const sb = D.sel, sp2 = abDgmFlash.k === "sel" && performance.now() < abDgmFlash.until;
     ctx.fillStyle = sp2 ? "#141a24" : "#222b39";
     ctx.beginPath(); ctx.roundRect(sb.x, sb.y, sb.w, sb.h, 4); ctx.fill();
@@ -1639,9 +1670,11 @@ function drawAbacusWideDots(t){
 }
 // the tube's picture, cached per scene and size
 let abMonCanvas = null, abMonKey = "";
+const abMonCache = new Map();
 function abMonRender(idx, mw, mh){
   const key = idx + ":" + Math.round(mw) + ":" + Math.round(mh);
-  if (abMonKey === key && abMonCanvas) return abMonCanvas;
+  const hit0 = abMonCache.get(key);
+  if (hit0){ abMonKey = key; abMonCanvas = hit0; return hit0; }
   if (!storyReady) return null;
   abMonKey = key;
   abMonCanvas = document.createElement('canvas');
@@ -1686,6 +1719,8 @@ function abMonRender(idx, mw, mh){
   const gl = c2.createLinearGradient(0, 0, mw*0.7, mh);
   gl.addColorStop(0, "rgba(180,210,255,0.10)"); gl.addColorStop(0.3, "rgba(180,210,255,0)");
   c2.fillStyle = gl; c2.fillRect(0, 0, mw, mh);
+  abMonCache.set(key, abMonCanvas);
+  if (abMonCache.size > 8) abMonCache.delete(abMonCache.keys().next().value);
   return abMonCanvas;
 }
 // MON-E: the letter, an amber transmission beside the story tube
@@ -1800,6 +1835,13 @@ function abMonEOverlay(w, h){
    box carries a two-letter code; the side device's wheels dial a code,
    SEL clicks the box, the stick pans the camera over the chart. --- */
 let abDgm = -1;
+let abStoryE = 0;   // desktop wide glass, sans diagram: 0 letter, 1 story
+function abChanDefs(dual){
+  return dual
+    ? [{ lb: "STORY", d: -1, e: 1 }, { lb: "LETTER", d: -1, e: 0 },
+       { lb: "FRAME", d: 0 }, { lb: "GOAL", d: 1 }]
+    : [{ lb: "STORY", d: -1 }, { lb: "FRAME", d: 0 }, { lb: "GOAL", d: 1 }];
+}
 const abDgmCam = [{ x: 0, y: 500 }, { x: 0, y: 340 }];
 let abDgmWheel = [0, 0];
 let abDgmGlide = null, abDgmJoy = null, abDgmJoyPtr = null, abDgmJoyUntil = 0;
@@ -5931,10 +5973,13 @@ canvasAnim.addEventListener("click", (e) => {
   if (viewMode === 2){
     const U = abacusWideUnits();
     const hit = (b) => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h;
-    // diagram deck: FRAME/GOAL keys, then - when up - wheels and SEL
-    for (let i = 0; i < 2; i++){
-      if (hit(U.dgmBtns[i])){
-        abDgm = (abDgm === i) ? -1 : i;
+    // the channel row, then - when a diagram is up - wheels and SEL
+    {
+      const chans = abChanDefs(!!U.mon2);
+      for (let i = 0; i < chans.length; i++){
+        if (!hit(U.dgmBtns[i])) continue;
+        abDgm = chans[i].d;
+        if (chans[i].e !== undefined) abStoryE = chans[i].e;
         abDgmGlide = null;
         needsStaticRedraw = true;
         haptic('light');
@@ -5944,11 +5989,10 @@ canvasAnim.addEventListener("click", (e) => {
     if (abDgm >= 0){
       if (performance.now() < abDgmJoyUntil) return;
       const D = U.dgm;
-      const wheels = [D.w1, D.w2];
-      for (let wi = 0; wi < 2; wi++){
-        if (!hit(wheels[wi])) continue;
-        const up = cy < wheels[wi].y + wheels[wi].h/2;
-        abDgmWheel[wi] = (abDgmWheel[wi] + (up ? 25 : 1)) % 26;
+      const bump = (wi, dir) => {
+        abDgmWheel[wi] = (abDgmWheel[wi] + (dir < 0 ? 25 : 1)) % 26;
+        abDgmFlash = { k: "w" + wi + (dir < 0 ? "u" : "d"),
+                       until: performance.now() + 140 };
         const bi = abDgmWheel[0]*26 + abDgmWheel[1];
         if (bi < FRAME_DEFS[abDgm].boxes.length){
           const b = FRAME_DEFS[abDgm].boxes[bi];
@@ -5956,8 +6000,13 @@ canvasAnim.addEventListener("click", (e) => {
                          y: b.y + b.h/2 - D.scr.h/AB_DGM_S/2 };
         }
         haptic('light');
-        return;
-      }
+      };
+      if (hit(D.w1u)){ bump(0, -1); return; }
+      if (hit(D.w1d)){ bump(0, 1); return; }
+      if (hit(D.w2u)){ bump(1, -1); return; }
+      if (hit(D.w2d)){ bump(1, 1); return; }
+      if (hit(D.w1)){ bump(0, cy < D.w1.y + D.w1.h/2 ? -1 : 1); return; }
+      if (hit(D.w2)){ bump(1, cy < D.w2.y + D.w2.h/2 ? -1 : 1); return; }
       if (hit(D.sel)){
         abDgmFlash = { k: "sel", until: performance.now() + 140 };
         const bi = abDgmWheel[0]*26 + abDgmWheel[1];
