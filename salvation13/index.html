@@ -1015,10 +1015,11 @@ function drawRingDots(t){
    the chosen depth), each row two lamp slots read as a tally:
    dark-dark 0, one lit 1, both lit 2. --- */
 function abacusRows(){
-  // the abacus always reads to 1/243 - the register shows every place
-  // (the FRACTIONS setting governs the other views' counters)
+  // the register reads deep by default (AUTO = full 1/243), but the
+  // FRACTIONS setting can trim it: 1/81 stops the register there
   const mw = minutesWidth();
-  return { mw, fr: 5, total: mw + 5 };
+  const fr = fracDepth === 1 ? 4 : 5;
+  return { mw, fr, total: mw + fr };
 }
 function abacusMinRows(){ return abacusRows().mw; }
 function abacusLabel(i){
