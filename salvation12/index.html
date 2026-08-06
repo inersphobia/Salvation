@@ -1092,24 +1092,39 @@ function abacusWideUnits(){
              yTop: uy + padTop + cell/2 - 8*sc,
              yBot: uy + padTop + cell + gapY + cell/2 - 8*sc };
   };
-  const A = mk(330, R.mw, 26*sc);
-  const B = mk(0, R.fr, 0);
-  B.y0 = A.y0 + A.h - 3;                    // stacked flush, no legs
-  B.yTop = B.y0 + 33*sc + cell/2 - 8*sc;
-  B.yBot = B.y0 + 33*sc + cell + 8*sc + cell/2 - 8*sc;
+  // the tower is rooted at the bottom of the screen and grows upward:
+  // CONTROL, FRACTIONS, MINUTES, and the STORY monitor crowning it
+  const gapY = 8*sc, padTop = 33*sc, padBot = 25*sc;
+  const Bh = 2*cell + gapY + padTop + padBot;
+  const Ah = Bh + 26*sc;
   const Ch = 92*sc;
-  const Cd = { x0, y0: B.y0 + B.h - 3, w: target, h: Ch };
+  const Cy0 = viewH - 10*sc - Ch;
+  const By0 = Cy0 - Bh + 3;
+  const Ay0 = By0 - Ah + 3;
+  const mkAt = (y0v, n, h) => {
+    const cols = [];
+    for (let i = 0; i < n; i++) cols.push(slotX(i));
+    return { x0, y0: y0v, w: target, h, cols, cell,
+             yTop: y0v + padTop + cell/2 - 8*sc,
+             yBot: y0v + padTop + cell + gapY + cell/2 - 8*sc };
+  };
+  const A = mkAt(Ay0, R.mw, Ah);
+  const B = mkAt(By0, R.fr, Bh);
+  const Cd = { x0, y0: Cy0, w: target, h: Ch };
   const kw = (target - 48*sc - 24*sc)/3, kh = 42*sc;
   const keys = [];
   for (let i = 0; i < 3; i++)
     keys.push({ x: x0 + 24*sc + i*(kw + 12*sc), y: Cd.y0 + 34*sc, w: kw, h: kh });
+  const monH = Math.max(150*sc, Math.min(300*sc, Ay0 - 44));
+  const monTop = Ay0 - monH + 3;
   const bayX = slotX(slots - 1);
   const faceR = bayX - cell/2 - 12*sc;
   const extX = faceR + 8*sc;
-  return { sc, x0, R, A, B, Cd, keys, bayX, faceR,
+  return { sc, x0, R, A, B, Cd, keys, bayX, faceR, monTop, monH,
+           mon: { x: x0 + 26*sc, y: monTop + 30*sc,
+                  w: target - 52*sc, h: monH - 78*sc },
            ext: { x: extX, y: A.y0 + A.h - 42*sc,
-                  w: x0 + target - 13*sc - extX, h: 28*sc },
-           telem: { x: x0, y: viewH - 118*sc, w: target, h: 34*sc } };
+                  w: x0 + target - 13*sc - extX, h: 28*sc } };
 }
 function wideScrew(c, x, y, sc){
   c.fillStyle = "#242a34";
@@ -1156,11 +1171,49 @@ function drawAbacusWideStatic(){
     c.fillStyle = "rgba(255,255,255,0.03)";
     c.fillRect(viewW - 8 - 44*sc, (508 + k*19)*sc, 36*sc, 1.5*sc);
   }
-  // telemetry frame
-  c.fillStyle = "#0b0a06";
-  c.beginPath(); c.roundRect(U.telem.x, U.telem.y, U.telem.w, U.telem.h, 5); c.fill();
-  c.strokeStyle = "rgba(255,170,60,0.25)"; c.lineWidth = 1;
-  c.strokeRect(U.telem.x, U.telem.y, U.telem.w, U.telem.h);
+  // MON-D: the story tube crowning the stack
+  {
+    storyBoot();
+    const My0 = U.monTop, Mh = U.monH;
+    const hg2 = c.createLinearGradient(0, My0, 0, My0 + Mh);
+    hg2.addColorStop(0, "#232a36"); hg2.addColorStop(0.25, "#181c24"); hg2.addColorStop(1, "#101318");
+    c.fillStyle = hg2;
+    c.beginPath(); c.roundRect(U.x0, My0, U.A.w, Mh, 9); c.fill();
+    c.strokeStyle = "rgba(160,190,235,0.13)"; c.lineWidth = 1;
+    c.beginPath(); c.roundRect(U.x0, My0, U.A.w, Mh, 9); c.stroke();
+    c.strokeStyle = "rgba(0,0,0,0.6)";
+    c.beginPath(); c.roundRect(U.x0 + 4, My0 + 4, U.A.w - 8, Mh - 8, 7); c.stroke();
+    wideScrew(c, U.x0 + 10*sc, My0 + 10*sc, sc); wideScrew(c, U.x0 + U.A.w - 10*sc, My0 + 10*sc, sc);
+    wideScrew(c, U.x0 + 10*sc, My0 + Mh - 10*sc, sc); wideScrew(c, U.x0 + U.A.w - 10*sc, My0 + Mh - 10*sc, sc);
+    c.font = Math.round(10*sc) + "px monospace"; c.textAlign = "left";
+    c.fillStyle = "rgba(150,165,185,0.6)";
+    c.fillText("S T O R Y", U.x0 + 16*sc, My0 + 18*sc);
+    c.textAlign = "right";
+    c.fillStyle = "rgba(150,165,185,0.35)";
+    c.fillText("MON · D", U.x0 + U.A.w - 16*sc, My0 + 18*sc);
+    // brass trim around the tube
+    c.strokeStyle = "rgba(190,150,80,0.35)"; c.lineWidth = 3;
+    c.beginPath(); c.roundRect(U.mon.x - 5, U.mon.y - 5, U.mon.w + 10, U.mon.h + 10, 18); c.stroke();
+    c.fillStyle = "#05070f";
+    c.beginPath(); c.roundRect(U.mon.x, U.mon.y, U.mon.w, U.mon.h, 14); c.fill();
+    // brass knobs and vent slots on the bezel foot
+    for (let k = 0; k < 2; k++){
+      const kx2 = U.x0 + U.A.w - 46*sc - k*34*sc, ky2 = My0 + Mh - 24*sc;
+      const kg = c.createRadialGradient(kx2 - 2, ky2 - 2, 0, kx2, ky2, 9*sc);
+      kg.addColorStop(0, "#e8c88a"); kg.addColorStop(0.5, "#a9843e"); kg.addColorStop(1, "#5d461f");
+      c.fillStyle = kg;
+      c.beginPath(); c.arc(kx2, ky2, 9*sc, 0, 2*Math.PI); c.fill();
+      c.strokeStyle = "rgba(0,0,0,0.6)"; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(kx2, ky2);
+      c.lineTo(kx2 + 6*sc*Math.cos(0.6 + k*2), ky2 + 6*sc*Math.sin(0.6 + k*2)); c.stroke();
+    }
+    for (let k = 0; k < 6; k++){
+      c.fillStyle = "rgba(0,0,0,0.55)";
+      c.fillRect(U.x0 + 24*sc + k*14*sc, My0 + Mh - 28*sc, 8*sc, 12*sc);
+      c.fillStyle = "rgba(255,255,255,0.04)";
+      c.fillRect(U.x0 + 24*sc + (k*14 + 8)*sc, My0 + Mh - 28*sc, 1.5, 12*sc);
+    }
+  }
   // ---- the two housings ----
   const unit = (u, title, sub, labels, faceR) => {
     const ds = c.createRadialGradient(u.x0 + u.w/2, u.y0 + u.h + 6, 10, u.x0 + u.w/2, u.y0 + u.h + 6, u.w*0.7);
@@ -1389,16 +1442,80 @@ function drawAbacusWideDots(t){
       ctx.fillText(K.lb, b.x + b.w/2 + 5*sc, b.y + py + b.h/2 + 4*sc);
     }
   }
-  // telemetry
-  ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
-  ctx.fillStyle = "rgba(255,170,60,0.55)";
-  ctx.fillText("REG-A LINK OK   REG-B LINK OK   CYCLE " + timerStr,
-               U.telem.x + 12*sc, U.telem.y + 14*sc);
-  ctx.fillStyle = "rgba(255,170,60,0.3)";
-  ctx.fillText(finished
-      ? "PWR 27.54.81    DRIFT " + overtimeStr + "    ESPER HOLD"
-      : "PWR 27.54.81    DRIFT +0.000    ESPER STANDBY",
-    U.telem.x + 12*sc, U.telem.y + 26*sc);
+  // MON-D plays the sheet, one scene per minute; the owl at the bell
+  {
+    const M = U.mon;
+    const idle2 = !running && !finished && pauseMs === 0;
+    const minute = Math.floor((finished ? totalCycle : idle2 ? 0 : t)/60);
+    const idx = finished ? 27 : (minute % 27);
+    storyBoot();
+    const cv = abMonRender(idx, M.w, M.h);
+    ctx.save();
+    ctx.beginPath(); ctx.roundRect(M.x, M.y, M.w, M.h, 14); ctx.clip();
+    if (cv) ctx.drawImage(cv, M.x, M.y);
+    else { ctx.fillStyle = "#0b0e42"; ctx.fillRect(M.x, M.y, M.w, M.h); }
+    ctx.restore();
+    // burned-in tags, live
+    ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
+    ctx.fillStyle = "rgba(255,170,60,0.5)";
+    ctx.fillText(finished ? "SCN 1000 · FIN"
+                          : "SCN " + STORY_PANELS[idx] + " · " + (idx % 27 + 1) + "/27",
+                 M.x + 8*sc, M.y + M.h - 8*sc);
+    ctx.textAlign = "right";
+    ctx.fillText("CYCLE " + timerStr + (finished && overtimeStr ? "  " + overtimeStr : ""),
+                 M.x + M.w - 8*sc, M.y + M.h - 8*sc);
+  }
+}
+// the tube's picture, cached per scene and size
+let abMonCanvas = null, abMonKey = "";
+function abMonRender(idx, mw, mh){
+  const key = idx + ":" + Math.round(mw) + ":" + Math.round(mh);
+  if (abMonKey === key && abMonCanvas) return abMonCanvas;
+  if (!storyReady) return null;
+  abMonKey = key;
+  abMonCanvas = document.createElement('canvas');
+  abMonCanvas.width = Math.max(2, Math.round(mw));
+  abMonCanvas.height = Math.max(2, Math.round(mh));
+  const c2 = abMonCanvas.getContext('2d');
+  c2.fillStyle = "#0b0e42"; c2.fillRect(0, 0, mw, mh);
+  const W = storyImg.width, H = storyImg.height;
+  const gx0 = 0.048, gy0 = 0.049, cw = (0.955 - 0.048)/4, chh = (0.965 - 0.049)/7;
+  const rI = Math.floor(idx/4), cI = idx % 4;
+  const inT = 0.06, inB = 0.31 + (idx === 21 ? 0.13 : idx === 10 ? 0.03 : 0);
+  const sx = (gx0 + cI*cw + cw*0.075)*W, sy = (gy0 + rI*chh + chh*inT)*H;
+  const sw = cw*0.85*W, sh2 = chh*(1 - inT - inB)*H;
+  const side = Math.min(sw, sh2);
+  const G = 160;
+  const off = document.createElement('canvas');
+  off.width = G; off.height = G;
+  const oc = off.getContext('2d');
+  oc.drawImage(storyImg, sx + (sw - side)/2, sy + (sh2 - side)/2, side, side, 0, 0, G, G);
+  const px = oc.getImageData(0, 0, G, G).data;
+  const lums = [];
+  for (let i = 0; i < G*G; i++)
+    lums.push((0.2126*px[i*4] + 0.7152*px[i*4+1] + 0.0722*px[i*4+2])/255);
+  const srt = lums.slice().sort((a, b) => a - b);
+  const lo = srt[Math.floor(G*G*0.04)], hi = srt[Math.floor(G*G*0.97)];
+  const cs = Math.min(mw, mh)/G, ox = (mw - G*cs)/2, oy = (mh - G*cs)/2;
+  for (let i = 0; i < G*G; i++){
+    const L = Math.max(0, Math.min(1, (lums[i] - lo)/(hi - lo)));
+    if (L < 0.15) continue;
+    const x = i % G, y = (i - x)/G;
+    c2.fillStyle = "rgba(224,232,250," + (0.45 + 0.5*L).toFixed(2) + ")";
+    c2.beginPath();
+    c2.arc(ox + (x + 0.5)*cs, oy + (y + 0.5)*cs, cs*(0.1 + 0.42*L*L), 0, 2*Math.PI);
+    c2.fill();
+  }
+  const vg = c2.createRadialGradient(mw/2, mh/2, mh*0.3, mw/2, mh/2, mh*0.85);
+  vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.55)");
+  c2.fillStyle = vg; c2.fillRect(0, 0, mw, mh);
+  c2.globalAlpha = 0.12; c2.fillStyle = "#000";
+  for (let y = 0; y < mh; y += 2) c2.fillRect(0, y, mw, 1);
+  c2.globalAlpha = 1;
+  const gl = c2.createLinearGradient(0, 0, mw*0.7, mh);
+  gl.addColorStop(0, "rgba(180,210,255,0.10)"); gl.addColorStop(0.3, "rgba(180,210,255,0)");
+  c2.fillStyle = gl; c2.fillRect(0, 0, mw, mh);
+  return abMonCanvas;
 }
 let abKeyFlash = { id: -1, until: 0 };
 function abacusExtend(){
@@ -4779,7 +4896,10 @@ function drawGoetia(t){
 
 function getTextY(){
   if (viewMode===2){
-    if (abacusWide) return Math.round(788*abacusWideScale());
+    if (abacusWide){
+      const U = abacusWideUnits();
+      return Math.max(46, Math.round(U.monTop - 14*U.sc));
+    }
     const L = abacusLayout();  return L.top + L.gridH + 56;
   }
   if (viewMode===3){ const F = fractalLayout(); return F.topY + F.triH + 52; }
