@@ -1532,8 +1532,8 @@ function drawAbacusWideDots(t){
     const ln = Math.min(abLetterN, Math.max(1, Math.floor((scr + E.h)/abLetterLH)));
     ctx.fillText("LN " + ln + "/" + abLetterN, E.x + E.w - 8*sc, E.y + E.h - 8*sc);
   }
-  // SELECT: the brass confirm key on the bezel foot - opens the dialed
-  // feed from the list, steps a live feed back, clicks the dialed box
+  // SELECT: the brass key on the bezel foot - commits the dialed feed
+  // in VISUALS; in DIAGRAM it opens the dialed box's text editor
   {
     const b = U.selBtn;
     const armed = abDgm >= 0 || abViz >= 0;
@@ -6175,21 +6175,12 @@ canvasAnim.addEventListener("click", (e) => {
     if ((abDgm >= 0 || abViz >= 0) && hit(U.selBtn)){
       abDgmFlash = { k: "sel", until: performance.now() + 140 };
       const biS = abDgmWheel[0]*26 + abDgmWheel[1];
-      if (abViz === 0){
+      if (abViz >= 0){
+        // commit the dialed feed (the VISUALS key brings the list back)
         if (biS < VIZ_DEFS.length){ abViz = biS + 1; haptic('medium'); }
-      } else if (abViz > 0){
-        abViz = 0;
-        haptic('light');
-      } else if (biS < FRAME_DEFS[abDgm].boxes.length && !FRAME_DEFS[abDgm].boxes[biS].empty){
-        frameSelected = biS;
-        frameSelectedF = abDgm;
-        frameStatus = FRAME_DEFS[abDgm].boxes[biS].lines.join(" ");
-        try {
-          localStorage.setItem('salvationStatus', frameStatus);
-          localStorage.setItem('salvationStatusIdx', biS);
-          localStorage.setItem('salvationStatusF', frameSelectedF);
-        } catch(err) {}
-        haptic('medium');
+      } else if (biS < FRAME_DEFS[abDgm].boxes.length){
+        // in DIAGRAM the wheels already select - SELECT opens the editor
+        openFrameEdit(abDgm, biS);
       }
       return;
     }
@@ -6223,8 +6214,6 @@ canvasAnim.addEventListener("click", (e) => {
         abDgmWheel[wi] = (abDgmWheel[wi] + (dir < 0 ? 25 : 1)) % 26;
         abDgmFlash = { k: "w" + wi + (dir < 0 ? "u" : "d"),
                        until: performance.now() + 140 };
-        const bi = abDgmWheel[0]*26 + abDgmWheel[1];
-        if (bi < VIZ_DEFS.length) abViz = bi + 1;
         haptic('light');
       };
       if (hit(D.w1u)){ vBump(0, -1); return; }
