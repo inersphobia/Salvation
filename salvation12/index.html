@@ -1154,15 +1154,16 @@ function abacusWideUnits(){
   const jr = Math.min(19*pu, panW/2 - 3);
   dgm.joy = { cx: dgm.pan.x + panW/2, cy: dgm.pan.y + dgm.pan.h - jr - 10*pu, r: jr };
   const ventEnd = x0 + 116*sc, knobStart = x0 + target - 92*sc;
-  const nCh = mon2 ? 4 : 3;
-  const dbw = 48*sc, dbh = 17*sc, dbg = 8*sc;
-  const rowW = nCh*dbw + (nCh - 1)*dbg;
-  const dbx = (ventEnd + knobStart)/2 - rowW/2;
-  const dgmBtns = [];
-  for (let i = 0; i < nCh; i++)
-    dgmBtns.push({ x: dbx + i*(dbw + dbg), y: monTop + monH - 27*sc, w: dbw, h: dbh });
+  const dbw = 62*sc, dbh = 17*sc, dbg = 10*sc;
+  const dbx = (ventEnd + knobStart)/2 - dbw - dbg/2;
+  const dgmBtns = [
+    { x: dbx, y: monTop + monH - 27*sc, w: dbw, h: dbh },
+    { x: dbx + dbw + dbg, y: monTop + monH - 27*sc, w: dbw, h: dbh }
+  ];
+  const edit = { x: mon.x + mon.w/2 - 28*sc, y: mon.y + mon.h - 26*sc,
+                 w: 56*sc, h: 18*sc };
   return { sc, x0, R, A, B, Cd, keys, bayX, faceR, monTop, monH, mon, mon2,
-           dgm, dgmBtns,
+           dgm, dgmBtns, edit,
            ext: { x: extX, y: A.y0 + A.h - 42*sc,
                   w: x0 + target - 13*sc - extX, h: 28*sc } };
 }
@@ -1227,10 +1228,10 @@ function drawAbacusWideStatic(){
     wideScrew(c, U.x0 + 10*sc, My0 + Mh - 10*sc, sc); wideScrew(c, U.x0 + U.A.w - 10*sc, My0 + Mh - 10*sc, sc);
     c.font = Math.round(10*sc) + "px monospace"; c.textAlign = "left";
     c.fillStyle = "rgba(150,165,185,0.6)";
-    c.fillText((!U.mon2 && abDgm >= 0) ? "D I A G R A M" : "S T O R Y", U.x0 + 16*sc, My0 + 18*sc);
+    c.fillText(abDgm >= 0 ? (U.mon2 ? "B O X" : "D I A G R A M") : "S T O R Y", U.x0 + 16*sc, My0 + 18*sc);
     if (U.mon2){
       c.fillStyle = "rgba(150,165,185,0.5)";
-      c.fillText(abDgm >= 0 ? "D I A G R A M" : abStoryE ? "S T O R Y" : "L E T T E R", U.mon2.x - 4, My0 + 18*sc);
+      c.fillText(abDgm >= 0 ? "D I A G R A M" : "L E T T E R", U.mon2.x - 4, My0 + 18*sc);
     }
     c.textAlign = "right";
     c.fillStyle = "rgba(150,165,185,0.35)";
@@ -1511,11 +1512,10 @@ function drawAbacusWideDots(t){
     ctx.fillText("CYCLE " + timerStr + (finished && overtimeStr ? "  " + overtimeStr : ""),
                  M.x + M.w - 8*sc, M.y + M.h - 8*sc);
   };
-  if (U.mon2 || abDgm < 0) abMonStory(U.mon);
-  if (U.mon2 && abDgm < 0 && abStoryE) abMonStory(U.mon2);
+  if (abDgm < 0) abMonStory(U.mon);
   // MON-E: beside the story the letter crawls - one full transmission
   // per 27 minutes, re-sent from the top on every EXTEND
-  if (U.mon2 && abDgm < 0 && !abStoryE){
+  if (U.mon2 && abDgm < 0){
     const E = U.mon2;
     const idle3 = !running && !finished && pauseMs === 0;
     const per = 27*60;
@@ -1537,13 +1537,14 @@ function drawAbacusWideDots(t){
     const ln = Math.min(abLetterN, Math.max(1, Math.floor((scr + E.h)/abLetterLH)));
     ctx.fillText("LN " + ln + "/" + abLetterN, E.x + E.w - 8*sc, E.y + E.h - 8*sc);
   }
-  // the channel row on the bezel foot: what does the tube show?
+  // the channel row: STORY, or DIAGRAM - the key names the chart
+  // that's up, and pressing it again flips FRAME <-> GOAL
   {
-    const chans = abChanDefs(!!U.mon2);
-    for (let i = 0; i < chans.length; i++){
-      const b = U.dgmBtns[i], ch = chans[i];
-      const on = ch.d === abDgm &&
-                 (ch.e === undefined || (abDgm < 0 && abStoryE === ch.e));
+    for (let i = 0; i < 2; i++){
+      const b = U.dgmBtns[i];
+      const on = i === 0 ? abDgm < 0 : abDgm >= 0;
+      const lb2 = i === 0 ? "STORY"
+                          : abDgm < 0 ? "DIAGRAM" : abDgm ? "GOAL" : "FRAME";
       const kg2 = ctx.createLinearGradient(0, b.y, 0, b.y + b.h);
       kg2.addColorStop(0, on ? "#3a3323" : "#262c38");
       kg2.addColorStop(1, on ? "#241d10" : "#141821");
@@ -1554,12 +1555,50 @@ function drawAbacusWideDots(t){
       ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.stroke();
       ctx.font = Math.round(8*sc) + "px monospace"; ctx.textAlign = "center";
       ctx.fillStyle = on ? "rgba(255,190,90,0.95)" : "rgba(150,165,185,0.6)";
-      ctx.fillText(ch.lb, b.x + b.w/2, b.y + b.h/2 + 3*sc);
+      ctx.fillText(lb2, b.x + b.w/2, b.y + b.h/2 + 3*sc);
     }
   }
   // the DIAGRAM DECK: flowchart in phosphor, wheels, SEL, the stick
   if (abDgm >= 0){
     const D = U.dgm, def = FRAME_DEFS[abDgm], S2 = AB_DGM_S;
+    // the left glass becomes the BOX monitor: the box the wheels are
+    // selecting, its code large, with an EDIT key on the glass
+    if (U.mon2){
+      const M = U.mon;
+      const bi2 = abDgmWheel[0]*26 + abDgmWheel[1];
+      const bx2 = bi2 < def.boxes.length ? def.boxes[bi2] : null;
+      ctx.save();
+      ctx.beginPath(); ctx.roundRect(M.x, M.y, M.w, M.h, 14); ctx.clip();
+      ctx.fillStyle = "#0b0e42"; ctx.fillRect(M.x, M.y, M.w, M.h);
+      ctx.font = "bold " + Math.round(22*sc) + "px monospace"; ctx.textAlign = "center";
+      ctx.fillStyle = bx2 ? "rgba(255,170,60,0.9)" : "rgba(255,170,60,0.35)";
+      ctx.fillText(abDgmCode(abDgmWheel[0], abDgmWheel[1]), M.x + M.w/2, M.y + 32*sc);
+      const lines2 = bx2 ? ((bx2.empty || !bx2.lines.length) ? ["( empty )"] : bx2.lines)
+                         : ["( no box )"];
+      ctx.font = Math.round(11*sc) + "px monospace";
+      ctx.fillStyle = "rgba(224,232,250,0.85)";
+      const lh5 = 15*sc, ty5 = M.y + M.h/2 - (lines2.length - 1)*lh5/2 + 2*sc;
+      lines2.forEach((ln5, k) => ctx.fillText(ln5, M.x + M.w/2, ty5 + k*lh5));
+      ctx.drawImage(abMonEOverlay(M.w, M.h), M.x, M.y);
+      ctx.restore();
+      const eb = U.edit, canE = !!bx2;
+      ctx.fillStyle = canE ? "rgba(255,150,40,0.12)" : "rgba(255,255,255,0.03)";
+      ctx.beginPath(); ctx.roundRect(eb.x, eb.y, eb.w, eb.h, 4); ctx.fill();
+      ctx.strokeStyle = canE ? "rgba(255,170,60,0.7)" : "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(eb.x, eb.y, eb.w, eb.h, 4); ctx.stroke();
+      ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "center";
+      ctx.fillStyle = canE ? "rgba(255,190,90,0.95)" : "rgba(150,165,185,0.35)";
+      ctx.fillText("EDIT", eb.x + eb.w/2, eb.y + eb.h/2 + 3*sc);
+      ctx.textAlign = "left";
+      ctx.font = Math.round(9*sc) + "px monospace";
+      ctx.fillStyle = "rgba(255,170,60,0.5)";
+      ctx.fillText("BOX", M.x + 8*sc, M.y + M.h - 8*sc);
+      if (bx2 && frameSelectedF === abDgm && frameSelected === bi2){
+        ctx.textAlign = "right";
+        ctx.fillText("· SET", M.x + M.w - 8*sc, M.y + M.h - 8*sc);
+      }
+    }
     const cam = abDgmCam[abDgm];
     if (abDgmJoy && (abDgmJoy.dx || abDgmJoy.dy)){
       cam.x += abDgmJoy.dx*10; cam.y += abDgmJoy.dy*10;
@@ -1835,13 +1874,7 @@ function abMonEOverlay(w, h){
    box carries a two-letter code; the side device's wheels dial a code,
    SEL clicks the box, the stick pans the camera over the chart. --- */
 let abDgm = -1;
-let abStoryE = 0;   // desktop wide glass, sans diagram: 0 letter, 1 story
-function abChanDefs(dual){
-  return dual
-    ? [{ lb: "STORY", d: -1, e: 1 }, { lb: "LETTER", d: -1, e: 0 },
-       { lb: "FRAME", d: 0 }, { lb: "GOAL", d: 1 }]
-    : [{ lb: "STORY", d: -1 }, { lb: "FRAME", d: 0 }, { lb: "GOAL", d: 1 }];
-}
+let abDgmLastD = 0;   // which chart the DIAGRAM key returns to
 const abDgmCam = [{ x: 0, y: 500 }, { x: 0, y: 340 }];
 let abDgmWheel = [0, 0];
 let abDgmGlide = null, abDgmJoy = null, abDgmJoyPtr = null, abDgmJoyUntil = 0;
@@ -3676,6 +3709,7 @@ function drawGears(t){
 }
 
 function drawStatus(){
+  if (viewMode === 2) return;   // the console carries its own diagram deck
   if (!frameStatus){
     if (viewMode < 10){
       ctx.font = "12px monospace";
@@ -5973,18 +6007,26 @@ canvasAnim.addEventListener("click", (e) => {
   if (viewMode === 2){
     const U = abacusWideUnits();
     const hit = (b) => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h;
-    // the channel row, then - when a diagram is up - wheels and SEL
-    {
-      const chans = abChanDefs(!!U.mon2);
-      for (let i = 0; i < chans.length; i++){
-        if (!hit(U.dgmBtns[i])) continue;
-        abDgm = chans[i].d;
-        if (chans[i].e !== undefined) abStoryE = chans[i].e;
-        abDgmGlide = null;
-        needsStaticRedraw = true;
-        haptic('light');
-        return;
-      }
+    // the channel row: STORY, or DIAGRAM (press again to flip charts)
+    if (hit(U.dgmBtns[0])){
+      abDgm = -1;
+      abDgmGlide = null;
+      needsStaticRedraw = true;
+      haptic('light');
+      return;
+    }
+    if (hit(U.dgmBtns[1])){
+      abDgm = abDgm < 0 ? abDgmLastD : 1 - abDgm;
+      abDgmLastD = abDgm;
+      abDgmGlide = null;
+      needsStaticRedraw = true;
+      haptic('light');
+      return;
+    }
+    if (abDgm >= 0 && U.mon2 && hit(U.edit)){
+      const biE = abDgmWheel[0]*26 + abDgmWheel[1];
+      if (biE < FRAME_DEFS[abDgm].boxes.length) openFrameEdit(abDgm, biE);
+      return;
     }
     if (abDgm >= 0){
       if (performance.now() < abDgmJoyUntil) return;
@@ -6510,6 +6552,7 @@ document.getElementById('feCancel').addEventListener('click', () => closeFrameEd
 
 /* ---------- STATUS long-press: jump timer <-> its diagram ---------- */
 function statusHit(cx, cy){
+  if (viewMode === 2) return false;   // no status corner on the console
   if (cx > 250 || cy > 80) return false;
   return !!frameStatus || viewMode < 10; // placeholder is pressable too
 }
