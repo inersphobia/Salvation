@@ -1233,7 +1233,8 @@ function drawAbacusWideStatic(){
     c.fillStyle = "rgba(150,165,185,0.6)";
     c.fillText(U.duo && abDgm >= 0 ? "B O X"
              : abDgm >= 0 ? "D I A G R A M"
-             : abViz >= 0 ? "V I S U A L S" : "S T O R Y",
+             : abViz >= 0 ? "V I S U A L S"
+             : (!U.duo && abStoryPage) ? "L E T T E R" : "S T O R Y",
                U.x0 + 16*sc, My0 + 18*sc);
     if (U.duo && abViz < 0){
       c.fillStyle = "rgba(150,165,185,0.5)";
@@ -1509,12 +1510,12 @@ function drawAbacusWideDots(t){
     ctx.fillText("CYCLE " + timerStr + (finished && overtimeStr ? "  " + overtimeStr : ""),
                  M.x + M.w - 8*sc, M.y + M.h - 8*sc);
   };
-  if (abDgm < 0 && abViz < 0)
+  if (abDgm < 0 && abViz < 0 && (U.duo || abStoryPage === 0))
     abMonStory(U.duo ? U.duo.L : U.dgm.scr);
   // MON-E: beside the story the letter crawls - one full transmission
   // per 27 minutes, re-sent from the top on every EXTEND
-  if (U.duo && abDgm < 0 && abViz < 0){
-    const E = U.duo.R;
+  if ((U.duo || abStoryPage === 1) && abDgm < 0 && abViz < 0){
+    const E = U.duo ? U.duo.R : U.dgm.scr;
     const idle3 = !running && !finished && pauseMs === 0;
     const per = 27*60;
     const local = finished ? per : idle3 ? 0 : (t % per);
@@ -1576,7 +1577,8 @@ function drawAbacusWideDots(t){
       const b = U.dgmBtns[i];
       const on = i === 0 ? (abDgm < 0 && abViz < 0)
                : i === 1 ? abDgm >= 0 : abViz >= 0;
-      const lb2 = i === 0 ? "STORY"
+      const lb2 = i === 0
+                ? ((!U.duo && abDgm < 0 && abViz < 0 && abStoryPage) ? "LETTER" : "STORY")
                 : i === 1 ? (abDgm < 0 ? "DIAGRAM" : abDgm ? "GOAL" : "FRAME")
                 : (abViz > 0 ? VIZ_DEFS[abViz - 1].n : "VISUALS");
       const kg2 = ctx.createLinearGradient(0, b.y, 0, b.y + b.h);
@@ -1881,6 +1883,7 @@ Others believed that three was sacred because it is the first number that is tri
 Are some constellations circles?`;
 let abLetterCv = null, abLetterKey = "", abLetterLH = 16, abLetterN = 1;
 let abLetterPos = null, abLetterT = 0;   // the stick-bent crawl
+let abStoryPage = 0;   // one-tube STORY: 0 the scenes, 1 the letter
 function abLetterRender(w, sc){
   const key = Math.round(w) + ":" + Math.round(sc*100);
   if (abLetterKey === key && abLetterCv) return abLetterCv;
@@ -6207,6 +6210,8 @@ canvasAnim.addEventListener("click", (e) => {
     }
     // the channel row: STORY / DIAGRAM (again flips charts) / VISUALS
     if (hit(U.dgmBtns[0])){
+      // on one-tube glass the STORY key turns its own page
+      if (abDgm < 0 && abViz < 0 && !U.duo) abStoryPage = 1 - abStoryPage;
       abDgm = -1; abViz = -1;
       abDgmGlide = null;
       needsStaticRedraw = true;
