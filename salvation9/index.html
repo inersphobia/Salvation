@@ -1120,18 +1120,10 @@ function abacusWideUnits(){
   const bayX = slotX(slots - 1);
   const faceR = bayX - cell/2 - 12*sc;
   const extX = faceR + 8*sc;
-  // one tube on a phone; on a wide screen MON-D narrows to the left
-  // and MON-E - the letter - takes the right of the crown
+  // one monitor, always - on wide glass its interior splits instead
   const monW = target - 52*sc, monIH = monH - 108*sc;
-  let mon, mon2 = null;
-  if (monW >= monIH*2.2 + 200*sc){
-    const dw = Math.min(monIH*1.15, monW*0.42);
-    mon = { x: x0 + 26*sc, y: monTop + 30*sc, w: dw, h: monIH };
-    mon2 = { x: x0 + 26*sc + dw + 22*sc, y: monTop + 30*sc,
-             w: monW - dw - 22*sc, h: monIH };
-  } else {
-    mon = { x: x0 + 26*sc, y: monTop + 30*sc, w: monW, h: monIH };
-  }
+  const mon = { x: x0 + 26*sc, y: monTop + 30*sc, w: monW, h: monIH };
+  const mon2 = null;
   // the diagram deck: FRAME/GOAL keycaps on the bezel foot, and - when
   // a diagram is up - a side device with two letter wheels, SEL, a stick
   const dt0 = mon2 || mon;
@@ -1151,6 +1143,15 @@ function abacusWideUnits(){
   dgm.w2  = { x: px5, y: dgm.pan.y + 132*pu, w: pw5, h: 44*pu };
   dgm.w2d = { x: px5, y: dgm.pan.y + 179*pu, w: pw5, h: 17*pu };
   dgm.joy = { cx: x0 + 56*sc, cy: monTop + monH - 50*sc, r: 20*sc };
+  // on wide glass the tube splits: a square bay left (scene or box),
+  // the working surface right (letter or chart)
+  let duo = null;
+  if (dgm.scr.w >= dgm.scr.h*1.9){
+    const lw = Math.min(dgm.scr.h*1.15, dgm.scr.w*0.42);
+    duo = { L: { x: dgm.scr.x, y: dgm.scr.y, w: lw, h: dgm.scr.h },
+            R: { x: dgm.scr.x + lw + 14*sc, y: dgm.scr.y,
+                 w: dgm.scr.w - lw - 14*sc, h: dgm.scr.h } };
+  }
   const ventEnd = x0 + 116*sc, knobStart = x0 + target - 92*sc;
   const dbw = 54*sc, dbh = 17*sc, dbg = 8*sc;
   const dbx = (ventEnd + knobStart)/2 - (3*dbw + 2*dbg)/2;
@@ -1159,10 +1160,13 @@ function abacusWideUnits(){
     dgmBtns.push({ x: dbx + i*(dbw + dbg), y: monTop + monH - 27*sc, w: dbw, h: dbh });
   const selBtn = { x: x0 + target - 84*sc, y: monTop + monH - 27*sc,
                    w: 68*sc, h: dbh };
-  const edit = { x: mon.x + mon.w/2 - 28*sc, y: mon.y + mon.h - 26*sc,
-                 w: 56*sc, h: 18*sc };
+  const edit = duo
+    ? { x: duo.L.x + duo.L.w/2 - 28*sc, y: duo.L.y + duo.L.h - 26*sc,
+        w: 56*sc, h: 18*sc }
+    : { x: mon.x + mon.w/2 - 28*sc, y: mon.y + mon.h - 26*sc,
+        w: 56*sc, h: 18*sc };
   return { sc, x0, R, A, B, Cd, keys, bayX, faceR, monTop, monH, mon, mon2,
-           dgm, dgmBtns, selBtn, edit,
+           dgm, dgmBtns, selBtn, edit, duo,
            ext: { x: extX, y: A.y0 + A.h - 42*sc,
                   w: x0 + target - 13*sc - extX, h: 28*sc } };
 }
@@ -1227,15 +1231,14 @@ function drawAbacusWideStatic(){
     wideScrew(c, U.x0 + 10*sc, My0 + Mh - 10*sc, sc); wideScrew(c, U.x0 + U.A.w - 10*sc, My0 + Mh - 10*sc, sc);
     c.font = Math.round(10*sc) + "px monospace"; c.textAlign = "left";
     c.fillStyle = "rgba(150,165,185,0.6)";
-    c.fillText(U.mon2 ? (abDgm >= 0 ? "B O X" : "S T O R Y")
-                      : (abDgm >= 0 ? "D I A G R A M"
-                                    : abViz >= 0 ? "V I S U A L S" : "S T O R Y"),
+    c.fillText(U.duo && abDgm >= 0 ? "B O X"
+             : abDgm >= 0 ? "D I A G R A M"
+             : abViz >= 0 ? "V I S U A L S" : "S T O R Y",
                U.x0 + 16*sc, My0 + 18*sc);
-    if (U.mon2){
+    if (U.duo && abViz < 0){
       c.fillStyle = "rgba(150,165,185,0.5)";
-      c.fillText(abDgm >= 0 ? "D I A G R A M"
-                            : abViz >= 0 ? "V I S U A L S" : "L E T T E R",
-                 U.mon2.x - 4, My0 + 18*sc);
+      c.fillText(abDgm >= 0 ? "D I A G R A M" : "L E T T E R",
+                 U.duo.R.x - 4, My0 + 18*sc);
     }
     c.textAlign = "right";
     c.fillStyle = "rgba(150,165,185,0.35)";
@@ -1506,12 +1509,12 @@ function drawAbacusWideDots(t){
     ctx.fillText("CYCLE " + timerStr + (finished && overtimeStr ? "  " + overtimeStr : ""),
                  M.x + M.w - 8*sc, M.y + M.h - 8*sc);
   };
-  if (abDgm < 0 && (U.mon2 || abViz < 0))
-    abMonStory(U.mon2 ? U.mon : U.dgm.scr);
+  if (abDgm < 0 && abViz < 0)
+    abMonStory(U.duo ? U.duo.L : U.dgm.scr);
   // MON-E: beside the story the letter crawls - one full transmission
   // per 27 minutes, re-sent from the top on every EXTEND
-  if (U.mon2 && abDgm < 0 && abViz < 0){
-    const E = U.dgm.scr;
+  if (U.duo && abDgm < 0 && abViz < 0){
+    const E = U.duo.R;
     const idle3 = !running && !finished && pauseMs === 0;
     const per = 27*60;
     const local = finished ? per : idle3 ? 0 : (t % per);
@@ -1592,10 +1595,11 @@ function drawAbacusWideDots(t){
   // the DIAGRAM DECK: flowchart in phosphor, wheels, SEL, the stick
   if (abDgm >= 0){
     const D = U.dgm, def = FRAME_DEFS[abDgm], S2 = AB_DGM_S;
+    const SD = U.duo ? U.duo.R : U.dgm.scr;
     // the left glass becomes the BOX monitor: the box the wheels are
     // selecting, its code large, with an EDIT key on the glass
-    if (U.mon2){
-      const M = U.mon;
+    if (U.duo){
+      const M = U.duo.L;
       const bi2 = abDgmWheel[0]*26 + abDgmWheel[1];
       const bx2 = bi2 < def.boxes.length ? def.boxes[bi2] : null;
       ctx.save();
@@ -1639,35 +1643,35 @@ function drawAbacusWideDots(t){
       cam.y += (abDgmGlide.y - cam.y)*0.09;
       if (Math.abs(abDgmGlide.x - cam.x) + Math.abs(abDgmGlide.y - cam.y) < 1) abDgmGlide = null;
     }
-    const winW = D.scr.w/S2, winH = D.scr.h/S2;
+    const winW = SD.w/S2, winH = SD.h/S2;
     cam.x = Math.max(0, Math.min(def.W - winW, cam.x));
     cam.y = Math.max(0, Math.min(def.H - winH, cam.y));
     const cv = abDgmRender(abDgm);
     ctx.save();
-    ctx.beginPath(); ctx.roundRect(D.scr.x, D.scr.y, D.scr.w, D.scr.h, 14); ctx.clip();
-    ctx.fillStyle = "#0b0e42"; ctx.fillRect(D.scr.x, D.scr.y, D.scr.w, D.scr.h);
+    ctx.beginPath(); ctx.roundRect(SD.x, SD.y, SD.w, SD.h, 14); ctx.clip();
+    ctx.fillStyle = "#0b0e42"; ctx.fillRect(SD.x, SD.y, SD.w, SD.h);
     const sxp = Math.round(cam.x*S2), syp = Math.round(cam.y*S2);
-    const sw4 = Math.min(D.scr.w, cv.width - sxp), sh4 = Math.min(D.scr.h, cv.height - syp);
-    if (sw4 > 0 && sh4 > 0) ctx.drawImage(cv, sxp, syp, sw4, sh4, D.scr.x, D.scr.y, sw4, sh4);
+    const sw4 = Math.min(SD.w, cv.width - sxp), sh4 = Math.min(SD.h, cv.height - syp);
+    if (sw4 > 0 && sh4 > 0) ctx.drawImage(cv, sxp, syp, sw4, sh4, SD.x, SD.y, sw4, sh4);
     const bi = abDgmWheel[0]*26 + abDgmWheel[1];
     if (bi < def.boxes.length){
       const b = def.boxes[bi];
       const pu = 0.55 + 0.35*Math.sin(performance.now()/280);
       ctx.strokeStyle = "rgba(255,170,60," + pu.toFixed(2) + ")";
       ctx.lineWidth = 1.6; ctx.setLineDash([3, 4]);
-      ctx.strokeRect(D.scr.x + (b.x - cam.x)*S2 - 3, D.scr.y + (b.y - cam.y)*S2 - 3,
+      ctx.strokeRect(SD.x + (b.x - cam.x)*S2 - 3, SD.y + (b.y - cam.y)*S2 - 3,
                      b.w*S2 + 6, b.h*S2 + 6);
       ctx.setLineDash([]);
     }
-    ctx.drawImage(abMonEOverlay(D.scr.w, D.scr.h), D.scr.x, D.scr.y);
+    ctx.drawImage(abMonEOverlay(SD.w, SD.h), SD.x, SD.y);
     ctx.restore();
     ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
     ctx.fillStyle = "rgba(255,170,60,0.5)";
-    ctx.fillText("DGM · " + (abDgm ? "GOAL" : "FRAME"), D.scr.x + 8*sc, D.scr.y + D.scr.h - 8*sc);
+    ctx.fillText("DGM · " + (abDgm ? "GOAL" : "FRAME"), SD.x + 8*sc, SD.y + SD.h - 8*sc);
     ctx.textAlign = "right";
     ctx.fillStyle = bi < def.boxes.length ? "rgba(255,170,60,0.8)" : "rgba(255,170,60,0.3)";
     ctx.fillText("DIAL " + abDgmCode(abDgmWheel[0], abDgmWheel[1]),
-                 D.scr.x + D.scr.w - 8*sc, D.scr.y + D.scr.h - 8*sc);
+                 SD.x + SD.w - 8*sc, SD.y + SD.h - 8*sc);
   }
   // VISUALS: the list of views with their codes, or the live feed
   if (abViz >= 0){
@@ -6252,7 +6256,7 @@ canvasAnim.addEventListener("click", (e) => {
       if (cx >= D.pan.x && cx <= D.pan.x + D.pan.w &&
           cy >= D.pan.y && cy <= D.pan.y + D.pan.h) return;
     }
-    if (abDgm >= 0 && U.mon2 && hit(U.edit)){
+    if (abDgm >= 0 && U.duo && hit(U.edit)){
       const biE = abDgmWheel[0]*26 + abDgmWheel[1];
       if (biE < FRAME_DEFS[abDgm].boxes.length) openFrameEdit(abDgm, biE);
       return;
@@ -6267,8 +6271,9 @@ canvasAnim.addEventListener("click", (e) => {
         const bi = abDgmWheel[0]*26 + abDgmWheel[1];
         if (bi < FRAME_DEFS[abDgm].boxes.length){
           const b = FRAME_DEFS[abDgm].boxes[bi];
-          abDgmGlide = { x: b.x + b.w/2 - D.scr.w/AB_DGM_S/2,
-                         y: b.y + b.h/2 - D.scr.h/AB_DGM_S/2 };
+          const SD2 = U.duo ? U.duo.R : D.scr;
+          abDgmGlide = { x: b.x + b.w/2 - SD2.w/AB_DGM_S/2,
+                         y: b.y + b.h/2 - SD2.h/AB_DGM_S/2 };
           // the dial commits itself: a valid code IS the selection
           if (!b.empty){
             frameSelected = bi;
