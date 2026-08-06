@@ -1096,7 +1096,7 @@ function abacusWideUnits(){
   // CONTROL, FRACTIONS, MINUTES, and the STORY monitor crowning it
   const gapY = 8*sc, padTop = 33*sc, padBot = 25*sc;
   const Bh = 2*cell + gapY + padTop + padBot;
-  const Ah = Bh + 26*sc;
+  const Ah = Bh;
   const Ch = 92*sc;
   const Cy0 = viewH - 10*sc - Ch;
   const By0 = Cy0 - Bh + 3;
@@ -1115,7 +1115,7 @@ function abacusWideUnits(){
   const keys = [];
   for (let i = 0; i < 3; i++)
     keys.push({ x: x0 + 24*sc + i*(kw + 12*sc), y: Cd.y0 + 34*sc, w: kw, h: kh });
-  const monH = Math.max(170*sc, Math.min(340*sc, Ay0 - 44));
+  const monH = Math.max(170*sc, Math.min(370*sc, Ay0 - 44));
   const monTop = Ay0 - monH + 3;
   const bayX = slotX(slots - 1);
   const faceR = bayX - cell/2 - 12*sc;
@@ -1142,7 +1142,7 @@ function abacusWideUnits(){
   dgm.w2u = { x: px5, y: dgm.pan.y + 112*pu, w: pw5, h: 17*pu };
   dgm.w2  = { x: px5, y: dgm.pan.y + 132*pu, w: pw5, h: 44*pu };
   dgm.w2d = { x: px5, y: dgm.pan.y + 179*pu, w: pw5, h: 17*pu };
-  dgm.joy = { cx: x0 + 56*sc, cy: monTop + monH - 50*sc, r: 20*sc };
+  dgm.joy = { cx: x0 + 52*sc, cy: monTop + monH - 39*sc, r: 20*sc };
   // on wide glass the tube splits: a square bay left (scene or box),
   // the working surface right (letter or chart)
   let duo = null;
@@ -1152,13 +1152,13 @@ function abacusWideUnits(){
             R: { x: dgm.scr.x + lw + 14*sc, y: dgm.scr.y,
                  w: dgm.scr.w - lw - 14*sc, h: dgm.scr.h } };
   }
-  const ventEnd = x0 + 116*sc, knobStart = x0 + target - 92*sc;
-  const dbw = 54*sc, dbh = 17*sc, dbg = 8*sc;
+  const ventEnd = x0 + 92*sc, knobStart = x0 + target - 92*sc;
+  const dbw = 56*sc, dbh = 26*sc, dbg = 6*sc;
   const dbx = (ventEnd + knobStart)/2 - (3*dbw + 2*dbg)/2;
   const dgmBtns = [];
   for (let i = 0; i < 3; i++)
-    dgmBtns.push({ x: dbx + i*(dbw + dbg), y: monTop + monH - 27*sc, w: dbw, h: dbh });
-  const selBtn = { x: x0 + target - 84*sc, y: monTop + monH - 27*sc,
+    dgmBtns.push({ x: dbx + i*(dbw + dbg), y: monTop + monH - 52*sc, w: dbw, h: dbh });
+  const selBtn = { x: x0 + target - 84*sc, y: monTop + monH - 52*sc,
                    w: 68*sc, h: dbh };
   const edit = duo
     ? { x: duo.L.x + duo.L.w/2 - 28*sc, y: duo.L.y + duo.L.h - 26*sc,
@@ -1167,7 +1167,7 @@ function abacusWideUnits(){
         w: 56*sc, h: 18*sc };
   return { sc, x0, R, A, B, Cd, keys, bayX, faceR, monTop, monH, mon, mon2,
            dgm, dgmBtns, selBtn, edit, duo,
-           ext: { x: extX, y: A.y0 + A.h - 42*sc,
+           ext: { x: extX, y: A.y0 + 104*sc,
                   w: x0 + target - 13*sc - extX, h: 28*sc } };
 }
 function wideScrew(c, x, y, sc){
@@ -1252,12 +1252,6 @@ function drawAbacusWideStatic(){
       c.beginPath(); c.roundRect(S.x, S.y, S.w, S.h, 14); c.fill();
     }
     // the knobs' old post now belongs to the SELECT key (drawn live)
-    for (let k = 0; k < 6; k++){
-      c.fillStyle = "rgba(0,0,0,0.55)";
-      c.fillRect(U.x0 + 24*sc + k*14*sc, My0 + Mh - 28*sc, 8*sc, 12*sc);
-      c.fillStyle = "rgba(255,255,255,0.04)";
-      c.fillRect(U.x0 + 24*sc + (k*14 + 8)*sc, My0 + Mh - 28*sc, 1.5, 12*sc);
-    }
   }
   // ---- the two housings ----
   const unit = (u, title, sub, labels, faceR) => {
@@ -1566,9 +1560,9 @@ function drawAbacusWideDots(t){
     ctx.strokeStyle = armed ? "rgba(0,0,0,0.65)" : "rgba(255,255,255,0.08)";
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.roundRect(b.x, b.y + py, b.w, b.h, 4); ctx.stroke();
-    ctx.font = "bold " + Math.round(8*sc) + "px monospace"; ctx.textAlign = "center";
+    ctx.font = "bold " + Math.round(9.5*sc) + "px monospace"; ctx.textAlign = "center";
     ctx.fillStyle = armed ? "rgba(30,22,8,0.9)" : "rgba(150,165,185,0.35)";
-    ctx.fillText("SELECT", b.x + b.w/2, b.y + py + b.h/2 + 3*sc);
+    ctx.fillText("SELECT", b.x + b.w/2, b.y + py + b.h/2 + 3.5*sc);
   }
   // the channel row: STORY / DIAGRAM / VISUALS - the lit key names
   // what's up; DIAGRAM pressed again flips FRAME <-> GOAL
@@ -1589,9 +1583,9 @@ function drawAbacusWideDots(t){
       ctx.strokeStyle = on ? "rgba(255,170,60,0.7)" : "rgba(255,255,255,0.12)";
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.stroke();
-      ctx.font = Math.round(8*sc) + "px monospace"; ctx.textAlign = "center";
+      ctx.font = Math.round(9.5*sc) + "px monospace"; ctx.textAlign = "center";
       ctx.fillStyle = on ? "rgba(255,190,90,0.95)" : "rgba(150,165,185,0.6)";
-      ctx.fillText(lb2, b.x + b.w/2, b.y + b.h/2 + 3*sc);
+      ctx.fillText(lb2, b.x + b.w/2, b.y + b.h/2 + 3.5*sc);
     }
   }
   // the DIAGRAM DECK: flowchart in phosphor, wheels, SEL, the stick
