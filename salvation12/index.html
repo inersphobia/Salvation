@@ -282,8 +282,6 @@
   </div>
   <div class="set-title">S T A R</div>
   <div class="menu-grid" id="menuStar"></div>
-  <div class="set-title">A B A C U S</div>
-  <div class="menu-grid" id="menuAbacus"></div>
   <div class="set-title">T R I A D &nbsp; F I L L</div>
   <div class="menu-grid" id="menuFill"></div>
   <div class="set-title">S T A G E</div>
@@ -847,6 +845,8 @@ function setFinalTimerText(){
 function startClock(){
   if (running) return;
   if (finished) return; // completion is a full stop - RESET, then START
+  // the abacus runs 27-minute sessions only; EXTEND grows them
+  if (viewMode === 2 && pauseMs === 0 && timeMode !== 0) setDuration(0);
   if (pauseMs === 0) dreamVariant = Math.floor(Math.random()*9); // a new dream each session
   if (pauseMs === 0 && triadFill === 15){
     // GALLERY: hang the next plate for this session
@@ -1063,41 +1063,42 @@ function abacusSideY(L, k){
   return L.top + L.gridH/2 + (k - 1) * 46;
 }
 
-/* --- the WIDE abacus: two hardware registers on a riveted bulkhead.
-   Minutes (REG-A) bolted above fractions (REG-B); places as columns,
-   two jewel lamps each, tally read bottom-up; slow places left, the
-   action at the right edge, carries rippling leftward. --- */
+/* --- the WIDE abacus: two hardware registers, minutes (REG-A) bolted
+   above fractions (REG-B). One shared slot grid aligns the columns of
+   both modules (1/81 sits directly under the 1); the last slot is the
+   bay: 27/54/81 lamps with the EXTEND button beneath them. Sessions
+   are 27 minutes; EXTEND grows a finished session to 54, then 81, on
+   the same running clock. --- */
 function abacusWideScale(){
   return Math.max(0.7, Math.min(viewW/412, viewH/915, 1.35));
 }
 function abacusWideUnits(){
   const sc = abacusWideScale();
-  const x0 = (viewW - 412*sc)/2;
   const R = abacusRows();
-  // both modules share one width and fill the screen: the widest
-  // content sets the lamp size, the other spreads its columns
   const target = Math.min(viewW - 24, 860);
-  const padX = 22*sc, gap0 = 11*sc, bay = 52*sc;
-  const fitCell = (n, hasBay) =>
-    (target - 2*padX - (hasBay ? bay : 0) - (n - 1)*gap0)/n;
-  const cell = Math.min(fitCell(R.mw, true), fitCell(R.fr, false), 60*sc);
-  const mk = (cy, n, wide) => {
-    const gapX = (target - 2*padX - (wide ? bay : 0) - n*cell)/Math.max(1, n - 1);
+  const x0 = viewW/2 - target/2;
+  const padX = 22*sc, gap0 = 11*sc;
+  const slots = Math.max(R.mw, R.fr) + 1;   // columns + the bay
+  const cell = Math.min((target - 2*padX - (slots - 1)*gap0)/slots, 60*sc);
+  const gap = (target - 2*padX - slots*cell)/Math.max(1, slots - 1);
+  const slotX = i => x0 + padX + i*(cell + gap) + cell/2;
+  const mk = (cy, n, extra) => {
     const gapY = 8*sc, padTop = 33*sc, padBot = 25*sc;
-    const w = target;
-    const h = 2*cell + gapY + padTop + padBot;
-    const ux = viewW/2 - w/2, uy = cy*sc - h/2;
+    const h = 2*cell + gapY + padTop + padBot + (extra || 0);
+    const uy = cy*sc - h/2;
     const cols = [];
-    for (let i = 0; i < n; i++)
-      cols.push(ux + padX + i*(cell + gapX) + cell/2);
-    return { x0: ux, y0: uy, w, h, cols, cell,
+    for (let i = 0; i < n; i++) cols.push(slotX(i));
+    return { x0, y0: uy, w: target, h, cols, cell,
              yTop: uy + padTop + cell/2 - 8*sc,
              yBot: uy + padTop + cell + gapY + cell/2 - 8*sc };
   };
-  return { sc, x0, R,
-           A: mk(356, R.mw, true),
-           B: mk(516, R.fr, false),
-           telem: { x: viewW/2 - target/2, y: 700*sc, w: target, h: 34*sc } };
+  const A = mk(350, R.mw, 26*sc);
+  const B = mk(546, R.fr, 0);
+  const bayX = slotX(slots - 1);
+  return { sc, x0, R, A, B, bayX,
+           faceR: bayX - cell/2 - 12*sc,
+           ext: { x: bayX - 34*sc, y: A.y0 + A.h - 36*sc, w: 68*sc, h: 22*sc },
+           telem: { x: x0, y: 700*sc, w: target, h: 34*sc } };
 }
 function wideScrew(c, x, y, sc){
   c.fillStyle = "#242a34";
@@ -1106,120 +1107,51 @@ function wideScrew(c, x, y, sc){
   c.beginPath(); c.moveTo(x - 2*sc, y + 1.1*sc); c.lineTo(x + 2*sc, y - 1.1*sc); c.stroke();
 }
 function drawAbacusWideStatic(){
-  const U = abacusWideUnits(), sc = U.sc, x0 = U.x0, c = ctxStatic;
+  const U = abacusWideUnits(), sc = U.sc, c = ctxStatic;
   let sd = 77031;
   const rr = () => { sd = (sd*48271) % 2147483647; return sd/2147483647; };
-  const wallH = 262*sc;
-  let gr = c.createLinearGradient(0, 0, 0, wallH);
-  gr.addColorStop(0, "#1a1e27"); gr.addColorStop(0.4, "#151820"); gr.addColorStop(1, "#0d0f15");
-  c.fillStyle = gr; c.fillRect(0, 0, viewW, wallH);
-  for (let i = 0; i < 420; i++){
-    const y = rr()*wallH, x = rr()*viewW;
-    c.strokeStyle = "rgba(255,255,255," + (0.004 + rr()*0.014).toFixed(4) + ")";
+  // ---- a dark console world, no wall ----
+  const gr = c.createLinearGradient(0, 0, 0, viewH);
+  gr.addColorStop(0, "#0a0d13");
+  gr.addColorStop(0.4, "#10141d");
+  gr.addColorStop(1, "#06080c");
+  c.fillStyle = gr; c.fillRect(0, 0, viewW, viewH);
+  for (let i = 0; i < 260; i++){
+    const y = rr()*viewH;
+    c.strokeStyle = "rgba(255,255,255," + (0.003 + rr()*0.011).toFixed(4) + ")";
     c.lineWidth = 1;
-    c.beginPath(); c.moveTo(x, y); c.lineTo(x + (20 + rr()*90)*sc, y + (rr() - 0.5)*2); c.stroke();
+    c.beginPath(); c.moveTo(rr()*70, y); c.lineTo(viewW - rr()*70, y + (rr() - 0.5)*5); c.stroke();
   }
-  for (let i = 0; i < 240; i++){
-    c.fillStyle = "rgba(0,0,0," + (0.05 + rr()*0.12).toFixed(3) + ")";
-    c.fillRect(rr()*viewW, rr()*wallH, 1 + rr()*1.6, 1 + rr()*1.4);
+  for (let i = 0; i < 200; i++){
+    c.fillStyle = "rgba(0,0,0," + (0.05 + rr()*0.1).toFixed(3) + ")";
+    c.fillRect(rr()*viewW, rr()*viewH, 1 + rr()*1.8, 1 + rr()*1.4);
   }
-  for (const hy of [86*sc, 196*sc]){
-    c.strokeStyle = "rgba(0,0,0,0.65)"; c.lineWidth = 2;
-    c.beginPath(); c.moveTo(0, hy); c.lineTo(viewW, hy); c.stroke();
-    c.strokeStyle = "rgba(255,255,255,0.05)";
-    c.beginPath(); c.moveTo(0, hy + 2); c.lineTo(viewW, hy + 2); c.stroke();
-  }
-  for (const vx of [x0 + 138*sc, x0 + 286*sc]){
-    c.strokeStyle = "rgba(0,0,0,0.6)"; c.lineWidth = 2;
-    c.beginPath(); c.moveTo(vx, 0); c.lineTo(vx, wallH); c.stroke();
-    c.strokeStyle = "rgba(255,255,255,0.04)";
-    c.beginPath(); c.moveTo(vx + 2, 0); c.lineTo(vx + 2, wallH); c.stroke();
-  }
-  const rivet = (x, y) => {
-    const rg = c.createRadialGradient(x - 0.8, y - 0.8, 0, x, y, 3.2*sc);
-    rg.addColorStop(0, "rgba(210,225,245,0.35)");
-    rg.addColorStop(0.5, "rgba(120,135,155,0.25)");
-    rg.addColorStop(1, "rgba(0,0,0,0.5)");
-    c.fillStyle = rg;
-    c.beginPath(); c.arc(x, y, 3.2*sc, 0, 2*Math.PI); c.fill();
-  };
-  for (let x = 14*sc; x < viewW; x += 28*sc){ rivet(x, 78*sc); rivet(x, 204*sc); }
-  for (let y = 16*sc; y < wallH; y += 30*sc){ rivet(x0 + 130*sc, y); rivet(x0 + 294*sc, y); }
-  for (let i = 0; i < 26; i++){
-    const x = rr()*viewW, y = (80 + rr()*100)*sc, len = (20 + rr()*70)*sc;
-    const w2 = c.createLinearGradient(0, y, 0, y + len);
-    w2.addColorStop(0, "rgba(0,0,0," + (0.05 + rr()*0.08).toFixed(3) + ")");
-    w2.addColorStop(1, "rgba(0,0,0,0)");
-    c.fillStyle = w2;
-    c.fillRect(x, y, (1.6 + rr()*2.4)*sc, len);
-  }
-  c.font = Math.round(10*sc) + "px monospace"; c.textAlign = "left";
-  c.fillStyle = "rgba(190,200,215,0.14)";
-  c.fillText("BULKHEAD 27-C · REGISTER BAY", x0 + 152*sc, 118*sc);
-  c.fillStyle = "rgba(190,200,215,0.09)";
-  c.fillText("AUTH · TYRELL-CLASS INSTRUMENTATION", x0 + 152*sc, 134*sc);
-  c.fillStyle = "#0a0d12";
-  c.beginPath(); c.roundRect(x0 + 324*sc, 106*sc, 66*sc, 44*sc, 4); c.fill();
-  c.strokeStyle = "rgba(255,255,255,0.06)"; c.lineWidth = 1;
-  c.strokeRect(x0 + 324*sc, 106*sc, 66*sc, 44*sc);
-  for (let k = 0; k < 5; k++){
-    c.fillStyle = "rgba(0,0,0,0.65)";
-    c.fillRect(x0 + 330*sc, (112 + k*7)*sc, 54*sc, 3*sc);
-    c.fillStyle = "rgba(255,255,255,0.035)";
-    c.fillRect(x0 + 330*sc, (115 + k*7)*sc, 54*sc, 1*sc);
-  }
-  c.strokeStyle = "#10141b"; c.lineWidth = 6*sc;
-  c.beginPath(); c.moveTo(0, 22*sc); c.lineTo(viewW, 22*sc); c.stroke();
-  c.strokeStyle = "rgba(255,255,255,0.06)"; c.lineWidth = 1.2;
-  c.beginPath(); c.moveTo(0, 19.5*sc); c.lineTo(viewW, 19.5*sc); c.stroke();
-  for (const bx of [x0 + 60*sc, viewW/2, x0 + 352*sc]){
-    c.fillStyle = "#171b23";
-    c.fillRect(bx - 5*sc, 14*sc, 10*sc, 16*sc);
-    c.strokeStyle = "rgba(0,0,0,0.5)"; c.strokeRect(bx - 5*sc, 14*sc, 10*sc, 16*sc);
-  }
-  let fr2 = c.createLinearGradient(0, 240*sc, 0, wallH);
-  fr2.addColorStop(0, "rgba(0,0,0,0)"); fr2.addColorStop(1, "rgba(0,0,0,0.55)");
-  c.fillStyle = fr2; c.fillRect(0, 240*sc, viewW, wallH - 240*sc);
-  gr = c.createLinearGradient(0, 250*sc, 0, viewH);
-  gr.addColorStop(0, "#0c0f16"); gr.addColorStop(0.35, "#111520"); gr.addColorStop(1, "#07090e");
-  c.fillStyle = gr; c.fillRect(0, 250*sc, viewW, viewH - 250*sc);
-  for (let i = 0; i < 250; i++){
-    const y = 255*sc + rr()*(viewH - 260*sc);
-    c.strokeStyle = "rgba(255,255,255," + (0.004 + rr()*0.012).toFixed(4) + ")";
-    c.lineWidth = 1;
-    c.beginPath(); c.moveTo(rr()*80*sc, y); c.lineTo(viewW - rr()*82*sc, y + (rr() - 0.5)*6); c.stroke();
-  }
-  c.strokeStyle = "rgba(0,0,0,0.55)"; c.lineWidth = 2;
-  c.beginPath(); c.moveTo(0, 262*sc); c.lineTo(viewW, 262*sc); c.stroke();
-  c.strokeStyle = "rgba(255,255,255,0.04)";
-  c.beginPath(); c.moveTo(0, 264*sc); c.lineTo(viewW, 264*sc); c.stroke();
+  // side gear: switch bank left, vents right
   c.fillStyle = "#0a0d13";
-  c.beginPath(); c.roundRect(x0 + 8*sc, 480*sc, 52*sc, 150*sc, 6); c.fill();
-  c.strokeStyle = "rgba(255,255,255,0.05)"; c.strokeRect(x0 + 8*sc, 480*sc, 52*sc, 150*sc);
+  c.beginPath(); c.roundRect(8, 480*sc, 52*sc, 150*sc, 6); c.fill();
+  c.strokeStyle = "rgba(255,255,255,0.05)"; c.strokeRect(8, 480*sc, 52*sc, 150*sc);
   for (let k = 0; k < 5; k++){
     const y = (498 + k*26)*sc;
     c.fillStyle = "#151a22";
-    c.beginPath(); c.roundRect(x0 + 18*sc, y, 32*sc, 12*sc, 3); c.fill();
+    c.beginPath(); c.roundRect(8 + 10*sc, y, 32*sc, 12*sc, 3); c.fill();
     c.fillStyle = k < 2 ? "rgba(255,160,0,0.5)" : "rgba(120,140,160,0.25)";
-    c.beginPath(); c.arc(x0 + 24*sc, y + 6*sc, 2.2*sc, 0, 2*Math.PI); c.fill();
+    c.beginPath(); c.arc(8 + 16*sc, y + 6*sc, 2.2*sc, 0, 2*Math.PI); c.fill();
   }
   c.fillStyle = "#0a0d13";
-  c.beginPath(); c.roundRect(x0 + 352*sc, 490*sc, 52*sc, 130*sc, 6); c.fill();
+  c.beginPath(); c.roundRect(viewW - 8 - 52*sc, 490*sc, 52*sc, 130*sc, 6); c.fill();
   for (let k = 0; k < 6; k++){
     c.fillStyle = "rgba(0,0,0,0.6)";
-    c.fillRect(x0 + 360*sc, (500 + k*19)*sc, 36*sc, 8*sc);
+    c.fillRect(viewW - 8 - 44*sc, (500 + k*19)*sc, 36*sc, 8*sc);
     c.fillStyle = "rgba(255,255,255,0.03)";
-    c.fillRect(x0 + 360*sc, (508 + k*19)*sc, 36*sc, 1.5*sc);
+    c.fillRect(viewW - 8 - 44*sc, (508 + k*19)*sc, 36*sc, 1.5*sc);
   }
+  // telemetry frame
   c.fillStyle = "#0b0a06";
   c.beginPath(); c.roundRect(U.telem.x, U.telem.y, U.telem.w, U.telem.h, 5); c.fill();
   c.strokeStyle = "rgba(255,170,60,0.25)"; c.lineWidth = 1;
   c.strokeRect(U.telem.x, U.telem.y, U.telem.w, U.telem.h);
-  c.strokeStyle = "#0e1218"; c.lineWidth = 9*sc;
-  c.beginPath(); c.moveTo(viewW/2, 250*sc); c.quadraticCurveTo(viewW/2 - 10*sc, 300*sc, viewW/2, U.A.y0 + 2); c.stroke();
-  c.strokeStyle = "rgba(255,255,255,0.05)"; c.lineWidth = 1.5;
-  c.beginPath(); c.moveTo(viewW/2 - 3*sc, 252*sc); c.quadraticCurveTo(viewW/2 - 13*sc, 300*sc, viewW/2 - 3*sc, U.A.y0); c.stroke();
-  const unit = (u, title, sub, labels, wide) => {
+  // ---- the two housings ----
+  const unit = (u, title, sub, labels, faceR) => {
     const ds = c.createRadialGradient(u.x0 + u.w/2, u.y0 + u.h + 6, 10, u.x0 + u.w/2, u.y0 + u.h + 6, u.w*0.7);
     ds.addColorStop(0, "rgba(0,0,0,0.55)"); ds.addColorStop(1, "rgba(0,0,0,0)");
     c.fillStyle = ds;
@@ -1233,7 +1165,7 @@ function drawAbacusWideStatic(){
     c.strokeStyle = "rgba(0,0,0,0.6)";
     c.beginPath(); c.roundRect(u.x0 + 4, u.y0 + 4, u.w - 8, u.h - 8, 7); c.stroke();
     c.fillStyle = "#0a0d12";
-    c.beginPath(); c.roundRect(u.x0 + 13*sc, u.y0 + 25*sc, u.w - 26*sc - (wide ? 52*sc : 0), u.h - 34*sc, 5); c.fill();
+    c.beginPath(); c.roundRect(u.x0 + 13*sc, u.y0 + 25*sc, faceR - u.x0 - 13*sc, u.h - 34*sc, 5); c.fill();
     wideScrew(c, u.x0 + 10*sc, u.y0 + 10*sc, sc); wideScrew(c, u.x0 + u.w - 10*sc, u.y0 + 10*sc, sc);
     wideScrew(c, u.x0 + 10*sc, u.y0 + u.h - 10*sc, sc); wideScrew(c, u.x0 + u.w - 10*sc, u.y0 + u.h - 10*sc, sc);
     c.font = Math.round(10*sc) + "px monospace"; c.textAlign = "left";
@@ -1263,7 +1195,7 @@ function drawAbacusWideStatic(){
   const mwL = [], frL = [];
   for (let i = 0; i < U.R.mw; i++) mwL.push(abacusLabel(i));
   for (let i = 0; i < U.R.fr; i++) frL.push(abacusLabel(U.R.mw + i));
-  unit(U.A, "M I N U T E S", "REG · A", mwL, true);
+  unit(U.A, "M I N U T E S", "REG · A", mwL, U.faceR);
   c.fillStyle = "#10141b";
   c.fillRect(viewW/2 - 66*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
   c.fillRect(viewW/2 + 38*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
@@ -1272,18 +1204,20 @@ function drawAbacusWideStatic(){
   c.strokeRect(viewW/2 + 38*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
   wideScrew(c, viewW/2 - 52*sc, U.A.y0 + U.A.h + 7*sc, sc);
   wideScrew(c, viewW/2 + 52*sc, U.A.y0 + U.A.h + 7*sc, sc);
-  unit(U.B, "F R A C T I O N S", "REG · B", frL, false);
+  unit(U.B, "F R A C T I O N S", "REG · B", frL, U.B.x0 + U.B.w - 13*sc);
+  // the bay: milestone sockets and their labels
   const MODE = ["27","54","81"];
   for (let k = 0; k < 3; k++){
-    const ly = U.A.y0 + 33*sc + k*31*sc, lx = U.A.x0 + U.A.w - 38*sc;
+    const ly = U.A.y0 + 33*sc + k*31*sc;
     c.fillStyle = "#0d1016";
-    c.beginPath(); c.arc(lx, ly, 6*sc, 0, 2*Math.PI); c.fill();
+    c.beginPath(); c.arc(U.bayX, ly, 6*sc, 0, 2*Math.PI); c.fill();
     c.strokeStyle = "rgba(255,255,255,0.08)"; c.lineWidth = 1;
-    c.beginPath(); c.arc(lx, ly, 6*sc, 0, 2*Math.PI); c.stroke();
+    c.beginPath(); c.arc(U.bayX, ly, 6*sc, 0, 2*Math.PI); c.stroke();
     c.font = Math.round(8*sc) + "px monospace"; c.textAlign = "left";
     c.fillStyle = "rgba(150,165,185,0.45)";
-    c.fillText(MODE[k], lx + 11*sc, ly + 3*sc);
+    c.fillText(MODE[k], U.bayX + 11*sc, ly + 3*sc);
   }
+  // ---- atmosphere ----
   for (let i = 0; i < 3; i++){
     const y = (300 + i*160 + rr()*40)*sc;
     const sm = c.createLinearGradient(0, y - 30*sc, 0, y + 30*sc);
@@ -1293,9 +1227,6 @@ function drawAbacusWideStatic(){
     c.fillStyle = sm;
     c.fillRect(0, y - 30*sc, viewW, 60*sc);
   }
-  const key = c.createLinearGradient(0, wallH, 0, 700*sc);
-  key.addColorStop(0, "rgba(150,190,255,0.05)"); key.addColorStop(1, "rgba(150,190,255,0)");
-  c.fillStyle = key; c.fillRect(0, wallH, viewW, 700*sc - wallH);
   const vg = c.createRadialGradient(viewW/2, 440*sc, 120*sc, viewW/2, 440*sc, 480*sc);
   vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.55)");
   c.fillStyle = vg; c.fillRect(0, 0, viewW, viewH);
@@ -1357,16 +1288,36 @@ function drawAbacusWideDots(t){
   };
   drawUnit(U.A, 0);
   drawUnit(U.B, U.R.mw);
+  // milestone lamps: one per completed 27
   for (let k = 0; k < 3; k++){
     if (eNow < (k + 1)*27*60) break;
-    const ly = U.A.y0 + 33*sc + k*31*sc, lx = U.A.x0 + U.A.w - 38*sc;
-    const g2 = ctx.createRadialGradient(lx, ly, 0, lx, ly, 18*sc);
+    const ly = U.A.y0 + 33*sc + k*31*sc;
+    const g2 = ctx.createRadialGradient(U.bayX, ly, 0, U.bayX, ly, 18*sc);
     g2.addColorStop(0, "rgba(255,149,0,0.55)"); g2.addColorStop(1, "rgba(255,149,0,0)");
     ctx.fillStyle = g2;
-    ctx.beginPath(); ctx.arc(lx, ly, 18*sc, 0, 2*Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(U.bayX, ly, 18*sc, 0, 2*Math.PI); ctx.fill();
     ctx.fillStyle = "#ff9500";
-    ctx.beginPath(); ctx.arc(lx, ly, 5*sc, 0, 2*Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(U.bayX, ly, 5*sc, 0, 2*Math.PI); ctx.fill();
   }
+  // EXTEND: a finished 27 grows to 54, a finished 54 to 81
+  {
+    const m = Math.round(totalCycle/60);
+    const can = finished && (m === 27 || m === 54) && timeMode !== 3;
+    const b = U.ext;
+    ctx.fillStyle = can ? "rgba(255,150,40,0.14)" : "rgba(255,255,255,0.02)";
+    ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.fill();
+    if (can){
+      ctx.shadowColor = "rgba(255,150,40,0.8)"; ctx.shadowBlur = 8*sc;
+    }
+    ctx.strokeStyle = can ? "rgba(255,170,60,0.8)" : "rgba(255,255,255,0.1)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "center";
+    ctx.fillStyle = can ? "rgba(255,190,90,0.95)" : "rgba(150,165,185,0.3)";
+    ctx.fillText("EXTEND", b.x + b.w/2, b.y + b.h/2 + 3*sc);
+  }
+  // telemetry
   ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
   ctx.fillStyle = "rgba(255,170,60,0.55)";
   ctx.fillText("REG-A LINK OK   REG-B LINK OK   CYCLE " + timerStr,
@@ -1376,6 +1327,24 @@ function drawAbacusWideDots(t){
       ? "PWR 27.54.81    DRIFT " + overtimeStr + "    ESPER HOLD"
       : "PWR 27.54.81    DRIFT +0.000    ESPER STANDBY",
     U.telem.x + 12*sc, U.telem.y + 26*sc);
+}
+function abacusExtend(){
+  // a finished session takes another breath: 27 -> 54 -> 81, the
+  // clock never resetting - the register simply keeps counting
+  if (!finished) return;
+  const m = Math.round(totalCycle/60);
+  if ((m !== 27 && m !== 54) || timeMode === 3) return;
+  timeMode = m === 27 ? 1 : 2;
+  updateTables();
+  finished = false;
+  running = true;
+  overtimeStart = 0; finishWall = 0; overtimeStr = "";
+  const el = (performance.now() - startMs)/1000;
+  for (const d of TONE_DEFS) lastToneIdx[d.id] = Math.floor(el / d.interval);
+  needsStaticRedraw = true;
+  requestWakeLock();
+  menuSync();
+  haptic('medium');
 }
 
 function drawAbacusStatic(){
@@ -1914,8 +1883,7 @@ let triadFill = 0;
 try { triadFill = Math.min(17, Math.max(0, parseInt(localStorage.getItem('salvationTriadFill') || "0", 10) || 0)); } catch(e) {}
 // ABACUS layout: 0 = the tall register, 1 = the WIDE two-unit
 // console (minutes riding on fractions, blade-runner bulkhead scene)
-let abacusWide = 0;
-try { abacusWide = localStorage.getItem('salvationAbacusWide') === "1" ? 1 : 0; } catch(e) {}
+let abacusWide = 1; // the abacus is always the wide console
 // STAR options: additive corners (dots stay and the zero corner
 // wipes them) and white-only lights
 let starAdd = 0, starWhite = 0;
@@ -5270,8 +5238,16 @@ function toggleClock(){
 canvasAnim.addEventListener("click", (e) => {
   if (viewMode >= 9) return; // diagram taps select boxes, not the clock
   const rect = canvasAnim.getBoundingClientRect();
-  const dx = (e.clientX - rect.left) - rect.width/2;
-  const dy = (e.clientY - rect.top)  - (getTextY() + 74);
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  if (viewMode === 2){
+    const b = abacusWideUnits().ext;
+    if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h){
+      abacusExtend();
+      return;
+    }
+  }
+  const dx = cx - rect.width/2;
+  const dy = cy - (getTextY() + 74);
   const r = 70;
   if (dx*dx + dy*dy <= r*r) toggleClock();
 });
@@ -5444,8 +5420,6 @@ function menuSync(){
     b.classList.toggle('active', i === volSel));
   document.querySelectorAll('#menuFill button').forEach((b, i) =>
     b.classList.toggle('active', i === triadFill));
-  document.querySelectorAll('#menuAbacus button').forEach((b, i) =>
-    b.classList.toggle('active', i === abacusWide));
   const sb = document.querySelectorAll('#menuStar button');
   if (sb[0]) sb[0].classList.toggle('active', !!starAdd);
   if (sb[1]) sb[1].classList.toggle('active', !!starWhite);
@@ -5499,19 +5473,6 @@ TRIAD_FILLS.forEach((n, i) => {
     haptic('light');
   };
   document.getElementById('menuFill').appendChild(b);
-});
-["TALL","WIDE"].forEach((n, i) => {
-  const b = document.createElement('button');
-  b.textContent = n;
-  b.onclick = () => {
-    abacusWide = i;
-    try { localStorage.setItem('salvationAbacusWide', String(i)); } catch(e) {}
-    needsStaticRedraw = true;
-    menuSync();
-    menuEl.style.display = 'none';
-    haptic('light');
-  };
-  document.getElementById('menuAbacus').appendChild(b);
 });
 [["ADDITIVE", () => starAdd, v => { starAdd = v; try { localStorage.setItem('salvationStarAdd', String(v)); } catch(e) {} }],
  ["WHITE",    () => starWhite, v => { starWhite = v; try { localStorage.setItem('salvationStarWhite', String(v)); } catch(e) {} }]
@@ -5703,8 +5664,6 @@ document.getElementById('menuDefault').addEventListener('click', () => {
   try { localStorage.setItem('salvationFracDepth', "0"); } catch(e) {}
   stageDark = 0;
   try { localStorage.setItem('salvationStage', "0"); } catch(e) {}
-  abacusWide = 0;
-  try { localStorage.setItem('salvationAbacusWide', "0"); } catch(e) {}
   starAdd = 0; starWhite = 0;
   try {
     localStorage.setItem('salvationStarAdd', "0");
