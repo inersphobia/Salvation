@@ -1120,9 +1120,19 @@ function abacusWideUnits(){
   const bayX = slotX(slots - 1);
   const faceR = bayX - cell/2 - 12*sc;
   const extX = faceR + 8*sc;
-  return { sc, x0, R, A, B, Cd, keys, bayX, faceR, monTop, monH,
-           mon: { x: x0 + 26*sc, y: monTop + 30*sc,
-                  w: target - 52*sc, h: monH - 78*sc },
+  // one tube on a phone; on a wide screen MON-D narrows to the left
+  // and MON-E - the letter - takes the right of the crown
+  const monW = target - 52*sc, monIH = monH - 78*sc;
+  let mon, mon2 = null;
+  if (monW >= monIH*2.2 + 200*sc){
+    const dw = Math.min(monIH*1.15, monW*0.42);
+    mon = { x: x0 + 26*sc, y: monTop + 30*sc, w: dw, h: monIH };
+    mon2 = { x: x0 + 26*sc + dw + 22*sc, y: monTop + 30*sc,
+             w: monW - dw - 22*sc, h: monIH };
+  } else {
+    mon = { x: x0 + 26*sc, y: monTop + 30*sc, w: monW, h: monIH };
+  }
+  return { sc, x0, R, A, B, Cd, keys, bayX, faceR, monTop, monH, mon, mon2,
            ext: { x: extX, y: A.y0 + A.h - 42*sc,
                   w: x0 + target - 13*sc - extX, h: 28*sc } };
 }
@@ -1188,14 +1198,20 @@ function drawAbacusWideStatic(){
     c.font = Math.round(10*sc) + "px monospace"; c.textAlign = "left";
     c.fillStyle = "rgba(150,165,185,0.6)";
     c.fillText("S T O R Y", U.x0 + 16*sc, My0 + 18*sc);
+    if (U.mon2){
+      c.fillStyle = "rgba(150,165,185,0.5)";
+      c.fillText("L E T T E R", U.mon2.x - 4, My0 + 18*sc);
+    }
     c.textAlign = "right";
     c.fillStyle = "rgba(150,165,185,0.35)";
-    c.fillText("MON · D", U.x0 + U.A.w - 16*sc, My0 + 18*sc);
-    // brass trim around the tube
-    c.strokeStyle = "rgba(190,150,80,0.35)"; c.lineWidth = 3;
-    c.beginPath(); c.roundRect(U.mon.x - 5, U.mon.y - 5, U.mon.w + 10, U.mon.h + 10, 18); c.stroke();
-    c.fillStyle = "#05070f";
-    c.beginPath(); c.roundRect(U.mon.x, U.mon.y, U.mon.w, U.mon.h, 14); c.fill();
+    c.fillText(U.mon2 ? "MON · D + E" : "MON · D", U.x0 + U.A.w - 16*sc, My0 + 18*sc);
+    // brass trim around the tube(s)
+    for (const S of (U.mon2 ? [U.mon, U.mon2] : [U.mon])){
+      c.strokeStyle = "rgba(190,150,80,0.35)"; c.lineWidth = 3;
+      c.beginPath(); c.roundRect(S.x - 5, S.y - 5, S.w + 10, S.h + 10, 18); c.stroke();
+      c.fillStyle = "#05070f";
+      c.beginPath(); c.roundRect(S.x, S.y, S.w, S.h, 14); c.fill();
+    }
     // brass knobs and vent slots on the bezel foot
     for (let k = 0; k < 2; k++){
       const kx2 = U.x0 + U.A.w - 46*sc - k*34*sc, ky2 = My0 + Mh - 24*sc;
@@ -1465,6 +1481,30 @@ function drawAbacusWideDots(t){
     ctx.fillText("CYCLE " + timerStr + (finished && overtimeStr ? "  " + overtimeStr : ""),
                  M.x + M.w - 8*sc, M.y + M.h - 8*sc);
   }
+  // MON-E: beside the story the letter crawls - one full transmission
+  // per 27 minutes, re-sent from the top on every EXTEND
+  if (U.mon2){
+    const E = U.mon2;
+    const idle3 = !running && !finished && pauseMs === 0;
+    const per = 27*60;
+    const local = finished ? per : idle3 ? 0 : (t % per);
+    const cv = abLetterRender(E.w, sc);
+    const span = Math.max(0, cv.height - E.h);
+    const scr = Math.round(span*(local/per));
+    ctx.save();
+    ctx.beginPath(); ctx.roundRect(E.x, E.y, E.w, E.h, 14); ctx.clip();
+    ctx.fillStyle = "#0b0e42"; ctx.fillRect(E.x, E.y, E.w, E.h);
+    const sh3 = Math.min(E.h, cv.height - scr);
+    ctx.drawImage(cv, 0, scr, cv.width, sh3, E.x, E.y, E.w, sh3);
+    ctx.drawImage(abMonEOverlay(E.w, E.h), E.x, E.y);
+    ctx.restore();
+    ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
+    ctx.fillStyle = "rgba(255,170,60,0.5)";
+    ctx.fillText("XMIT · BROTHER", E.x + 8*sc, E.y + E.h - 8*sc);
+    ctx.textAlign = "right";
+    const ln = Math.min(abLetterN, Math.max(1, Math.floor((scr + E.h)/abLetterLH)));
+    ctx.fillText("LN " + ln + "/" + abLetterN, E.x + E.w - 8*sc, E.y + E.h - 8*sc);
+  }
 }
 // the tube's picture, cached per scene and size
 let abMonCanvas = null, abMonKey = "";
@@ -1516,6 +1556,114 @@ function abMonRender(idx, mw, mh){
   gl.addColorStop(0, "rgba(180,210,255,0.10)"); gl.addColorStop(0.3, "rgba(180,210,255,0)");
   c2.fillStyle = gl; c2.fillRect(0, 0, mw, mh);
   return abMonCanvas;
+}
+// MON-E: the letter, an amber transmission beside the story tube
+const AB_LETTER = `Brother,
+I have been moving through squares within squares, and I have been getting lost in them. This is why I am writing to you now. The patterns of the numbers written on their walls, I recall, had once held meaning, but no longer do. They are iterators. A binary system of gears within a quaternary system of gears.
+	Someone has taped the squares that contain squares to a manifold I cannot understand, as one would tape gores to a sphere to create a globe, and I do not know the shape of this manifold.
+	I enter in a square and then quickly exit it, immediately entering another. It is this immediacy that troubles me. There are no halls, no places in between. Sometimes I fall through a square into another square which is within a different square, and I look backward and see only darkness. Or maybe I always see only darkness then but rarely do it, look backward.
+	One might say that my mind has been wandering. You know my patterns, my prophylactics against threats like these. You have seen the notebooks and the grids for tracking minutes in groups, my qualitative codes and their evaluations, my procedures and interventions. None of them are working. I leave my desk. I lie down. I watch videos on the CRT and listen to recordings on the reel-to-reel machine. I rearrange the papers on the shelves. I lift the folders and flip through the pages in them. I notice where he has applied highlighter. I read marginalia. I lie on my back and perform stretches. I watch the same video recording repeatedly. It is a round-table discussion hosted by a man with an eye-patch. I watch the beginning. Black letters read “vpro”. They cast red shadows. Then a black screen with white letters:
+EEN
+SCHITTEREND
+ONGELUK
+[Later: Dennett gets short with the group, lobbying for better rules. Everyone gets short with Sheldrake, except for Dyson, who seems indifferent to most of the conversation.]
+	Anyway, I was walking along a sunlit street recently. It seemed to be drenched with sun, as if it had washed the color out of the houses and the cars and the trees. I came to know something, or became aware that I knew something and that I had known. I cannot say how. Plato seemed to say that our souls, before they inhabit us, dwell on some foreign with perfect objections that cast shadows onto our world and that the cause of our being able to call on abstractions is because we are reminded of them from that plane. I don’t think that. Or I don’t know. I don’t know how I came to know these things. I was looking at cracks in the street, where foliage presses through, and at someone’s driveway, the driveway of a neighbor’s house. I saw the cracks there. The wood in the spaces. What is that called? Grass was pressing up there.
+	I looked it up. Expansion joints. But is the joint the gap or the wood in the gap? Let’s say the the joint is the wood.
+	Their garage door was imperfect. It had been subject to deformations, as if the motor had been crushing it instead of stopping when it should. The places where the panes are connected by hinges were pursed, like coin purses, and I became aware that there are populations on other worlds, or I became aware of my knowledge of this. I realize that this does not make sense.
+	But let me tell you that I once awoke in the morning (this was in the house where we were raised) and recalled a dream that I had had just that night. I was doing something on the computer for a few hours, or looking at photographs, and then, a few hours later, I recalled another dream from that same night. It had no recollection of it, and then I did. Darkness, arrow, dream. And, somehow, I also recalled a dark expanse in between these two dreams. I knew, in that way, that these two dreams had been separated from one another by dreamless sleep. This was clear to me, as clear as it is to someone that they are standing in a dark room. I knew without questioning that this was the case. And then I was wandering through the house that evening, as the sun was setting over the sweet gum and the oaks and casting that crimson through the windows into the kitchen, and there was some problem that I had to address, something to do with a nail sticking up where the carpet ended and the hallway began, and during that episode in the day, I recalled that there had been another dream between these two dreams, where I had previously recalled there being only a dark expanse.
+	The recognition startled me. I leaned back on my heels and stared at the wall for some time. There had been a third, interstitial dream, and I had been both unaware of it and, erroneously, aware that something else had been where this dream would turn out to have been.
+	This is similar to how I came to be aware that there are populations on other worlds. It was as if it were something I had forgotten, but it was also as if it were the contents of a dream that I had overlooked and did not know to look for, and shortly after this I became aware of several facts concerning the population of one other world in particular.
+All I can do now is tell you what I saw.
+On this world, which I do not know the name of, there is a person. For convenience, I will call him a person. I do not believe that his actual appearance corresponds to the way that I happen to see him in my mind, if you see what I mean. So I won’t describe him. I can’t see what the point of doing that would be. I will call him Hermes.
+	I saw him approaching a sunken entrance from the south. He was approaching through a field, and fields surrounded the entrance. The fields were awash in the sunset, crimson and aureate, glowing in it, saturated. He approached this sunken entrance and read something that was posted there, and then he entered. That is what I saw, and then I came to understand more. For example, he dwelt in one of three neighboring cities, and the city that he dwelt in was named after the constellation that we call The Pleiades, and as far as I can tell that is what they called it there, also. I don’t know why. I do know that on that world there had been some catastrophe of salination, and vegetation was loathe to grow. The people did not have it in their recollection. Their immediate ancestors did not understand why it was this way, and they did not know their ancestors of one generation prior, and they were not aware of what they knew, but their libraries were full of texts that they did not understand.
+	The people of The Pleiades were studious, or were known to be so. That was the reputation of the people there. Some of them read continuously, so that they would understand. They came to understand that their ancestors had inhabited a different kind of world and apparently had a different kind of mind, perhaps different eyes, perhaps different senses. It seemed as if they saw different things, things that Hermes’s generation did not see.
+Through perhaps erroneous interpretations of fragmentary texts, some came to believe that there was a great aquifer, far from the ocean. Some came to believe that one could it by following a lodestar and that one could identify this lodestar if they were to first identify the constellation to which it belonged, because its position in that constellation would make it obvious somehow what it was.
+	It was not clear to Hermes for how long this belief had existed. He found that people spoke of ancient history as if it had happened in their youth. The distant and the near past were commingled, and nothing was new, and the past and the future stained the present, making it something else. Suddenly a colleague would underline a few words from a codex that had been read and understood and subsequently overlooked, and he would stand at the end of a row of shelves and he would point at the page and hold the book in his palm and rest it on his foream, and he would proclaim what he had found, his new interpretation of this fragment, because that is what the people there seemed to call them even though it is not what we would call them, if you see what I mean.
+	Some tried to find the lodestar by sitting under the night sky and staring intensely with drawing instruments at hand. Some sketched on vellum, some in the soil, others on clay tablets, still others on the soft inner husk of a kind of succulent. Wrapped in thick robes, they connected the stars with their pencils and styluses and brushes and pens.
+	So that they might come to know it, practices were developed, some of which were based on an interpretation of a particularly hazy fragment that seemed indicate that the darkness against which the stars were scattered had sustained a fissure, and the constellatory stars of which the lodestar was the crowning piece were not like the other stars but were fissure stars. A hero had fallen there, some said, breaching a celestial barrier. Some claimed that if were to stare closely enough in the right direction, they would be able to see dark veins and by them come to know the constellation
+	There was a hardy subterranean rhizome that grew at the edge of the aquifer they called only 'Brother', and some would sit near where it was known to grow, and they would stare at the ground and begin to trace. Do you understand what I am saying? After this person had covered the vellum with markings, his colleague would remove the soil that covered the rhizome to reveal its shape, and the two would stand and place their fingers on the vellum and point at the object, speaking in turns as the sun set, pointing and speaking, pointing and speaking. And then they would replace the soil.
+	Others believed that the veins in the eye of a future adept would be isomorphic to the constellation itself and that the seer would thereby come to know it.
+	Those less related to Hermes seemed to prioritize the role of light, its interplay with objects, but Hermes and his kin prioritized the substance of the object itself and the surface of it. In other words, when Hermes or his kin were practicing their drawings so that they could develop their ability to see, they did not attempt to reproduce the effects of light but rather to reproduce the surface in accordance with what one felt when drawing their finger along the surface of the object. They were drawing that. What the pad of the finger felt and the proprioceptive information, as if they were phonographs. They were like phonographs, but their output was visual, or it was the ink or graphite on the vellum.
+	Some drew the folds of cloth, others the fur of a predatory dog as it fluttered in an evening breeze. The feeling that they were able to be phonographs would come and go, and they would sit and wait for hours for its return, the cold of the night coming eventually to accompany them.
+	Their procedure or law was to never move the pencil until they could feel the surface that was their subject. Their pencil was to trace the surface that they felt. I hope you see what I mean. They were not feeling it with their fingers. But it was as if they were. This was so that they could develop some capacity. I wanted to say inner capacity, but I don’t know what an external capacity would be. Relatives? Friends?
+	My mind is wandering.
+	They were preoccupied with numbers. They debated not only the number of stars that must be in the constellation but the number of steps that were in the ideal procedure of a given category and what the number of categories there should be. For reasons I cannot make out, for all of their disagreements, they did pray to the gods, as we have done, and many of them did so while walking between stations of paths.
+I wanted to start this letter to you by saying:
+As you may know, there are populations on many worlds, and those worlds have many populations, and most of them build altars to the gods, or have done so.
+But I lost my nerve.
+They agreed on was the holiness of the circle and of circularity. Some walked in circles in the morning and others at night and some both. Most of them constructed stations along the circles and performed procedures at them. And many of their procedures were similar. How could they not be? They spoke of their desire for water and of their memories or the memories of others. They spoke of their theories concerning its attainment and of their efforts and of the arguments for and against their holding any promise. Theories were extolled and disdained. Some bickered to the gods, lamenting their not being listened to.
+Are you familiar with the fence-post error? Imagine that you are walking along a straight path, and parallel to the path there is a fence, and you count the sections of fence in between the posts, and you count all of them, and you remember how many there were, and later someone asks you how many fence posts there were on that fence. How would you answer them? Would you think that it was the same number as there were posts? What if the fence were a closed circle?
+	Some believed that four was the most sacred number because it is the only number that meets this condition:
+x = n · n  and x = nⁿ and x ≠ n.
+Others believed that three was sacred because it is the first number that is triangular, or, in other words, can be folded at a joint, and one can create a perimeter with it using straight lines, and others believed that it was sacred because when one stands on a path they can look in front of them or behind them or down at the path itself. Others still apparently had notions of the three dimensions, though they expressed this in such a way that I cannot seem to relate it. Others believed that seven was most sacred for reasons I also cannot seem to explain.
+
+Are some constellations circles?`;
+let abLetterCv = null, abLetterKey = "", abLetterLH = 16, abLetterN = 1;
+function abLetterRender(w, sc){
+  const key = Math.round(w) + ":" + Math.round(sc*100);
+  if (abLetterKey === key && abLetterCv) return abLetterCv;
+  abLetterKey = key;
+  const fs = Math.max(9, Math.round(10.5*sc));
+  const lh = Math.round(fs*1.45);
+  const pad = Math.round(12*sc), maxW = w - 2*pad;
+  const mc = document.createElement('canvas').getContext('2d');
+  mc.font = fs + "px monospace";
+  const lines = [];
+  for (const raw of AB_LETTER.split("\n")){
+    const src = raw.replace(/\t/g, "").trim();
+    if (!src){ lines.push(null); continue; }
+    const ind = raw.startsWith("\t") ? "   " : "";
+    let cur = null;
+    for (const wd of src.split(/\s+/)){
+      const cand = cur === null ? ind + wd : cur + " " + wd;
+      if (cur !== null && mc.measureText(cand).width > maxW){ lines.push(cur); cur = wd; }
+      else cur = cand;
+    }
+    if (cur !== null) lines.push(cur);
+  }
+  abLetterN = lines.length; abLetterLH = lh;
+  const H = Math.round(lines.length*lh + 2*pad);
+  abLetterCv = document.createElement('canvas');
+  abLetterCv.width = Math.max(2, Math.round(w));
+  abLetterCv.height = Math.max(2, H);
+  const c2 = abLetterCv.getContext('2d');
+  c2.fillStyle = "#0b0e42"; c2.fillRect(0, 0, abLetterCv.width, H);
+  c2.font = fs + "px monospace"; c2.textAlign = "left";
+  c2.shadowColor = "rgba(255,160,60,0.45)"; c2.shadowBlur = 5;
+  c2.fillStyle = "rgba(255,196,120,0.85)";
+  let y = pad + fs;
+  for (const ln of lines){
+    if (ln) c2.fillText(ln, pad, y);
+    y += lh;
+  }
+  c2.shadowBlur = 0;
+  return abLetterCv;
+}
+// fixed scanlines and glare for MON-E (they must not scroll with the text)
+let abMonEOvCv = null, abMonEOvKey = "";
+function abMonEOverlay(w, h){
+  const key = Math.round(w) + ":" + Math.round(h);
+  if (abMonEOvKey === key && abMonEOvCv) return abMonEOvCv;
+  abMonEOvKey = key;
+  abMonEOvCv = document.createElement('canvas');
+  abMonEOvCv.width = Math.max(2, Math.round(w));
+  abMonEOvCv.height = Math.max(2, Math.round(h));
+  const c2 = abMonEOvCv.getContext('2d');
+  const vg = c2.createRadialGradient(w/2, h/2, h*0.3, w/2, h/2, Math.max(w, h)*0.75);
+  vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.55)");
+  c2.fillStyle = vg; c2.fillRect(0, 0, w, h);
+  c2.globalAlpha = 0.12; c2.fillStyle = "#000";
+  for (let y = 0; y < h; y += 2) c2.fillRect(0, y, w, 1);
+  c2.globalAlpha = 1;
+  const gl = c2.createLinearGradient(0, 0, w*0.7, h);
+  gl.addColorStop(0, "rgba(180,210,255,0.10)"); gl.addColorStop(0.3, "rgba(180,210,255,0)");
+  c2.fillStyle = gl; c2.fillRect(0, 0, w, h);
+  // a dark sill at the foot so the burned-in tags sit on glass, not text
+  const bt = c2.createLinearGradient(0, h - 34, 0, h - 6);
+  bt.addColorStop(0, "rgba(4,6,26,0)"); bt.addColorStop(1, "rgba(4,6,26,1)");
+  c2.fillStyle = bt; c2.fillRect(0, h - 34, w, 28);
+  c2.fillStyle = "rgba(4,6,26,1)"; c2.fillRect(0, h - 6, w, 6);
+  return abMonEOvCv;
 }
 let abKeyFlash = { id: -1, until: 0 };
 function abacusExtend(){
