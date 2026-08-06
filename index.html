@@ -1132,7 +1132,28 @@ function abacusWideUnits(){
   } else {
     mon = { x: x0 + 26*sc, y: monTop + 30*sc, w: monW, h: monIH };
   }
+  // the diagram deck: FRAME/GOAL keycaps on the bezel foot, and - when
+  // a diagram is up - a side device with two letter wheels, SEL, a stick
+  const dt0 = mon2 || mon;
+  const panW = 46*sc;
+  const dgm = {
+    scr: { x: dt0.x, y: dt0.y, w: dt0.w - panW - 6*sc, h: dt0.h },
+    pan: { x: dt0.x + dt0.w - panW, y: dt0.y, w: panW, h: dt0.h }
+  };
+  dgm.w1 = { x: dgm.pan.x + 5*sc, y: dgm.pan.y + 10*sc, w: panW - 10*sc, h: 34*sc };
+  dgm.w2 = { x: dgm.pan.x + 5*sc, y: dgm.pan.y + 52*sc, w: panW - 10*sc, h: 34*sc };
+  dgm.sel = { x: dgm.pan.x + 5*sc, y: dgm.pan.y + 94*sc, w: panW - 10*sc, h: 20*sc };
+  const jr = Math.min(19*sc, panW/2 - 3);
+  dgm.joy = { cx: dgm.pan.x + panW/2, cy: dgm.pan.y + dgm.pan.h - jr - 10*sc, r: jr };
+  const ventEnd = x0 + 116*sc, knobStart = x0 + target - 92*sc;
+  const dbw = 54*sc, dbh = 17*sc, dbg = 10*sc;
+  const dbx = (ventEnd + knobStart)/2 - dbw - dbg/2;
+  const dgmBtns = [
+    { x: dbx, y: monTop + monH - 27*sc, w: dbw, h: dbh },
+    { x: dbx + dbw + dbg, y: monTop + monH - 27*sc, w: dbw, h: dbh }
+  ];
   return { sc, x0, R, A, B, Cd, keys, bayX, faceR, monTop, monH, mon, mon2,
+           dgm, dgmBtns,
            ext: { x: extX, y: A.y0 + A.h - 42*sc,
                   w: x0 + target - 13*sc - extX, h: 28*sc } };
 }
@@ -1197,10 +1218,10 @@ function drawAbacusWideStatic(){
     wideScrew(c, U.x0 + 10*sc, My0 + Mh - 10*sc, sc); wideScrew(c, U.x0 + U.A.w - 10*sc, My0 + Mh - 10*sc, sc);
     c.font = Math.round(10*sc) + "px monospace"; c.textAlign = "left";
     c.fillStyle = "rgba(150,165,185,0.6)";
-    c.fillText("S T O R Y", U.x0 + 16*sc, My0 + 18*sc);
+    c.fillText((!U.mon2 && abDgm >= 0) ? "D I A G R A M" : "S T O R Y", U.x0 + 16*sc, My0 + 18*sc);
     if (U.mon2){
       c.fillStyle = "rgba(150,165,185,0.5)";
-      c.fillText("L E T T E R", U.mon2.x - 4, My0 + 18*sc);
+      c.fillText(abDgm >= 0 ? "D I A G R A M" : "L E T T E R", U.mon2.x - 4, My0 + 18*sc);
     }
     c.textAlign = "right";
     c.fillStyle = "rgba(150,165,185,0.35)";
@@ -1459,7 +1480,7 @@ function drawAbacusWideDots(t){
     }
   }
   // MON-D plays the sheet, one scene per minute; the owl at the bell
-  {
+  if (U.mon2 || abDgm < 0){
     const M = U.mon;
     const idle2 = !running && !finished && pauseMs === 0;
     const minute = Math.floor((finished ? totalCycle : idle2 ? 0 : t)/60);
@@ -1483,7 +1504,7 @@ function drawAbacusWideDots(t){
   }
   // MON-E: beside the story the letter crawls - one full transmission
   // per 27 minutes, re-sent from the top on every EXTEND
-  if (U.mon2){
+  if (U.mon2 && abDgm < 0){
     const E = U.mon2;
     const idle3 = !running && !finished && pauseMs === 0;
     const per = 27*60;
@@ -1504,6 +1525,116 @@ function drawAbacusWideDots(t){
     ctx.textAlign = "right";
     const ln = Math.min(abLetterN, Math.max(1, Math.floor((scr + E.h)/abLetterLH)));
     ctx.fillText("LN " + ln + "/" + abLetterN, E.x + E.w - 8*sc, E.y + E.h - 8*sc);
+  }
+  // FRAME / GOAL: the diagram keys on the bezel foot
+  for (let i = 0; i < 2; i++){
+    const b = U.dgmBtns[i], on = abDgm === i;
+    const kg2 = ctx.createLinearGradient(0, b.y, 0, b.y + b.h);
+    kg2.addColorStop(0, on ? "#3a3323" : "#262c38");
+    kg2.addColorStop(1, on ? "#241d10" : "#141821");
+    ctx.fillStyle = kg2;
+    ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.fill();
+    ctx.strokeStyle = on ? "rgba(255,170,60,0.7)" : "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.stroke();
+    ctx.font = Math.round(8*sc) + "px monospace"; ctx.textAlign = "center";
+    ctx.fillStyle = on ? "rgba(255,190,90,0.95)" : "rgba(150,165,185,0.6)";
+    ctx.fillText(i ? "GOAL" : "FRAME", b.x + b.w/2, b.y + b.h/2 + 3*sc);
+  }
+  // the DIAGRAM DECK: flowchart in phosphor, wheels, SEL, the stick
+  if (abDgm >= 0){
+    const D = U.dgm, def = FRAME_DEFS[abDgm], S2 = AB_DGM_S;
+    const cam = abDgmCam[abDgm];
+    if (abDgmJoy && (abDgmJoy.dx || abDgmJoy.dy)){
+      cam.x += abDgmJoy.dx*10; cam.y += abDgmJoy.dy*10;
+      abDgmGlide = null;
+    } else if (abDgmGlide){
+      cam.x += (abDgmGlide.x - cam.x)*0.09;
+      cam.y += (abDgmGlide.y - cam.y)*0.09;
+      if (Math.abs(abDgmGlide.x - cam.x) + Math.abs(abDgmGlide.y - cam.y) < 1) abDgmGlide = null;
+    }
+    const winW = D.scr.w/S2, winH = D.scr.h/S2;
+    cam.x = Math.max(0, Math.min(def.W - winW, cam.x));
+    cam.y = Math.max(0, Math.min(def.H - winH, cam.y));
+    const cv = abDgmRender(abDgm);
+    ctx.save();
+    ctx.beginPath(); ctx.roundRect(D.scr.x, D.scr.y, D.scr.w, D.scr.h, 14); ctx.clip();
+    ctx.fillStyle = "#0b0e42"; ctx.fillRect(D.scr.x, D.scr.y, D.scr.w, D.scr.h);
+    const sxp = Math.round(cam.x*S2), syp = Math.round(cam.y*S2);
+    const sw4 = Math.min(D.scr.w, cv.width - sxp), sh4 = Math.min(D.scr.h, cv.height - syp);
+    if (sw4 > 0 && sh4 > 0) ctx.drawImage(cv, sxp, syp, sw4, sh4, D.scr.x, D.scr.y, sw4, sh4);
+    const bi = abDgmWheel[0]*26 + abDgmWheel[1];
+    if (bi < def.boxes.length){
+      const b = def.boxes[bi];
+      const pu = 0.55 + 0.35*Math.sin(performance.now()/280);
+      ctx.strokeStyle = "rgba(255,170,60," + pu.toFixed(2) + ")";
+      ctx.lineWidth = 1.6; ctx.setLineDash([3, 4]);
+      ctx.strokeRect(D.scr.x + (b.x - cam.x)*S2 - 3, D.scr.y + (b.y - cam.y)*S2 - 3,
+                     b.w*S2 + 6, b.h*S2 + 6);
+      ctx.setLineDash([]);
+    }
+    ctx.drawImage(abMonEOverlay(D.scr.w, D.scr.h), D.scr.x, D.scr.y);
+    ctx.restore();
+    ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
+    ctx.fillStyle = "rgba(255,170,60,0.5)";
+    ctx.fillText("DGM · " + (abDgm ? "GOAL" : "FRAME"), D.scr.x + 8*sc, D.scr.y + D.scr.h - 8*sc);
+    ctx.textAlign = "right";
+    ctx.fillStyle = bi < def.boxes.length ? "rgba(255,170,60,0.8)" : "rgba(255,170,60,0.3)";
+    ctx.fillText("SEL " + abDgmCode(abDgmWheel[0], abDgmWheel[1]),
+                 D.scr.x + D.scr.w - 8*sc, D.scr.y + D.scr.h - 8*sc);
+    // the side device
+    const Pn = D.pan;
+    ctx.fillStyle = "#0b0e14";
+    ctx.beginPath(); ctx.roundRect(Pn.x, Pn.y, Pn.w, Pn.h, 8); ctx.fill();
+    ctx.strokeStyle = "rgba(160,190,235,0.12)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(Pn.x, Pn.y, Pn.w, Pn.h, 8); ctx.stroke();
+    const wheel = (wr, wi) => {
+      // a luggage combination wheel seen edge-on: only the front shows
+      const wg = ctx.createLinearGradient(0, wr.y, 0, wr.y + wr.h);
+      wg.addColorStop(0, "#0a0c10"); wg.addColorStop(0.5, "#2c3442");
+      wg.addColorStop(1, "#0a0c10");
+      ctx.fillStyle = wg;
+      ctx.beginPath(); ctx.roundRect(wr.x, wr.y, wr.w, wr.h, 3); ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.7)";
+      ctx.strokeRect(wr.x, wr.y, wr.w, wr.h);
+      ctx.strokeStyle = "rgba(255,255,255,0.07)";
+      for (let k = 1; k < 6; k++){
+        const yy = wr.y + wr.h*k/6;
+        ctx.beginPath(); ctx.moveTo(wr.x + 2, yy); ctx.lineTo(wr.x + 5*sc, yy); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(wr.x + wr.w - 5*sc, yy); ctx.lineTo(wr.x + wr.w - 2, yy); ctx.stroke();
+      }
+      const cur = abDgmWheel[wi];
+      ctx.textAlign = "center";
+      ctx.font = Math.round(7*sc) + "px monospace";
+      ctx.fillStyle = "rgba(200,215,235,0.3)";
+      ctx.fillText(String.fromCharCode(65 + (cur + 25) % 26), wr.x + wr.w/2, wr.y + 8*sc);
+      ctx.fillText(String.fromCharCode(65 + (cur + 1) % 26), wr.x + wr.w/2, wr.y + wr.h - 3*sc);
+      ctx.font = "bold " + Math.round(12*sc) + "px monospace";
+      ctx.fillStyle = "rgba(255,190,90,0.95)";
+      ctx.fillText(String.fromCharCode(65 + cur), wr.x + wr.w/2, wr.y + wr.h/2 + 4*sc);
+    };
+    wheel(D.w1, 0); wheel(D.w2, 1);
+    const sb = D.sel, sp2 = abDgmFlash.k === "sel" && performance.now() < abDgmFlash.until;
+    ctx.fillStyle = sp2 ? "#141a24" : "#222b39";
+    ctx.beginPath(); ctx.roundRect(sb.x, sb.y, sb.w, sb.h, 4); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.14)";
+    ctx.beginPath(); ctx.roundRect(sb.x, sb.y, sb.w, sb.h, 4); ctx.stroke();
+    ctx.font = Math.round(8*sc) + "px monospace"; ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(225,232,240,0.8)";
+    ctx.fillText("SEL", sb.x + sb.w/2, sb.y + sb.h/2 + 3*sc);
+    const J = D.joy;
+    ctx.fillStyle = "#05070c";
+    ctx.beginPath(); ctx.arc(J.cx, J.cy, J.r, 0, 2*Math.PI); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.1)";
+    ctx.beginPath(); ctx.arc(J.cx, J.cy, J.r, 0, 2*Math.PI); ctx.stroke();
+    const jx = J.cx + (abDgmJoy ? abDgmJoy.dx : 0)*J.r*0.45;
+    const jy = J.cy + (abDgmJoy ? abDgmJoy.dy : 0)*J.r*0.45;
+    const jg = ctx.createRadialGradient(jx - 2, jy - 2, 0, jx, jy, J.r*0.55);
+    jg.addColorStop(0, "#4a5262"); jg.addColorStop(1, "#191d25");
+    ctx.fillStyle = jg;
+    ctx.beginPath(); ctx.arc(jx, jy, J.r*0.55, 0, 2*Math.PI); ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.6)";
+    ctx.beginPath(); ctx.arc(jx, jy, J.r*0.55, 0, 2*Math.PI); ctx.stroke();
   }
 }
 // the tube's picture, cached per scene and size
@@ -1664,6 +1795,90 @@ function abMonEOverlay(w, h){
   c2.fillStyle = bt; c2.fillRect(0, h - 34, w, 28);
   c2.fillStyle = "rgba(4,6,26,1)"; c2.fillRect(0, h - 6, w, 6);
   return abMonEOvCv;
+}
+/* --- the diagram deck: FRAME and GOAL on the tube, in phosphor. Every
+   box carries a two-letter code; the side device's wheels dial a code,
+   SEL clicks the box, the stick pans the camera over the chart. --- */
+let abDgm = -1;
+const abDgmCam = [{ x: 0, y: 500 }, { x: 0, y: 340 }];
+let abDgmWheel = [0, 0];
+let abDgmGlide = null, abDgmJoy = null, abDgmJoyPtr = null, abDgmJoyUntil = 0;
+let abDgmFlash = { k: "", until: 0 };
+const AB_DGM_S = 0.75;
+let abDgmCvs = [null, null];
+function abDgmCode(a, b){ return String.fromCharCode(65 + a) + String.fromCharCode(65 + b); }
+function abDgmRender(fi){
+  if (abDgmCvs[fi]) return abDgmCvs[fi];
+  const def = FRAME_DEFS[fi], s = AB_DGM_S;
+  const cv = document.createElement('canvas');
+  cv.width = Math.round(def.W*s); cv.height = Math.round(def.H*s);
+  const c = cv.getContext('2d');
+  c.fillStyle = "#0b0e42"; c.fillRect(0, 0, cv.width, cv.height);
+  const INK = { w: "rgba(224,232,250,0.6)", b: "rgba(110,180,255,0.85)", r: "rgba(255,120,100,0.85)" };
+  const dots = (x1, y1, x2, y2) => {
+    const L = Math.hypot(x2 - x1, y2 - y1), n = Math.max(1, Math.round(L/3.4));
+    for (let k = 0; k <= n; k++){
+      c.beginPath();
+      c.arc(x1 + (x2 - x1)*k/n, y1 + (y2 - y1)*k/n, 0.85, 0, 2*Math.PI);
+      c.fill();
+    }
+  };
+  for (const e of def.edges){
+    c.fillStyle = INK[e.c];
+    for (let i = 1; i < e.p.length; i++)
+      dots(e.p[i-1][0]*s, e.p[i-1][1]*s, e.p[i][0]*s, e.p[i][1]*s);
+    const [x1, y1] = e.p[e.p.length - 2], [x2, y2] = e.p[e.p.length - 1];
+    const ang = Math.atan2(y2 - y1, x2 - x1);
+    c.beginPath();
+    c.moveTo(x2*s, y2*s);
+    c.lineTo(x2*s - 7*Math.cos(ang - 0.42), y2*s - 7*Math.sin(ang - 0.42));
+    c.lineTo(x2*s - 7*Math.cos(ang + 0.42), y2*s - 7*Math.sin(ang + 0.42));
+    c.closePath(); c.fill();
+    if (e.l){
+      c.font = "bold " + Math.round(12*s) + "px monospace"; c.textAlign = "left";
+      c.fillText(e.l, e.lx*s, e.ly*s);
+    }
+  }
+  def.boxes.forEach((b, i) => {
+    c.fillStyle = "rgba(120,170,255,0.08)";
+    c.fillRect(b.x*s, b.y*s, b.w*s, b.h*s);
+    c.fillStyle = b.empty ? "rgba(224,232,250,0.3)" : "rgba(224,232,250,0.7)";
+    dots(b.x*s, b.y*s, (b.x + b.w)*s, b.y*s);
+    dots((b.x + b.w)*s, b.y*s, (b.x + b.w)*s, (b.y + b.h)*s);
+    dots((b.x + b.w)*s, (b.y + b.h)*s, b.x*s, (b.y + b.h)*s);
+    dots(b.x*s, (b.y + b.h)*s, b.x*s, b.y*s);
+    c.fillStyle = "rgba(224,232,250,0.85)";
+    c.font = Math.round(12.5*s) + "px monospace"; c.textAlign = "left";
+    (b.lines || []).forEach((ln, k) => c.fillText(ln, (b.x + 13)*s, (b.y + 34 + k*20)*s));
+    c.font = "bold " + Math.round(11*s) + "px monospace"; c.textAlign = "right";
+    c.fillStyle = "rgba(255,170,60,0.8)";
+    c.fillText(abDgmCode(Math.floor(i/26), i % 26), (b.x + b.w - 5)*s, (b.y + 15)*s);
+  });
+  for (const ci of def.circles){
+    c.fillStyle = "rgba(224,232,250,0.6)";
+    const n = Math.max(10, Math.round(2*Math.PI*ci.r*s/3.4));
+    for (let k = 0; k < n; k++){
+      const a = k*2*Math.PI/n;
+      c.beginPath();
+      c.arc(ci.x*s + Math.cos(a)*ci.r*s, ci.y*s + Math.sin(a)*ci.r*s, 0.85, 0, 2*Math.PI);
+      c.fill();
+    }
+    c.fillStyle = "rgba(159,216,234,0.9)";
+    c.font = Math.round(12*s) + "px monospace"; c.textAlign = "center";
+    c.fillText(ci.t, ci.x*s, ci.y*s + 3);
+  }
+  for (const d of def.dots){
+    const g = c.createRadialGradient(d.x*s, d.y*s, 0, d.x*s, d.y*s, 16);
+    g.addColorStop(0, "rgba(245,240,222,0.5)"); g.addColorStop(1, "rgba(245,240,222,0)");
+    c.fillStyle = g;
+    c.beginPath(); c.arc(d.x*s, d.y*s, 16, 0, 2*Math.PI); c.fill();
+    c.fillStyle = "rgb(245,240,222)";
+    c.beginPath(); c.arc(d.x*s, d.y*s, 8*s + 2, 0, 2*Math.PI); c.fill();
+    c.fillStyle = "#0b0e42";
+    c.font = "bold " + Math.round(11*s) + "px monospace"; c.textAlign = "center";
+    c.fillText(d.t, d.x*s, d.y*s + 3);
+  }
+  return abDgmCvs[fi] = cv;
 }
 let abKeyFlash = { id: -1, until: 0 };
 function abacusExtend(){
@@ -3254,6 +3469,7 @@ function frameBoxAt(cx, cy, includeEmpty){
 
 /* --- FRAME box text editing (long-press a box to open) --- */
 function setFrameBoxText(fi, idx, text, persist){
+  abDgmCvs[fi] = null;
   const b = FRAME_DEFS[fi].boxes[idx];
   text = text.trim().replace(/\s+/g, " ");
   if (!text){
@@ -5715,6 +5931,52 @@ canvasAnim.addEventListener("click", (e) => {
   if (viewMode === 2){
     const U = abacusWideUnits();
     const hit = (b) => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h;
+    // diagram deck: FRAME/GOAL keys, then - when up - wheels and SEL
+    for (let i = 0; i < 2; i++){
+      if (hit(U.dgmBtns[i])){
+        abDgm = (abDgm === i) ? -1 : i;
+        abDgmGlide = null;
+        needsStaticRedraw = true;
+        haptic('light');
+        return;
+      }
+    }
+    if (abDgm >= 0){
+      if (performance.now() < abDgmJoyUntil) return;
+      const D = U.dgm;
+      const wheels = [D.w1, D.w2];
+      for (let wi = 0; wi < 2; wi++){
+        if (!hit(wheels[wi])) continue;
+        const up = cy < wheels[wi].y + wheels[wi].h/2;
+        abDgmWheel[wi] = (abDgmWheel[wi] + (up ? 25 : 1)) % 26;
+        const bi = abDgmWheel[0]*26 + abDgmWheel[1];
+        if (bi < FRAME_DEFS[abDgm].boxes.length){
+          const b = FRAME_DEFS[abDgm].boxes[bi];
+          abDgmGlide = { x: b.x + b.w/2 - D.scr.w/AB_DGM_S/2,
+                         y: b.y + b.h/2 - D.scr.h/AB_DGM_S/2 };
+        }
+        haptic('light');
+        return;
+      }
+      if (hit(D.sel)){
+        abDgmFlash = { k: "sel", until: performance.now() + 140 };
+        const bi = abDgmWheel[0]*26 + abDgmWheel[1];
+        if (bi < FRAME_DEFS[abDgm].boxes.length && !FRAME_DEFS[abDgm].boxes[bi].empty){
+          frameSelected = bi;
+          frameSelectedF = abDgm;
+          frameStatus = FRAME_DEFS[abDgm].boxes[bi].lines.join(" ");
+          try {
+            localStorage.setItem('salvationStatus', frameStatus);
+            localStorage.setItem('salvationStatusIdx', bi);
+            localStorage.setItem('salvationStatusF', frameSelectedF);
+          } catch(err) {}
+          haptic('medium');
+        }
+        return;
+      }
+      if (cx >= D.pan.x && cx <= D.pan.x + D.pan.w &&
+          cy >= D.pan.y && cy <= D.pan.y + D.pan.h) return;
+    }
     if (hit(U.ext)){
       abKeyFlash = { id: 3, until: performance.now() + 140 };
       abacusExtend();
@@ -5742,6 +6004,35 @@ canvasAnim.addEventListener("click", (e) => {
   if (dx*dx + dy*dy <= r*r) toggleClock();
 });
 
+/* ---- the diagram deck stick: hold and push to pan the tube camera ---- */
+canvasAnim.addEventListener("pointerdown", (e) => {
+  if (viewMode !== 2 || abDgm < 0) return;
+  const rect = canvasAnim.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  const J = abacusWideUnits().dgm.joy;
+  if (Math.hypot(cx - J.cx, cy - J.cy) > J.r + 6) return;
+  abDgmJoyPtr = e.pointerId;
+  abDgmJoy = { dx: 0, dy: 0 };
+  try { canvasAnim.setPointerCapture(e.pointerId); } catch(err) {}
+  haptic('light');
+});
+canvasAnim.addEventListener("pointermove", (e) => {
+  if (abDgmJoyPtr === null || e.pointerId !== abDgmJoyPtr || !abDgmJoy) return;
+  const rect = canvasAnim.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  const J = abacusWideUnits().dgm.joy;
+  let dx = (cx - J.cx)/J.r, dy = (cy - J.cy)/J.r;
+  const m = Math.hypot(dx, dy);
+  if (m > 1){ dx /= m; dy /= m; }
+  abDgmJoy.dx = dx; abDgmJoy.dy = dy;
+});
+const abDgmJoyEnd = () => {
+  if (abDgmJoyPtr === null) return;
+  abDgmJoyPtr = null; abDgmJoy = null;
+  abDgmJoyUntil = performance.now() + 250;
+};
+canvasAnim.addEventListener("pointerup", (e) => { if (e.pointerId === abDgmJoyPtr) abDgmJoyEnd(); });
+canvasAnim.addEventListener("pointercancel", (e) => { if (e.pointerId === abDgmJoyPtr) abDgmJoyEnd(); });
 /* ---------- FRAME VIEW: pan (drag dark space) + select (tap a box) ---------- */
 let framePtr = null;
 canvasAnim.addEventListener("pointerdown", (e) => {
