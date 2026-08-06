@@ -1154,12 +1154,11 @@ function abacusWideUnits(){
   const jr = Math.min(19*pu, panW/2 - 3);
   dgm.joy = { cx: dgm.pan.x + panW/2, cy: dgm.pan.y + dgm.pan.h - jr - 10*pu, r: jr };
   const ventEnd = x0 + 116*sc, knobStart = x0 + target - 92*sc;
-  const dbw = 62*sc, dbh = 17*sc, dbg = 10*sc;
-  const dbx = (ventEnd + knobStart)/2 - dbw - dbg/2;
-  const dgmBtns = [
-    { x: dbx, y: monTop + monH - 27*sc, w: dbw, h: dbh },
-    { x: dbx + dbw + dbg, y: monTop + monH - 27*sc, w: dbw, h: dbh }
-  ];
+  const dbw = 54*sc, dbh = 17*sc, dbg = 8*sc;
+  const dbx = (ventEnd + knobStart)/2 - (3*dbw + 2*dbg)/2;
+  const dgmBtns = [];
+  for (let i = 0; i < 3; i++)
+    dgmBtns.push({ x: dbx + i*(dbw + dbg), y: monTop + monH - 27*sc, w: dbw, h: dbh });
   const edit = { x: mon.x + mon.w/2 - 28*sc, y: mon.y + mon.h - 26*sc,
                  w: 56*sc, h: 18*sc };
   return { sc, x0, R, A, B, Cd, keys, bayX, faceR, monTop, monH, mon, mon2,
@@ -1228,10 +1227,15 @@ function drawAbacusWideStatic(){
     wideScrew(c, U.x0 + 10*sc, My0 + Mh - 10*sc, sc); wideScrew(c, U.x0 + U.A.w - 10*sc, My0 + Mh - 10*sc, sc);
     c.font = Math.round(10*sc) + "px monospace"; c.textAlign = "left";
     c.fillStyle = "rgba(150,165,185,0.6)";
-    c.fillText(abDgm >= 0 ? (U.mon2 ? "B O X" : "D I A G R A M") : "S T O R Y", U.x0 + 16*sc, My0 + 18*sc);
+    c.fillText(U.mon2 ? (abDgm >= 0 ? "B O X" : "S T O R Y")
+                      : (abDgm >= 0 ? "D I A G R A M"
+                                    : abViz >= 0 ? "V I S U A L S" : "S T O R Y"),
+               U.x0 + 16*sc, My0 + 18*sc);
     if (U.mon2){
       c.fillStyle = "rgba(150,165,185,0.5)";
-      c.fillText(abDgm >= 0 ? "D I A G R A M" : "L E T T E R", U.mon2.x - 4, My0 + 18*sc);
+      c.fillText(abDgm >= 0 ? "D I A G R A M"
+                            : abViz >= 0 ? "V I S U A L S" : "L E T T E R",
+                 U.mon2.x - 4, My0 + 18*sc);
     }
     c.textAlign = "right";
     c.fillStyle = "rgba(150,165,185,0.35)";
@@ -1512,10 +1516,10 @@ function drawAbacusWideDots(t){
     ctx.fillText("CYCLE " + timerStr + (finished && overtimeStr ? "  " + overtimeStr : ""),
                  M.x + M.w - 8*sc, M.y + M.h - 8*sc);
   };
-  if (abDgm < 0) abMonStory(U.mon);
+  if (abDgm < 0 && (U.mon2 || abViz < 0)) abMonStory(U.mon);
   // MON-E: beside the story the letter crawls - one full transmission
   // per 27 minutes, re-sent from the top on every EXTEND
-  if (U.mon2 && abDgm < 0){
+  if (U.mon2 && abDgm < 0 && abViz < 0){
     const E = U.mon2;
     const idle3 = !running && !finished && pauseMs === 0;
     const per = 27*60;
@@ -1537,14 +1541,16 @@ function drawAbacusWideDots(t){
     const ln = Math.min(abLetterN, Math.max(1, Math.floor((scr + E.h)/abLetterLH)));
     ctx.fillText("LN " + ln + "/" + abLetterN, E.x + E.w - 8*sc, E.y + E.h - 8*sc);
   }
-  // the channel row: STORY, or DIAGRAM - the key names the chart
-  // that's up, and pressing it again flips FRAME <-> GOAL
+  // the channel row: STORY / DIAGRAM / VISUALS - the lit key names
+  // what's up; DIAGRAM pressed again flips FRAME <-> GOAL
   {
-    for (let i = 0; i < 2; i++){
+    for (let i = 0; i < 3; i++){
       const b = U.dgmBtns[i];
-      const on = i === 0 ? abDgm < 0 : abDgm >= 0;
+      const on = i === 0 ? (abDgm < 0 && abViz < 0)
+               : i === 1 ? abDgm >= 0 : abViz >= 0;
       const lb2 = i === 0 ? "STORY"
-                          : abDgm < 0 ? "DIAGRAM" : abDgm ? "GOAL" : "FRAME";
+                : i === 1 ? (abDgm < 0 ? "DIAGRAM" : abDgm ? "GOAL" : "FRAME")
+                : (abViz > 0 ? VIZ_DEFS[abViz - 1].n : "VISUALS");
       const kg2 = ctx.createLinearGradient(0, b.y, 0, b.y + b.h);
       kg2.addColorStop(0, on ? "#3a3323" : "#262c38");
       kg2.addColorStop(1, on ? "#241d10" : "#141821");
@@ -1637,6 +1643,55 @@ function drawAbacusWideDots(t){
     ctx.fillStyle = bi < def.boxes.length ? "rgba(255,170,60,0.8)" : "rgba(255,170,60,0.3)";
     ctx.fillText("SEL " + abDgmCode(abDgmWheel[0], abDgmWheel[1]),
                  D.scr.x + D.scr.w - 8*sc, D.scr.y + D.scr.h - 8*sc);
+  }
+  // VISUALS: the list of views with their codes, or the live feed
+  if (abViz >= 0){
+    const D = U.dgm, S = D.scr;
+    if (abViz === 0){
+      ctx.save();
+      ctx.beginPath(); ctx.roundRect(S.x, S.y, S.w, S.h, 14); ctx.clip();
+      ctx.fillStyle = "#0b0e42"; ctx.fillRect(S.x, S.y, S.w, S.h);
+      const rows = abVizRows(S, sc);
+      const bi3 = abDgmWheel[0]*26 + abDgmWheel[1];
+      rows.forEach((r, i) => {
+        const on = i === bi3;
+        if (on){
+          ctx.fillStyle = "rgba(255,170,60,0.12)";
+          ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 4); ctx.fill();
+          ctx.strokeStyle = "rgba(255,170,60,0.6)"; ctx.lineWidth = 1;
+          ctx.setLineDash([3, 4]);
+          ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 4); ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        ctx.font = "bold " + Math.round(10*sc) + "px monospace"; ctx.textAlign = "left";
+        ctx.fillStyle = "rgba(255,170,60,0.85)";
+        ctx.fillText(abDgmCode(Math.floor(i/26), i % 26), r.x + 8*sc, r.y + r.h/2 + 3*sc);
+        ctx.font = Math.round(10*sc) + "px monospace";
+        ctx.fillStyle = on ? "rgba(235,240,250,0.95)" : "rgba(224,232,250,0.7)";
+        ctx.fillText(VIZ_DEFS[i].n, r.x + 34*sc, r.y + r.h/2 + 3*sc);
+      });
+      ctx.drawImage(abMonEOverlay(S.w, S.h), S.x, S.y);
+      ctx.restore();
+      ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
+      ctx.fillStyle = "rgba(255,170,60,0.5)";
+      ctx.fillText("VIZ · SELECT", S.x + 8*sc, S.y + S.h - 8*sc);
+      ctx.textAlign = "right";
+      ctx.fillStyle = bi3 < VIZ_DEFS.length ? "rgba(255,170,60,0.8)" : "rgba(255,170,60,0.3)";
+      ctx.fillText("SEL " + abDgmCode(abDgmWheel[0], abDgmWheel[1]),
+                   S.x + S.w - 8*sc, S.y + S.h - 8*sc);
+    } else {
+      abVizFrame(S, t, sc);
+      ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
+      ctx.fillStyle = "rgba(255,170,60,0.5)";
+      ctx.fillText("VIZ · " + VIZ_DEFS[abViz - 1].n, S.x + 8*sc, S.y + S.h - 8*sc);
+      ctx.textAlign = "right";
+      ctx.fillText("CYCLE " + timerStr + (finished && overtimeStr ? "  " + overtimeStr : ""),
+                   S.x + S.w - 8*sc, S.y + S.h - 8*sc);
+    }
+  }
+  // the side device serves both decks
+  if (abDgm >= 0 || abViz >= 0){
+    const D = U.dgm;
     // the side device
     const Pn = D.pan;
     ctx.fillStyle = "#0b0e14";
@@ -1954,6 +2009,113 @@ function abDgmRender(fi){
     c.fillText(d.t, d.x*s, d.y*s + 3);
   }
   return abDgmCvs[fi] = cv;
+}
+/* --- VISUALS: any timer view, live on the tube. The views render
+   against a virtual portrait screen; the still layer is rebuilt at
+   most once a second via a snapshot dance on the real static canvas
+   (all inside one frame, never visible). --- */
+let abViz = -1;   // -1 off, 0 the list, n>0 = VIZ_DEFS[n-1] on the glass
+const AB_VIZ_W = 412, AB_VIZ_H = 740;
+const VIZ_DEFS = [
+  { n: "RINGS",   v: 0, d: (t) => drawRingDots(t) },
+  { n: "STAR",    v: 1, d: (t) => { drawCenterDots(performance.now()); drawLEDs(t); } },
+  { n: "FRACTAL", v: 3, d: (t) => drawFractalView(t) },
+  { n: "WHEELS",  v: 4, d: (t) => drawSevenRings(t) },
+  { n: "WEAVE",   v: 5, d: (t) => drawWeave(t) },
+  { n: "TRIAD",   v: 6, d: (t) => drawTriad(t) },
+  { n: "DREAM",   v: 7, d: (t) => drawDream(t) },
+  { n: "GOETIA",  v: 8, ms: 120, d: (t) => drawGoetia(t) },
+  { n: "GEARS",   v: 9, d: (t) => drawGears(t) },
+];
+let abVizStaticCv = null, abVizStaticKey = "", abVizStaticAt = 0;
+function abVizSandbox(fn){
+  const sW = viewW, sH = viewH, sSc = scaleF, sVM = viewMode,
+        sNS = needsStaticRedraw, sTF = triadFill;
+  viewW = AB_VIZ_W; viewH = AB_VIZ_H;
+  scaleF = Math.min((AB_VIZ_H*0.33)/WORLD_RADIUS, (AB_VIZ_W*0.45)/WORLD_RADIUS);
+  if (triadFill >= 6) triadFill = 0;   // the plates live on the story glass
+  try { fn(); } catch (err) {}
+  viewW = sW; viewH = sH; scaleF = sSc; viewMode = sVM;
+  needsStaticRedraw = sNS; triadFill = sTF;
+}
+function abVizStatic(vi){
+  const key = vi + ":" + triadFill;
+  const nw = performance.now();
+  if (abVizStaticCv && abVizStaticKey === key && nw - abVizStaticAt < 1000)
+    return abVizStaticCv;
+  abVizStaticKey = key; abVizStaticAt = nw;
+  if (!abVizStaticCv){
+    abVizStaticCv = document.createElement('canvas');
+    abVizStaticCv.width = AB_VIZ_W; abVizStaticCv.height = AB_VIZ_H;
+  }
+  const dpr2 = Math.min(window.devicePixelRatio || 1, 2);
+  const rw2 = Math.min(canvasStatic.width, Math.round(AB_VIZ_W*dpr2));
+  const rh2 = Math.min(canvasStatic.height, Math.round(AB_VIZ_H*dpr2));
+  const snap = document.createElement('canvas');
+  snap.width = rw2; snap.height = rh2;
+  snap.getContext('2d').drawImage(canvasStatic, 0, 0, rw2, rh2, 0, 0, rw2, rh2);
+  abVizSandbox(() => {
+    viewMode = VIZ_DEFS[vi].v;
+    ctxStatic.save();
+    ctxStatic.beginPath(); ctxStatic.rect(0, 0, AB_VIZ_W, AB_VIZ_H); ctxStatic.clip();
+    drawStaticLayer();
+    ctxStatic.restore();
+  });
+  const c3 = abVizStaticCv.getContext('2d');
+  c3.fillStyle = "#04050c"; c3.fillRect(0, 0, AB_VIZ_W, AB_VIZ_H);
+  c3.drawImage(canvasStatic, 0, 0, rw2, rh2, 0, 0, AB_VIZ_W, AB_VIZ_H);
+  ctxStatic.save();
+  ctxStatic.setTransform(1, 0, 0, 1, 0, 0);
+  ctxStatic.clearRect(0, 0, rw2, rh2);
+  ctxStatic.drawImage(snap, 0, 0);
+  ctxStatic.restore();
+  return abVizStaticCv;
+}
+let abVizLive = { cv: null, key: "", at: 0 };
+function abVizFrame(S, t, sc){
+  const def = VIZ_DEFS[abViz - 1];
+  const key = abViz + ":" + Math.round(S.w) + ":" + Math.round(S.h);
+  const nw3 = performance.now();
+  const dpr3 = Math.min(window.devicePixelRatio || 1, 2);
+  ctx.save();
+  ctx.beginPath(); ctx.roundRect(S.x, S.y, S.w, S.h, 14); ctx.clip();
+  ctx.fillStyle = "#04050c"; ctx.fillRect(S.x, S.y, S.w, S.h);
+  if (def.ms && abVizLive.cv && abVizLive.key === key && nw3 - abVizLive.at < def.ms){
+    // a heavy feed refreshes at its own cadence; between refreshes the
+    // last frame holds, like any tired surveillance tube
+    ctx.drawImage(abVizLive.cv, S.x, S.y, S.w, S.h);
+  } else {
+    const k = Math.min(S.w/AB_VIZ_W, S.h/AB_VIZ_H);
+    const tx = S.x + (S.w - AB_VIZ_W*k)/2, ty = S.y + (S.h - AB_VIZ_H*k)/2;
+    ctx.drawImage(abVizStatic(abViz - 1), tx, ty, AB_VIZ_W*k, AB_VIZ_H*k);
+    ctx.save();
+    ctx.translate(tx, ty); ctx.scale(k, k);
+    ctx.beginPath(); ctx.rect(0, 0, AB_VIZ_W, AB_VIZ_H); ctx.clip();
+    abVizSandbox(() => { viewMode = def.v; def.d(t); });
+    ctx.restore();
+    if (def.ms){
+      if (!abVizLive.cv) abVizLive.cv = document.createElement('canvas');
+      abVizLive.cv.width = Math.max(2, Math.round(S.w*dpr3));
+      abVizLive.cv.height = Math.max(2, Math.round(S.h*dpr3));
+      abVizLive.cv.getContext('2d').drawImage(canvasAnim,
+        Math.round(S.x*dpr3), Math.round(S.y*dpr3),
+        abVizLive.cv.width, abVizLive.cv.height,
+        0, 0, abVizLive.cv.width, abVizLive.cv.height);
+      abVizLive.key = key; abVizLive.at = nw3;
+    }
+  }
+  ctx.restore();
+  ctx.drawImage(abMonEOverlay(S.w, S.h), S.x, S.y);
+}
+function abVizRows(S, sc){
+  const cols = S.w >= 420 ? 3 : 2;
+  const rws = Math.ceil(VIZ_DEFS.length/cols);
+  const cw2 = (S.w - 16*sc)/cols, rh3 = Math.min(24*sc, (S.h - 30*sc)/rws);
+  return VIZ_DEFS.map((_, i) => ({
+    x: S.x + 8*sc + (i % cols)*cw2,
+    y: S.y + 12*sc + Math.floor(i/cols)*rh3,
+    w: cw2 - 6*sc, h: rh3 - 4*sc
+  }));
 }
 let abKeyFlash = { id: -1, until: 0 };
 function abacusExtend(){
@@ -6007,21 +6169,65 @@ canvasAnim.addEventListener("click", (e) => {
   if (viewMode === 2){
     const U = abacusWideUnits();
     const hit = (b) => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h;
-    // the channel row: STORY, or DIAGRAM (press again to flip charts)
+    // the channel row: STORY / DIAGRAM (again flips charts) / VISUALS
     if (hit(U.dgmBtns[0])){
-      abDgm = -1;
+      abDgm = -1; abViz = -1;
       abDgmGlide = null;
       needsStaticRedraw = true;
       haptic('light');
       return;
     }
     if (hit(U.dgmBtns[1])){
+      abViz = -1;
       abDgm = abDgm < 0 ? abDgmLastD : 1 - abDgm;
       abDgmLastD = abDgm;
       abDgmGlide = null;
       needsStaticRedraw = true;
       haptic('light');
       return;
+    }
+    if (hit(U.dgmBtns[2])){
+      abDgm = -1; abViz = 0;
+      abDgmGlide = null;
+      needsStaticRedraw = true;
+      haptic('light');
+      return;
+    }
+    if (abViz >= 0){
+      const D = U.dgm;
+      const vBump = (wi, dir) => {
+        abDgmWheel[wi] = (abDgmWheel[wi] + (dir < 0 ? 25 : 1)) % 26;
+        abDgmFlash = { k: "w" + wi + (dir < 0 ? "u" : "d"),
+                       until: performance.now() + 140 };
+        const bi = abDgmWheel[0]*26 + abDgmWheel[1];
+        if (abViz > 0 && bi < VIZ_DEFS.length) abViz = bi + 1;
+        haptic('light');
+      };
+      if (hit(D.w1u)){ vBump(0, -1); return; }
+      if (hit(D.w1d)){ vBump(0, 1); return; }
+      if (hit(D.w2u)){ vBump(1, -1); return; }
+      if (hit(D.w2d)){ vBump(1, 1); return; }
+      if (hit(D.w1)){ vBump(0, cy < D.w1.y + D.w1.h/2 ? -1 : 1); return; }
+      if (hit(D.w2)){ vBump(1, cy < D.w2.y + D.w2.h/2 ? -1 : 1); return; }
+      if (hit(D.sel)){
+        abDgmFlash = { k: "sel", until: performance.now() + 140 };
+        const bi = abDgmWheel[0]*26 + abDgmWheel[1];
+        if (abViz === 0){ if (bi < VIZ_DEFS.length){ abViz = bi + 1; haptic('medium'); } }
+        else abViz = 0;
+        return;
+      }
+      if (abViz === 0){
+        const rows = abVizRows(D.scr, U.sc);
+        for (let i = 0; i < rows.length; i++){
+          if (!hit(rows[i])) continue;
+          abDgmWheel = [Math.floor(i/26), i % 26];
+          abViz = i + 1;
+          haptic('medium');
+          return;
+        }
+      }
+      if (cx >= D.pan.x && cx <= D.pan.x + D.pan.w &&
+          cy >= D.pan.y && cy <= D.pan.y + D.pan.h) return;
     }
     if (abDgm >= 0 && U.mon2 && hit(U.edit)){
       const biE = abDgmWheel[0]*26 + abDgmWheel[1];
