@@ -1140,17 +1140,16 @@ function abacusWideUnits(){
     scr: { x: dt0.x, y: dt0.y, w: dt0.w - panW - 6*sc, h: dt0.h },
     pan: { x: dt0.x + dt0.w - panW, y: dt0.y, w: panW, h: dt0.h }
   };
-  // the device stack breathes: arrow / wheel / arrow, twice, then SEL,
-  // then the stick; pu compresses it all on unusually short glass
-  const pu = sc*Math.min(1, dgm.pan.h/(186*sc));
+  // the device stack: arrow / wheel / arrow, twice, then the stick -
+  // the dials commit themselves; pu compresses on unusually short glass
+  const pu = sc*Math.min(1, dgm.pan.h/(216*sc));
   const px5 = dgm.pan.x + 5*sc, pw5 = panW - 10*sc;
-  dgm.w1u = { x: px5, y: dgm.pan.y + 8*pu,   w: pw5, h: 13*pu };
-  dgm.w1  = { x: px5, y: dgm.pan.y + 24*pu,  w: pw5, h: 30*pu };
-  dgm.w1d = { x: px5, y: dgm.pan.y + 57*pu,  w: pw5, h: 13*pu };
-  dgm.w2u = { x: px5, y: dgm.pan.y + 82*pu,  w: pw5, h: 13*pu };
-  dgm.w2  = { x: px5, y: dgm.pan.y + 98*pu,  w: pw5, h: 30*pu };
-  dgm.w2d = { x: px5, y: dgm.pan.y + 131*pu, w: pw5, h: 13*pu };
-  dgm.sel = { x: px5, y: dgm.pan.y + 152*pu, w: pw5, h: 20*pu };
+  dgm.w1u = { x: px5, y: dgm.pan.y + 10*pu,  w: pw5, h: 15*pu };
+  dgm.w1  = { x: px5, y: dgm.pan.y + 28*pu,  w: pw5, h: 38*pu };
+  dgm.w1d = { x: px5, y: dgm.pan.y + 69*pu,  w: pw5, h: 15*pu };
+  dgm.w2u = { x: px5, y: dgm.pan.y + 96*pu,  w: pw5, h: 15*pu };
+  dgm.w2  = { x: px5, y: dgm.pan.y + 114*pu, w: pw5, h: 38*pu };
+  dgm.w2d = { x: px5, y: dgm.pan.y + 155*pu, w: pw5, h: 15*pu };
   const jr = Math.min(19*pu, panW/2 - 3);
   dgm.joy = { cx: dgm.pan.x + panW/2, cy: dgm.pan.y + dgm.pan.h - jr - 10*pu, r: jr };
   const ventEnd = x0 + 116*sc, knobStart = x0 + target - 92*sc;
@@ -1159,10 +1158,12 @@ function abacusWideUnits(){
   const dgmBtns = [];
   for (let i = 0; i < 3; i++)
     dgmBtns.push({ x: dbx + i*(dbw + dbg), y: monTop + monH - 27*sc, w: dbw, h: dbh });
+  const selBtn = { x: x0 + target - 84*sc, y: monTop + monH - 27*sc,
+                   w: 68*sc, h: dbh };
   const edit = { x: mon.x + mon.w/2 - 28*sc, y: mon.y + mon.h - 26*sc,
                  w: 56*sc, h: 18*sc };
   return { sc, x0, R, A, B, Cd, keys, bayX, faceR, monTop, monH, mon, mon2,
-           dgm, dgmBtns, edit,
+           dgm, dgmBtns, selBtn, edit,
            ext: { x: extX, y: A.y0 + A.h - 42*sc,
                   w: x0 + target - 13*sc - extX, h: 28*sc } };
 }
@@ -1247,17 +1248,7 @@ function drawAbacusWideStatic(){
       c.fillStyle = "#05070f";
       c.beginPath(); c.roundRect(S.x, S.y, S.w, S.h, 14); c.fill();
     }
-    // brass knobs and vent slots on the bezel foot
-    for (let k = 0; k < 2; k++){
-      const kx2 = U.x0 + U.A.w - 46*sc - k*34*sc, ky2 = My0 + Mh - 24*sc;
-      const kg = c.createRadialGradient(kx2 - 2, ky2 - 2, 0, kx2, ky2, 9*sc);
-      kg.addColorStop(0, "#e8c88a"); kg.addColorStop(0.5, "#a9843e"); kg.addColorStop(1, "#5d461f");
-      c.fillStyle = kg;
-      c.beginPath(); c.arc(kx2, ky2, 9*sc, 0, 2*Math.PI); c.fill();
-      c.strokeStyle = "rgba(0,0,0,0.6)"; c.lineWidth = 1.5;
-      c.beginPath(); c.moveTo(kx2, ky2);
-      c.lineTo(kx2 + 6*sc*Math.cos(0.6 + k*2), ky2 + 6*sc*Math.sin(0.6 + k*2)); c.stroke();
-    }
+    // the knobs' old post now belongs to the SELECT key (drawn live)
     for (let k = 0; k < 6; k++){
       c.fillStyle = "rgba(0,0,0,0.55)";
       c.fillRect(U.x0 + 24*sc + k*14*sc, My0 + Mh - 28*sc, 8*sc, 12*sc);
@@ -1541,6 +1532,25 @@ function drawAbacusWideDots(t){
     const ln = Math.min(abLetterN, Math.max(1, Math.floor((scr + E.h)/abLetterLH)));
     ctx.fillText("LN " + ln + "/" + abLetterN, E.x + E.w - 8*sc, E.y + E.h - 8*sc);
   }
+  // SELECT: the brass confirm key on the bezel foot - opens the dialed
+  // feed from the list, steps a live feed back, clicks the dialed box
+  {
+    const b = U.selBtn;
+    const armed = abDgm >= 0 || abViz >= 0;
+    const pr = abDgmFlash.k === "sel" && performance.now() < abDgmFlash.until;
+    const py = pr ? 1.5*sc : 0;
+    const kg3 = ctx.createLinearGradient(0, b.y + py, 0, b.y + b.h + py);
+    if (armed){ kg3.addColorStop(0, "#e8c88a"); kg3.addColorStop(0.55, "#a9843e"); kg3.addColorStop(1, "#5d461f"); }
+    else { kg3.addColorStop(0, "#3a3629"); kg3.addColorStop(1, "#211d13"); }
+    ctx.fillStyle = kg3;
+    ctx.beginPath(); ctx.roundRect(b.x, b.y + py, b.w, b.h, 4); ctx.fill();
+    ctx.strokeStyle = armed ? "rgba(0,0,0,0.65)" : "rgba(255,255,255,0.08)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(b.x, b.y + py, b.w, b.h, 4); ctx.stroke();
+    ctx.font = "bold " + Math.round(8*sc) + "px monospace"; ctx.textAlign = "center";
+    ctx.fillStyle = armed ? "rgba(30,22,8,0.9)" : "rgba(150,165,185,0.35)";
+    ctx.fillText("SELECT", b.x + b.w/2, b.y + py + b.h/2 + 3*sc);
+  }
   // the channel row: STORY / DIAGRAM / VISUALS - the lit key names
   // what's up; DIAGRAM pressed again flips FRAME <-> GOAL
   {
@@ -1641,7 +1651,7 @@ function drawAbacusWideDots(t){
     ctx.fillText("DGM · " + (abDgm ? "GOAL" : "FRAME"), D.scr.x + 8*sc, D.scr.y + D.scr.h - 8*sc);
     ctx.textAlign = "right";
     ctx.fillStyle = bi < def.boxes.length ? "rgba(255,170,60,0.8)" : "rgba(255,170,60,0.3)";
-    ctx.fillText("SEL " + abDgmCode(abDgmWheel[0], abDgmWheel[1]),
+    ctx.fillText("DIAL " + abDgmCode(abDgmWheel[0], abDgmWheel[1]),
                  D.scr.x + D.scr.w - 8*sc, D.scr.y + D.scr.h - 8*sc);
   }
   // VISUALS: the list of views with their codes, or the live feed
@@ -1677,7 +1687,7 @@ function drawAbacusWideDots(t){
       ctx.fillText("VIZ · SELECT", S.x + 8*sc, S.y + S.h - 8*sc);
       ctx.textAlign = "right";
       ctx.fillStyle = bi3 < VIZ_DEFS.length ? "rgba(255,170,60,0.8)" : "rgba(255,170,60,0.3)";
-      ctx.fillText("SEL " + abDgmCode(abDgmWheel[0], abDgmWheel[1]),
+      ctx.fillText("DIAL " + abDgmCode(abDgmWheel[0], abDgmWheel[1]),
                    S.x + S.w - 8*sc, S.y + S.h - 8*sc);
     } else {
       abVizFrame(S, t, sc);
@@ -1715,13 +1725,13 @@ function drawAbacusWideDots(t){
       }
       const cur = abDgmWheel[wi];
       ctx.textAlign = "center";
-      ctx.font = Math.round(7*sc) + "px monospace";
+      ctx.font = Math.round(8*sc) + "px monospace";
       ctx.fillStyle = "rgba(200,215,235,0.3)";
-      ctx.fillText(String.fromCharCode(65 + (cur + 25) % 26), wr.x + wr.w/2, wr.y + 8*sc);
+      ctx.fillText(String.fromCharCode(65 + (cur + 25) % 26), wr.x + wr.w/2, wr.y + 9*sc);
       ctx.fillText(String.fromCharCode(65 + (cur + 1) % 26), wr.x + wr.w/2, wr.y + wr.h - 3*sc);
-      ctx.font = "bold " + Math.round(12*sc) + "px monospace";
+      ctx.font = "bold " + Math.round(14*sc) + "px monospace";
       ctx.fillStyle = "rgba(255,190,90,0.95)";
-      ctx.fillText(String.fromCharCode(65 + cur), wr.x + wr.w/2, wr.y + wr.h/2 + 4*sc);
+      ctx.fillText(String.fromCharCode(65 + cur), wr.x + wr.w/2, wr.y + wr.h/2 + 5*sc);
     };
     wheel(D.w1, 0); wheel(D.w2, 1);
     const arrow = (ar, kk, up2) => {
@@ -1739,14 +1749,6 @@ function drawAbacusWideDots(t){
     };
     arrow(D.w1u, "w0u", true); arrow(D.w1d, "w0d", false);
     arrow(D.w2u, "w1u", true); arrow(D.w2d, "w1d", false);
-    const sb = D.sel, sp2 = abDgmFlash.k === "sel" && performance.now() < abDgmFlash.until;
-    ctx.fillStyle = sp2 ? "#141a24" : "#222b39";
-    ctx.beginPath(); ctx.roundRect(sb.x, sb.y, sb.w, sb.h, 4); ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.14)";
-    ctx.beginPath(); ctx.roundRect(sb.x, sb.y, sb.w, sb.h, 4); ctx.stroke();
-    ctx.font = Math.round(8*sc) + "px monospace"; ctx.textAlign = "center";
-    ctx.fillStyle = "rgba(225,232,240,0.8)";
-    ctx.fillText("SEL", sb.x + sb.w/2, sb.y + sb.h/2 + 3*sc);
     const J = D.joy;
     ctx.fillStyle = "#05070c";
     ctx.beginPath(); ctx.arc(J.cx, J.cy, J.r, 0, 2*Math.PI); ctx.fill();
@@ -6169,6 +6171,28 @@ canvasAnim.addEventListener("click", (e) => {
   if (viewMode === 2){
     const U = abacusWideUnits();
     const hit = (b) => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h;
+    // SELECT: the brass confirm key
+    if ((abDgm >= 0 || abViz >= 0) && hit(U.selBtn)){
+      abDgmFlash = { k: "sel", until: performance.now() + 140 };
+      const biS = abDgmWheel[0]*26 + abDgmWheel[1];
+      if (abViz === 0){
+        if (biS < VIZ_DEFS.length){ abViz = biS + 1; haptic('medium'); }
+      } else if (abViz > 0){
+        abViz = 0;
+        haptic('light');
+      } else if (biS < FRAME_DEFS[abDgm].boxes.length && !FRAME_DEFS[abDgm].boxes[biS].empty){
+        frameSelected = biS;
+        frameSelectedF = abDgm;
+        frameStatus = FRAME_DEFS[abDgm].boxes[biS].lines.join(" ");
+        try {
+          localStorage.setItem('salvationStatus', frameStatus);
+          localStorage.setItem('salvationStatusIdx', biS);
+          localStorage.setItem('salvationStatusF', frameSelectedF);
+        } catch(err) {}
+        haptic('medium');
+      }
+      return;
+    }
     // the channel row: STORY / DIAGRAM (again flips charts) / VISUALS
     if (hit(U.dgmBtns[0])){
       abDgm = -1; abViz = -1;
@@ -6200,7 +6224,7 @@ canvasAnim.addEventListener("click", (e) => {
         abDgmFlash = { k: "w" + wi + (dir < 0 ? "u" : "d"),
                        until: performance.now() + 140 };
         const bi = abDgmWheel[0]*26 + abDgmWheel[1];
-        if (abViz > 0 && bi < VIZ_DEFS.length) abViz = bi + 1;
+        if (bi < VIZ_DEFS.length) abViz = bi + 1;
         haptic('light');
       };
       if (hit(D.w1u)){ vBump(0, -1); return; }
@@ -6209,13 +6233,6 @@ canvasAnim.addEventListener("click", (e) => {
       if (hit(D.w2d)){ vBump(1, 1); return; }
       if (hit(D.w1)){ vBump(0, cy < D.w1.y + D.w1.h/2 ? -1 : 1); return; }
       if (hit(D.w2)){ vBump(1, cy < D.w2.y + D.w2.h/2 ? -1 : 1); return; }
-      if (hit(D.sel)){
-        abDgmFlash = { k: "sel", until: performance.now() + 140 };
-        const bi = abDgmWheel[0]*26 + abDgmWheel[1];
-        if (abViz === 0){ if (bi < VIZ_DEFS.length){ abViz = bi + 1; haptic('medium'); } }
-        else abViz = 0;
-        return;
-      }
       if (abViz === 0){
         const rows = abVizRows(D.scr, U.sc);
         for (let i = 0; i < rows.length; i++){
@@ -6246,6 +6263,17 @@ canvasAnim.addEventListener("click", (e) => {
           const b = FRAME_DEFS[abDgm].boxes[bi];
           abDgmGlide = { x: b.x + b.w/2 - D.scr.w/AB_DGM_S/2,
                          y: b.y + b.h/2 - D.scr.h/AB_DGM_S/2 };
+          // the dial commits itself: a valid code IS the selection
+          if (!b.empty){
+            frameSelected = bi;
+            frameSelectedF = abDgm;
+            frameStatus = b.lines.join(" ");
+            try {
+              localStorage.setItem('salvationStatus', frameStatus);
+              localStorage.setItem('salvationStatusIdx', bi);
+              localStorage.setItem('salvationStatusF', frameSelectedF);
+            } catch(err) {}
+          }
         }
         haptic('light');
       };
@@ -6255,22 +6283,6 @@ canvasAnim.addEventListener("click", (e) => {
       if (hit(D.w2d)){ bump(1, 1); return; }
       if (hit(D.w1)){ bump(0, cy < D.w1.y + D.w1.h/2 ? -1 : 1); return; }
       if (hit(D.w2)){ bump(1, cy < D.w2.y + D.w2.h/2 ? -1 : 1); return; }
-      if (hit(D.sel)){
-        abDgmFlash = { k: "sel", until: performance.now() + 140 };
-        const bi = abDgmWheel[0]*26 + abDgmWheel[1];
-        if (bi < FRAME_DEFS[abDgm].boxes.length && !FRAME_DEFS[abDgm].boxes[bi].empty){
-          frameSelected = bi;
-          frameSelectedF = abDgm;
-          frameStatus = FRAME_DEFS[abDgm].boxes[bi].lines.join(" ");
-          try {
-            localStorage.setItem('salvationStatus', frameStatus);
-            localStorage.setItem('salvationStatusIdx', bi);
-            localStorage.setItem('salvationStatusF', frameSelectedF);
-          } catch(err) {}
-          haptic('medium');
-        }
-        return;
-      }
       if (cx >= D.pan.x && cx <= D.pan.x + D.pan.w &&
           cy >= D.pan.y && cy <= D.pan.y + D.pan.h) return;
     }
