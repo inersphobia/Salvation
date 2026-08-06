@@ -1115,14 +1115,14 @@ function abacusWideUnits(){
   const keys = [];
   for (let i = 0; i < 3; i++)
     keys.push({ x: x0 + 24*sc + i*(kw + 12*sc), y: Cd.y0 + 34*sc, w: kw, h: kh });
-  const monH = Math.max(150*sc, Math.min(300*sc, Ay0 - 44));
+  const monH = Math.max(170*sc, Math.min(340*sc, Ay0 - 44));
   const monTop = Ay0 - monH + 3;
   const bayX = slotX(slots - 1);
   const faceR = bayX - cell/2 - 12*sc;
   const extX = faceR + 8*sc;
   // one tube on a phone; on a wide screen MON-D narrows to the left
   // and MON-E - the letter - takes the right of the crown
-  const monW = target - 52*sc, monIH = monH - 78*sc;
+  const monW = target - 52*sc, monIH = monH - 108*sc;
   let mon, mon2 = null;
   if (monW >= monIH*2.2 + 200*sc){
     const dw = Math.min(monIH*1.15, monW*0.42);
@@ -1140,18 +1140,17 @@ function abacusWideUnits(){
     scr: { x: dt0.x, y: dt0.y, w: dt0.w - panW - 6*sc, h: dt0.h },
     pan: { x: dt0.x + dt0.w - panW, y: dt0.y, w: panW, h: dt0.h }
   };
-  // the device stack: arrow / wheel / arrow, twice, then the stick -
-  // the dials commit themselves; pu compresses on unusually short glass
-  const pu = sc*Math.min(1, dgm.pan.h/(216*sc));
+  // the wheel column owns the whole side panel now - the stick moved
+  // to the bezel foot; pu compresses on unusually short glass
+  const pu = sc*Math.min(1, dgm.pan.h/(196*sc));
   const px5 = dgm.pan.x + 5*sc, pw5 = panW - 10*sc;
-  dgm.w1u = { x: px5, y: dgm.pan.y + 10*pu,  w: pw5, h: 15*pu };
-  dgm.w1  = { x: px5, y: dgm.pan.y + 28*pu,  w: pw5, h: 38*pu };
-  dgm.w1d = { x: px5, y: dgm.pan.y + 69*pu,  w: pw5, h: 15*pu };
-  dgm.w2u = { x: px5, y: dgm.pan.y + 96*pu,  w: pw5, h: 15*pu };
-  dgm.w2  = { x: px5, y: dgm.pan.y + 114*pu, w: pw5, h: 38*pu };
-  dgm.w2d = { x: px5, y: dgm.pan.y + 155*pu, w: pw5, h: 15*pu };
-  const jr = Math.min(19*pu, panW/2 - 3);
-  dgm.joy = { cx: dgm.pan.x + panW/2, cy: dgm.pan.y + dgm.pan.h - jr - 10*pu, r: jr };
+  dgm.w1u = { x: px5, y: dgm.pan.y + 14*pu,  w: pw5, h: 17*pu };
+  dgm.w1  = { x: px5, y: dgm.pan.y + 34*pu,  w: pw5, h: 44*pu };
+  dgm.w1d = { x: px5, y: dgm.pan.y + 81*pu,  w: pw5, h: 17*pu };
+  dgm.w2u = { x: px5, y: dgm.pan.y + 112*pu, w: pw5, h: 17*pu };
+  dgm.w2  = { x: px5, y: dgm.pan.y + 132*pu, w: pw5, h: 44*pu };
+  dgm.w2d = { x: px5, y: dgm.pan.y + 179*pu, w: pw5, h: 17*pu };
+  dgm.joy = { cx: x0 + 56*sc, cy: monTop + monH - 50*sc, r: 20*sc };
   const ventEnd = x0 + 116*sc, knobStart = x0 + target - 92*sc;
   const dbw = 54*sc, dbh = 17*sc, dbg = 8*sc;
   const dbx = (ventEnd + knobStart)/2 - (3*dbw + 2*dbg)/2;
@@ -1507,17 +1506,33 @@ function drawAbacusWideDots(t){
     ctx.fillText("CYCLE " + timerStr + (finished && overtimeStr ? "  " + overtimeStr : ""),
                  M.x + M.w - 8*sc, M.y + M.h - 8*sc);
   };
-  if (abDgm < 0 && (U.mon2 || abViz < 0)) abMonStory(U.mon);
+  if (abDgm < 0 && (U.mon2 || abViz < 0))
+    abMonStory(U.mon2 ? U.mon : U.dgm.scr);
   // MON-E: beside the story the letter crawls - one full transmission
   // per 27 minutes, re-sent from the top on every EXTEND
   if (U.mon2 && abDgm < 0 && abViz < 0){
-    const E = U.mon2;
+    const E = U.dgm.scr;
     const idle3 = !running && !finished && pauseMs === 0;
     const per = 27*60;
     const local = finished ? per : idle3 ? 0 : (t % per);
     const cv = abLetterRender(E.w, sc);
     const span = Math.max(0, cv.height - E.h);
-    const scr = Math.round(span*(local/per));
+    // the stick bends the crawl: push down to hurry it, up to slow it
+    // to a stop and then roll the letter backwards; released, it walks
+    // on at its own pace from wherever you left it
+    const nw4 = performance.now();
+    const dt4 = Math.min(0.1, Math.max(0, (nw4 - abLetterT)/1000));
+    abLetterT = nw4;
+    if (idle3) abLetterPos = null;
+    else if (abDgmJoy && Math.abs(abDgmJoy.dy) > 0.08){
+      if (abLetterPos === null) abLetterPos = span*(local/per);
+      const eff = abDgmJoy.dy*Math.abs(abDgmJoy.dy);
+      abLetterPos += (span/per)*(1 + eff*40)*dt4;
+      abLetterPos = Math.max(0, Math.min(span, abLetterPos));
+    } else if (abLetterPos !== null){
+      abLetterPos = Math.max(0, Math.min(span, abLetterPos + (span/per)*dt4));
+    }
+    const scr = Math.round(abLetterPos !== null ? abLetterPos : span*(local/per));
     ctx.save();
     ctx.beginPath(); ctx.roundRect(E.x, E.y, E.w, E.h, 14); ctx.clip();
     ctx.fillStyle = "#0b0e42"; ctx.fillRect(E.x, E.y, E.w, E.h);
@@ -1699,8 +1714,8 @@ function drawAbacusWideDots(t){
                    S.x + S.w - 8*sc, S.y + S.h - 8*sc);
     }
   }
-  // the side device serves both decks
-  if (abDgm >= 0 || abViz >= 0){
+  // the side device is hardware - the wheels ride every channel
+  {
     const D = U.dgm;
     // the side device
     const Pn = D.pan;
@@ -1861,6 +1876,7 @@ Others believed that three was sacred because it is the first number that is tri
 
 Are some constellations circles?`;
 let abLetterCv = null, abLetterKey = "", abLetterLH = 16, abLetterN = 1;
+let abLetterPos = null, abLetterT = 0;   // the stick-bent crawl
 function abLetterRender(w, sc){
   const key = Math.round(w) + ":" + Math.round(sc*100);
   if (abLetterKey === key && abLetterCv) return abLetterCv;
@@ -6171,6 +6187,7 @@ canvasAnim.addEventListener("click", (e) => {
   if (viewMode === 2){
     const U = abacusWideUnits();
     const hit = (b) => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h;
+    if (performance.now() < abDgmJoyUntil) return;
     // SELECT: the brass confirm key
     if ((abDgm >= 0 || abViz >= 0) && hit(U.selBtn)){
       abDgmFlash = { k: "sel", until: performance.now() + 140 };
@@ -6275,6 +6292,23 @@ canvasAnim.addEventListener("click", (e) => {
       if (cx >= D.pan.x && cx <= D.pan.x + D.pan.w &&
           cy >= D.pan.y && cy <= D.pan.y + D.pan.h) return;
     }
+    if (abDgm < 0 && abViz < 0){
+      const D = U.dgm;
+      const hBump = (wi, dir) => {
+        abDgmWheel[wi] = (abDgmWheel[wi] + (dir < 0 ? 25 : 1)) % 26;
+        abDgmFlash = { k: "w" + wi + (dir < 0 ? "u" : "d"),
+                       until: performance.now() + 140 };
+        haptic('light');
+      };
+      if (hit(D.w1u)){ hBump(0, -1); return; }
+      if (hit(D.w1d)){ hBump(0, 1); return; }
+      if (hit(D.w2u)){ hBump(1, -1); return; }
+      if (hit(D.w2d)){ hBump(1, 1); return; }
+      if (hit(D.w1)){ hBump(0, cy < D.w1.y + D.w1.h/2 ? -1 : 1); return; }
+      if (hit(D.w2)){ hBump(1, cy < D.w2.y + D.w2.h/2 ? -1 : 1); return; }
+      if (cx >= D.pan.x && cx <= D.pan.x + D.pan.w &&
+          cy >= D.pan.y && cy <= D.pan.y + D.pan.h) return;
+    }
     if (hit(U.ext)){
       abKeyFlash = { id: 3, until: performance.now() + 140 };
       abacusExtend();
@@ -6304,7 +6338,7 @@ canvasAnim.addEventListener("click", (e) => {
 
 /* ---- the diagram deck stick: hold and push to pan the tube camera ---- */
 canvasAnim.addEventListener("pointerdown", (e) => {
-  if (viewMode !== 2 || abDgm < 0) return;
+  if (viewMode !== 2) return;
   const rect = canvasAnim.getBoundingClientRect();
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
   const J = abacusWideUnits().dgm.joy;
