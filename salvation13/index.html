@@ -1171,7 +1171,7 @@ function abacusWideUnits(){
                   w: x0 + target - 13*sc - extX, h: 28*sc } };
 }
 function wideScrew(c, x, y, sc){
-  c.fillStyle = "#242a34";
+  c.fillStyle = "#313947";
   c.beginPath(); c.arc(x, y, 3.2*sc, 0, 2*Math.PI); c.fill();
   c.strokeStyle = "rgba(0,0,0,0.7)"; c.lineWidth = 1;
   c.beginPath(); c.moveTo(x - 2*sc, y + 1.1*sc); c.lineTo(x + 2*sc, y - 1.1*sc); c.stroke();
@@ -1182,7 +1182,7 @@ function drawAbacusWideStatic(){
   const rr = () => { sd = (sd*48271) % 2147483647; return sd/2147483647; };
   // ---- a dark console world, no wall ----
   const gr = c.createLinearGradient(0, 0, 0, viewH);
-  gr.addColorStop(0, "#0a0d13");
+  gr.addColorStop(0, "#131822");
   gr.addColorStop(0.4, "#10141d");
   gr.addColorStop(1, "#06080c");
   c.fillStyle = gr; c.fillRect(0, 0, viewW, viewH);
@@ -1197,17 +1197,17 @@ function drawAbacusWideStatic(){
     c.fillRect(rr()*viewW, rr()*viewH, 1 + rr()*1.8, 1 + rr()*1.4);
   }
   // side gear: switch bank left, vents right
-  c.fillStyle = "#0a0d13";
+  c.fillStyle = "#131822";
   c.beginPath(); c.roundRect(8, 480*sc, 52*sc, 150*sc, 6); c.fill();
-  c.strokeStyle = "rgba(255,255,255,0.05)"; c.strokeRect(8, 480*sc, 52*sc, 150*sc);
+  c.strokeStyle = "rgba(255,255,255,0.1)"; c.strokeRect(8, 480*sc, 52*sc, 150*sc);
   for (let k = 0; k < 5; k++){
     const y = (498 + k*26)*sc;
-    c.fillStyle = "#151a22";
+    c.fillStyle = "#1e2431";
     c.beginPath(); c.roundRect(8 + 10*sc, y, 32*sc, 12*sc, 3); c.fill();
     c.fillStyle = k < 2 ? "rgba(255,160,0,0.5)" : "rgba(120,140,160,0.25)";
     c.beginPath(); c.arc(8 + 16*sc, y + 6*sc, 2.2*sc, 0, 2*Math.PI); c.fill();
   }
-  c.fillStyle = "#0a0d13";
+  c.fillStyle = "#131822";
   c.beginPath(); c.roundRect(viewW - 8 - 52*sc, 490*sc, 52*sc, 130*sc, 6); c.fill();
   for (let k = 0; k < 6; k++){
     c.fillStyle = "rgba(0,0,0,0.6)";
@@ -1220,33 +1220,33 @@ function drawAbacusWideStatic(){
     storyBoot();
     const My0 = U.monTop, Mh = U.monH;
     const hg2 = c.createLinearGradient(0, My0, 0, My0 + Mh);
-    hg2.addColorStop(0, "#232a36"); hg2.addColorStop(0.25, "#181c24"); hg2.addColorStop(1, "#101318");
+    hg2.addColorStop(0, "#313b4e"); hg2.addColorStop(0.25, "#232936"); hg2.addColorStop(1, "#171c25");
     c.fillStyle = hg2;
     c.beginPath(); c.roundRect(U.x0, My0, U.A.w, Mh, 9); c.fill();
-    c.strokeStyle = "rgba(160,190,235,0.13)"; c.lineWidth = 1;
+    c.strokeStyle = "rgba(160,190,235,0.28)"; c.lineWidth = 1;
     c.beginPath(); c.roundRect(U.x0, My0, U.A.w, Mh, 9); c.stroke();
     c.strokeStyle = "rgba(0,0,0,0.6)";
     c.beginPath(); c.roundRect(U.x0 + 4, My0 + 4, U.A.w - 8, Mh - 8, 7); c.stroke();
     wideScrew(c, U.x0 + 10*sc, My0 + 10*sc, sc); wideScrew(c, U.x0 + U.A.w - 10*sc, My0 + 10*sc, sc);
     wideScrew(c, U.x0 + 10*sc, My0 + Mh - 10*sc, sc); wideScrew(c, U.x0 + U.A.w - 10*sc, My0 + Mh - 10*sc, sc);
     c.font = Math.round(10*sc) + "px monospace"; c.textAlign = "left";
-    c.fillStyle = "rgba(150,165,185,0.6)";
+    c.fillStyle = "rgba(168,184,205,0.8)";
     c.fillText(U.duo && abDgm >= 0 ? "B O X"
              : abDgm >= 0 ? "D I A G R A M"
              : abViz >= 0 ? "V I S U A L S"
              : (!U.duo && abStoryPage) ? "L E T T E R" : "S T O R Y",
                U.x0 + 16*sc, My0 + 18*sc);
     if (U.duo && abViz < 0){
-      c.fillStyle = "rgba(150,165,185,0.5)";
+      c.fillStyle = "rgba(168,184,205,0.7)";
       c.fillText(abDgm >= 0 ? "D I A G R A M" : "L E T T E R",
                  U.duo.R.x - 4, My0 + 18*sc);
     }
     c.textAlign = "right";
-    c.fillStyle = "rgba(150,165,185,0.35)";
+    c.fillStyle = "rgba(168,184,205,0.52)";
     c.fillText(U.mon2 ? "MON · D + E" : "MON · D", U.x0 + U.A.w - 16*sc, My0 + 18*sc);
     // brass trim around the tube(s)
     for (const S of (U.mon2 ? [U.mon, U.mon2] : [U.mon])){
-      c.strokeStyle = "rgba(190,150,80,0.35)"; c.lineWidth = 3;
+      c.strokeStyle = "rgba(200,160,85,0.55)"; c.lineWidth = 3;
       c.beginPath(); c.roundRect(S.x - 5, S.y - 5, S.w + 10, S.h + 10, 18); c.stroke();
       c.fillStyle = "#05070f";
       c.beginPath(); c.roundRect(S.x, S.y, S.w, S.h, 14); c.fill();
@@ -1260,38 +1260,38 @@ function drawAbacusWideStatic(){
     c.fillStyle = ds;
     c.beginPath(); c.ellipse(u.x0 + u.w/2, u.y0 + u.h + 8, u.w*0.62, 16*sc, 0, 0, 2*Math.PI); c.fill();
     const hg = c.createLinearGradient(0, u.y0, 0, u.y0 + u.h);
-    hg.addColorStop(0, "#232a36"); hg.addColorStop(0.25, "#181c24"); hg.addColorStop(1, "#101318");
+    hg.addColorStop(0, "#313b4e"); hg.addColorStop(0.25, "#232936"); hg.addColorStop(1, "#171c25");
     c.fillStyle = hg;
     c.beginPath(); c.roundRect(u.x0, u.y0, u.w, u.h, 9); c.fill();
-    c.strokeStyle = "rgba(160,190,235,0.13)"; c.lineWidth = 1;
+    c.strokeStyle = "rgba(160,190,235,0.28)"; c.lineWidth = 1;
     c.beginPath(); c.roundRect(u.x0, u.y0, u.w, u.h, 9); c.stroke();
     c.strokeStyle = "rgba(0,0,0,0.6)";
     c.beginPath(); c.roundRect(u.x0 + 4, u.y0 + 4, u.w - 8, u.h - 8, 7); c.stroke();
-    c.fillStyle = "#0a0d12";
+    c.fillStyle = "#10141c";
     c.beginPath(); c.roundRect(u.x0 + 13*sc, u.y0 + 25*sc, faceR - u.x0 - 13*sc, u.h - 34*sc, 5); c.fill();
     wideScrew(c, u.x0 + 10*sc, u.y0 + 10*sc, sc); wideScrew(c, u.x0 + u.w - 10*sc, u.y0 + 10*sc, sc);
     wideScrew(c, u.x0 + 10*sc, u.y0 + u.h - 10*sc, sc); wideScrew(c, u.x0 + u.w - 10*sc, u.y0 + u.h - 10*sc, sc);
     c.font = Math.round(10*sc) + "px monospace"; c.textAlign = "left";
-    c.fillStyle = "rgba(150,165,185,0.6)";
+    c.fillStyle = "rgba(168,184,205,0.8)";
     c.fillText(title, u.x0 + 16*sc, u.y0 + 18*sc);
     c.textAlign = "right";
-    c.fillStyle = "rgba(150,165,185,0.35)";
+    c.fillStyle = "rgba(168,184,205,0.52)";
     c.fillText(sub, u.x0 + u.w - 16*sc, u.y0 + 18*sc);
     for (let i = 0; i < u.cols.length; i++){
       for (const yy of [u.yTop, u.yBot]){
-        c.fillStyle = "#0d1016";
+        c.fillStyle = "#141922";
         c.beginPath(); c.arc(u.cols[i], yy, u.cell*0.38, 0, 2*Math.PI); c.fill();
-        c.strokeStyle = "rgba(255,255,255,0.08)"; c.lineWidth = 1;
+        c.strokeStyle = "rgba(255,255,255,0.15)"; c.lineWidth = 1;
         c.beginPath(); c.arc(u.cols[i], yy, u.cell*0.38, 0, 2*Math.PI); c.stroke();
         c.fillStyle = "rgba(140,170,220,0.05)";
         c.beginPath(); c.ellipse(u.cols[i] - u.cell*0.1, yy - u.cell*0.14, u.cell*0.16, u.cell*0.08, -0.5, 0, 2*Math.PI); c.fill();
       }
       c.font = Math.round(9*sc) + "px monospace"; c.textAlign = "center";
-      c.fillStyle = "rgba(150,165,185,0.5)";
+      c.fillStyle = "rgba(168,184,205,0.7)";
       c.fillText(labels[i], u.cols[i], u.y0 + u.h - 9*sc);
     }
     const sh = c.createLinearGradient(u.x0, u.y0, u.x0 + u.w*0.9, u.y0 + u.h);
-    sh.addColorStop(0, "rgba(190,215,255,0.05)"); sh.addColorStop(0.35, "rgba(255,255,255,0)");
+    sh.addColorStop(0, "rgba(190,215,255,0.1)"); sh.addColorStop(0.35, "rgba(255,255,255,0)");
     c.fillStyle = sh;
     c.beginPath(); c.roundRect(u.x0 + 13*sc, u.y0 + 25*sc, u.w - 26*sc, u.h - 34*sc, 5); c.fill();
   };
@@ -1299,10 +1299,10 @@ function drawAbacusWideStatic(){
   for (let i = 0; i < U.R.mw; i++) mwL.push(abacusLabel(i));
   for (let i = 0; i < U.R.fr; i++) frL.push(abacusLabel(U.R.mw + i));
   unit(U.A, "M I N U T E S", "REG · A", mwL, U.faceR);
-  c.fillStyle = "#10141b";
+  c.fillStyle = "#171c26";
   c.fillRect(viewW/2 - 66*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
   c.fillRect(viewW/2 + 38*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
-  c.strokeStyle = "rgba(255,255,255,0.05)"; c.lineWidth = 1;
+  c.strokeStyle = "rgba(255,255,255,0.1)"; c.lineWidth = 1;
   c.strokeRect(viewW/2 - 66*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
   c.strokeRect(viewW/2 + 38*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
   wideScrew(c, viewW/2 - 52*sc, U.A.y0 + U.A.h + 7*sc, sc);
@@ -1312,20 +1312,20 @@ function drawAbacusWideStatic(){
   {
     const D = U.Cd;
     const hg2 = c.createLinearGradient(0, D.y0, 0, D.y0 + D.h);
-    hg2.addColorStop(0, "#20242e"); hg2.addColorStop(0.3, "#171b23"); hg2.addColorStop(1, "#0f1218");
+    hg2.addColorStop(0, "#2b3342"); hg2.addColorStop(0.3, "#212734"); hg2.addColorStop(1, "#161b24");
     c.fillStyle = hg2;
     c.beginPath(); c.roundRect(D.x0, D.y0, D.w, D.h, 9); c.fill();
-    c.strokeStyle = "rgba(160,190,235,0.12)"; c.lineWidth = 1;
+    c.strokeStyle = "rgba(160,190,235,0.26)"; c.lineWidth = 1;
     c.beginPath(); c.roundRect(D.x0, D.y0, D.w, D.h, 9); c.stroke();
     c.strokeStyle = "rgba(0,0,0,0.6)";
     c.beginPath(); c.roundRect(D.x0 + 4, D.y0 + 4, D.w - 8, D.h - 8, 7); c.stroke();
     wideScrew(c, D.x0 + 10*sc, D.y0 + 10*sc, sc); wideScrew(c, D.x0 + D.w - 10*sc, D.y0 + 10*sc, sc);
     wideScrew(c, D.x0 + 10*sc, D.y0 + D.h - 10*sc, sc); wideScrew(c, D.x0 + D.w - 10*sc, D.y0 + D.h - 10*sc, sc);
     c.font = Math.round(10*sc) + "px monospace"; c.textAlign = "left";
-    c.fillStyle = "rgba(150,165,185,0.55)";
+    c.fillStyle = "rgba(168,184,205,0.75)";
     c.fillText("C O N T R O L", D.x0 + 16*sc, D.y0 + 18*sc);
     c.textAlign = "right";
-    c.fillStyle = "rgba(150,165,185,0.3)";
+    c.fillStyle = "rgba(168,184,205,0.46)";
     c.fillText("REG · C", D.x0 + D.w - 16*sc, D.y0 + 18*sc);
     const dsh = c.createRadialGradient(D.x0 + D.w/2, D.y0 + D.h + 6, 10, D.x0 + D.w/2, D.y0 + D.h + 6, D.w*0.6);
     dsh.addColorStop(0, "rgba(0,0,0,0.5)"); dsh.addColorStop(1, "rgba(0,0,0,0)");
@@ -1336,12 +1336,12 @@ function drawAbacusWideStatic(){
   const MODE = ["27","54","81"];
   for (let k = 0; k < 3; k++){
     const ly = U.A.y0 + 33*sc + k*31*sc;
-    c.fillStyle = "#0d1016";
+    c.fillStyle = "#141922";
     c.beginPath(); c.arc(U.bayX, ly, 6*sc, 0, 2*Math.PI); c.fill();
-    c.strokeStyle = "rgba(255,255,255,0.08)"; c.lineWidth = 1;
+    c.strokeStyle = "rgba(255,255,255,0.15)"; c.lineWidth = 1;
     c.beginPath(); c.arc(U.bayX, ly, 6*sc, 0, 2*Math.PI); c.stroke();
     c.font = Math.round(8*sc) + "px monospace"; c.textAlign = "left";
-    c.fillStyle = "rgba(150,165,185,0.45)";
+    c.fillStyle = "rgba(168,184,205,0.62)";
     c.fillText(MODE[k], U.bayX + 11*sc, ly + 3*sc);
   }
   // ---- atmosphere ----
@@ -1355,7 +1355,7 @@ function drawAbacusWideStatic(){
     c.fillRect(0, y - 30*sc, viewW, 60*sc);
   }
   const vg = c.createRadialGradient(viewW/2, 440*sc, 120*sc, viewW/2, 440*sc, 480*sc);
-  vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.55)");
+  vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.38)");
   c.fillStyle = vg; c.fillRect(0, 0, viewW, viewH);
   c.globalAlpha = 0.05;
   c.fillStyle = "#000";
@@ -1431,17 +1431,17 @@ function drawAbacusWideDots(t){
     const m = Math.round(totalCycle/60);
     const can = finished && (m === 27 || m === 54) && timeMode !== 3;
     const b = U.ext;
-    ctx.fillStyle = can ? "rgba(255,150,40,0.14)" : "rgba(255,255,255,0.02)";
+    ctx.fillStyle = can ? "rgba(255,150,40,0.14)" : "rgba(255,255,255,0.06)";
     ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.fill();
     if (can){
       ctx.shadowColor = "rgba(255,150,40,0.8)"; ctx.shadowBlur = 8*sc;
     }
-    ctx.strokeStyle = can ? "rgba(255,170,60,0.8)" : "rgba(255,255,255,0.1)";
+    ctx.strokeStyle = can ? "rgba(255,170,60,0.8)" : "rgba(255,255,255,0.18)";
     ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.stroke();
     ctx.shadowBlur = 0;
     ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "center";
-    ctx.fillStyle = can ? "rgba(255,190,90,0.95)" : "rgba(150,165,185,0.3)";
+    ctx.fillStyle = can ? "rgba(255,190,90,0.95)" : "rgba(168,184,205,0.46)";
     ctx.fillText("EXTEND", b.x + b.w/2, b.y + b.h/2 + 3*sc);
   }
   // REG-C keycaps: MENU / START-PAUSE-RESUME / RESET, with LED pips
@@ -1459,25 +1459,25 @@ function drawAbacusWideDots(t){
       const py = pressed ? 2*sc : 0;
       const kg = ctx.createLinearGradient(0, b.y + py, 0, b.y + b.h + py);
       if (pressed){
-        kg.addColorStop(0, "#1a1f29"); kg.addColorStop(1, "#10141b");
+        kg.addColorStop(0, "#242b38"); kg.addColorStop(1, "#171c26");
       } else {
-        kg.addColorStop(0, "#2a3140"); kg.addColorStop(0.5, "#1c212b"); kg.addColorStop(1, "#12161d");
+        kg.addColorStop(0, "#38445a"); kg.addColorStop(0.5, "#262e3c"); kg.addColorStop(1, "#1a2029");
       }
       ctx.fillStyle = kg;
       ctx.beginPath(); ctx.roundRect(b.x, b.y + py, b.w, b.h, 6); ctx.fill();
-      ctx.strokeStyle = pressed ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.12)";
+      ctx.strokeStyle = pressed ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.22)";
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(b.x, b.y + py, b.w, b.h, 6); ctx.stroke();
       ctx.strokeStyle = "rgba(0,0,0,0.7)";
       ctx.beginPath(); ctx.roundRect(b.x + 2, b.y + py + 2, b.w - 4, b.h - 4, 5); ctx.stroke();
-      ctx.fillStyle = K.on ? K.led : "#181c24";
+      ctx.fillStyle = K.on ? K.led : "#232936";
       ctx.beginPath(); ctx.arc(b.x + 13*sc, b.y + py + b.h/2, 3.2*sc, 0, 2*Math.PI); ctx.fill();
       if (K.on){
         ctx.fillStyle = withA(K.led, "0.2");
         ctx.beginPath(); ctx.arc(b.x + 13*sc, b.y + py + b.h/2, 8*sc, 0, 2*Math.PI); ctx.fill();
       }
       ctx.font = "bold " + Math.round(12*sc) + "px monospace"; ctx.textAlign = "center";
-      ctx.fillStyle = K.on ? "rgba(225,232,240,0.85)" : "rgba(150,165,185,0.35)";
+      ctx.fillStyle = K.on ? "rgba(225,232,240,0.85)" : "rgba(168,184,205,0.52)";
       ctx.fillText(K.lb, b.x + b.w/2 + 5*sc, b.y + py + b.h/2 + 4*sc);
     }
   }
@@ -1554,14 +1554,14 @@ function drawAbacusWideDots(t){
     const py = pr ? 1.5*sc : 0;
     const kg3 = ctx.createLinearGradient(0, b.y + py, 0, b.y + b.h + py);
     if (armed){ kg3.addColorStop(0, "#e8c88a"); kg3.addColorStop(0.55, "#a9843e"); kg3.addColorStop(1, "#5d461f"); }
-    else { kg3.addColorStop(0, "#3a3629"); kg3.addColorStop(1, "#211d13"); }
+    else { kg3.addColorStop(0, "#4b4736"); kg3.addColorStop(1, "#2d281c"); }
     ctx.fillStyle = kg3;
     ctx.beginPath(); ctx.roundRect(b.x, b.y + py, b.w, b.h, 4); ctx.fill();
-    ctx.strokeStyle = armed ? "rgba(0,0,0,0.65)" : "rgba(255,255,255,0.08)";
+    ctx.strokeStyle = armed ? "rgba(0,0,0,0.65)" : "rgba(255,255,255,0.15)";
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.roundRect(b.x, b.y + py, b.w, b.h, 4); ctx.stroke();
     ctx.font = "bold " + Math.round(9.5*sc) + "px monospace"; ctx.textAlign = "center";
-    ctx.fillStyle = armed ? "rgba(30,22,8,0.9)" : "rgba(150,165,185,0.35)";
+    ctx.fillStyle = armed ? "rgba(30,22,8,0.9)" : "rgba(168,184,205,0.52)";
     ctx.fillText("SELECT", b.x + b.w/2, b.y + py + b.h/2 + 3.5*sc);
   }
   // the channel row: STORY / DIAGRAM / VISUALS - the lit key names
@@ -1576,15 +1576,15 @@ function drawAbacusWideDots(t){
                 : i === 1 ? (abDgm < 0 ? "DIAGRAM" : abDgm ? "GOAL" : "FRAME")
                 : (abViz > 0 ? VIZ_DEFS[abViz - 1].n : "VISUALS");
       const kg2 = ctx.createLinearGradient(0, b.y, 0, b.y + b.h);
-      kg2.addColorStop(0, on ? "#3a3323" : "#262c38");
-      kg2.addColorStop(1, on ? "#241d10" : "#141821");
+      kg2.addColorStop(0, on ? "#4c4430" : "#333d4e");
+      kg2.addColorStop(1, on ? "#2f2718" : "#1c222d");
       ctx.fillStyle = kg2;
       ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.fill();
-      ctx.strokeStyle = on ? "rgba(255,170,60,0.7)" : "rgba(255,255,255,0.12)";
+      ctx.strokeStyle = on ? "rgba(255,170,60,0.7)" : "rgba(255,255,255,0.22)";
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.stroke();
       ctx.font = Math.round(9.5*sc) + "px monospace"; ctx.textAlign = "center";
-      ctx.fillStyle = on ? "rgba(255,190,90,0.95)" : "rgba(150,165,185,0.6)";
+      ctx.fillStyle = on ? "rgba(255,190,90,0.95)" : "rgba(168,184,205,0.8)";
       ctx.fillText(lb2, b.x + b.w/2, b.y + b.h/2 + 3.5*sc);
     }
   }
@@ -1615,11 +1615,11 @@ function drawAbacusWideDots(t){
       const eb = U.edit, canE = !!bx2;
       ctx.fillStyle = canE ? "rgba(255,150,40,0.12)" : "rgba(255,255,255,0.03)";
       ctx.beginPath(); ctx.roundRect(eb.x, eb.y, eb.w, eb.h, 4); ctx.fill();
-      ctx.strokeStyle = canE ? "rgba(255,170,60,0.7)" : "rgba(255,255,255,0.12)";
+      ctx.strokeStyle = canE ? "rgba(255,170,60,0.7)" : "rgba(255,255,255,0.22)";
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(eb.x, eb.y, eb.w, eb.h, 4); ctx.stroke();
       ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "center";
-      ctx.fillStyle = canE ? "rgba(255,190,90,0.95)" : "rgba(150,165,185,0.35)";
+      ctx.fillStyle = canE ? "rgba(255,190,90,0.95)" : "rgba(168,184,205,0.52)";
       ctx.fillText("EDIT", eb.x + eb.w/2, eb.y + eb.h/2 + 3*sc);
       ctx.textAlign = "left";
       ctx.font = Math.round(9*sc) + "px monospace";
@@ -1719,20 +1719,20 @@ function drawAbacusWideDots(t){
     const D = U.dgm;
     // the side device
     const Pn = D.pan;
-    ctx.fillStyle = "#0b0e14";
+    ctx.fillStyle = "#12161f";
     ctx.beginPath(); ctx.roundRect(Pn.x, Pn.y, Pn.w, Pn.h, 8); ctx.fill();
-    ctx.strokeStyle = "rgba(160,190,235,0.12)"; ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(160,190,235,0.26)"; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.roundRect(Pn.x, Pn.y, Pn.w, Pn.h, 8); ctx.stroke();
     const wheel = (wr, wi) => {
       // a luggage combination wheel seen edge-on: only the front shows
       const wg = ctx.createLinearGradient(0, wr.y, 0, wr.y + wr.h);
-      wg.addColorStop(0, "#0a0c10"); wg.addColorStop(0.5, "#2c3442");
-      wg.addColorStop(1, "#0a0c10");
+      wg.addColorStop(0, "#101318"); wg.addColorStop(0.5, "#3b4658");
+      wg.addColorStop(1, "#101318");
       ctx.fillStyle = wg;
       ctx.beginPath(); ctx.roundRect(wr.x, wr.y, wr.w, wr.h, 3); ctx.fill();
       ctx.strokeStyle = "rgba(0,0,0,0.7)";
       ctx.strokeRect(wr.x, wr.y, wr.w, wr.h);
-      ctx.strokeStyle = "rgba(255,255,255,0.07)";
+      ctx.strokeStyle = "rgba(255,255,255,0.14)";
       for (let k = 1; k < 6; k++){
         const yy = wr.y + wr.h*k/6;
         ctx.beginPath(); ctx.moveTo(wr.x + 2, yy); ctx.lineTo(wr.x + 5*sc, yy); ctx.stroke();
@@ -1741,7 +1741,7 @@ function drawAbacusWideDots(t){
       const cur = abDgmWheel[wi];
       ctx.textAlign = "center";
       ctx.font = Math.round(8*sc) + "px monospace";
-      ctx.fillStyle = "rgba(200,215,235,0.3)";
+      ctx.fillStyle = "rgba(200,215,235,0.48)";
       ctx.fillText(String.fromCharCode(65 + (cur + 25) % 26), wr.x + wr.w/2, wr.y + 9*sc);
       ctx.fillText(String.fromCharCode(65 + (cur + 1) % 26), wr.x + wr.w/2, wr.y + wr.h - 3*sc);
       ctx.font = "bold " + Math.round(14*sc) + "px monospace";
@@ -1751,11 +1751,11 @@ function drawAbacusWideDots(t){
     wheel(D.w1, 0); wheel(D.w2, 1);
     const arrow = (ar, kk, up2) => {
       const pr = abDgmFlash.k === kk && performance.now() < abDgmFlash.until;
-      ctx.fillStyle = pr ? "#141a24" : "#222b39";
+      ctx.fillStyle = pr ? "#1d2431" : "#2e3a4d";
       ctx.beginPath(); ctx.roundRect(ar.x, ar.y, ar.w, ar.h, 3); ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.1)";
+      ctx.strokeStyle = "rgba(255,255,255,0.18)";
       ctx.beginPath(); ctx.roundRect(ar.x, ar.y, ar.w, ar.h, 3); ctx.stroke();
-      ctx.fillStyle = "rgba(200,215,235,0.75)";
+      ctx.fillStyle = "rgba(200,215,235,0.88)";
       const mx = ar.x + ar.w/2, my = ar.y + ar.h/2, aw = 4*sc, ah = 2.6*sc;
       ctx.beginPath();
       if (up2){ ctx.moveTo(mx, my - ah); ctx.lineTo(mx - aw, my + ah); ctx.lineTo(mx + aw, my + ah); }
@@ -1765,14 +1765,14 @@ function drawAbacusWideDots(t){
     arrow(D.w1u, "w0u", true); arrow(D.w1d, "w0d", false);
     arrow(D.w2u, "w1u", true); arrow(D.w2d, "w1d", false);
     const J = D.joy;
-    ctx.fillStyle = "#05070c";
+    ctx.fillStyle = "#0a0d15";
     ctx.beginPath(); ctx.arc(J.cx, J.cy, J.r, 0, 2*Math.PI); ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.1)";
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
     ctx.beginPath(); ctx.arc(J.cx, J.cy, J.r, 0, 2*Math.PI); ctx.stroke();
     const jx = J.cx + (abDgmJoy ? abDgmJoy.dx : 0)*J.r*0.45;
     const jy = J.cy + (abDgmJoy ? abDgmJoy.dy : 0)*J.r*0.45;
     const jg = ctx.createRadialGradient(jx - 2, jy - 2, 0, jx, jy, J.r*0.55);
-    jg.addColorStop(0, "#4a5262"); jg.addColorStop(1, "#191d25");
+    jg.addColorStop(0, "#5d6880"); jg.addColorStop(1, "#242b37");
     ctx.fillStyle = jg;
     ctx.beginPath(); ctx.arc(jx, jy, J.r*0.55, 0, 2*Math.PI); ctx.fill();
     ctx.strokeStyle = "rgba(0,0,0,0.6)";
@@ -2319,7 +2319,7 @@ function fractalLayout(){
 }
 
 function fractalFillColor(pos){
-  if (!running && !finished && pauseMs === 0) return "rgba(255,255,255,0.08)";
+  if (!running && !finished && pauseMs === 0) return "rgba(255,255,255,0.15)";
   return pos===1 ? "rgba(0,120,255,0.16)" :
          pos===2 ? "rgba(255,160,0,0.16)" :
                    "rgba(255,70,70,0.16)";
@@ -3135,10 +3135,10 @@ function drawTriadStatic(){
   const L = triadLayout();
   const k = L.k;
   // bezel
-  ctxStatic.fillStyle = "#181c24";
+  ctxStatic.fillStyle = "#232936";
   septRect(ctxStatic, L.px0 - 22*k, L.py0 - 40*k, L.fieldW + 44*k, L.fieldH + 96*k, 10);
   ctxStatic.fill();
-  ctxStatic.strokeStyle = "rgba(255,255,255,0.08)";
+  ctxStatic.strokeStyle = "rgba(255,255,255,0.15)";
   ctxStatic.lineWidth = 1;
   septRect(ctxStatic, L.px0 - 22*k, L.py0 - 40*k, L.fieldW + 44*k, L.fieldH + 96*k, 10);
   ctxStatic.stroke();
@@ -3152,7 +3152,7 @@ function drawTriadStatic(){
   // corner screws
   for (const p of [[L.px0 - 14*k, L.py0 - 32*k], [L.px0 + L.fieldW + 14*k, L.py0 - 32*k],
                    [L.px0 - 14*k, L.py0 + L.fieldH + 46*k], [L.px0 + L.fieldW + 14*k, L.py0 + L.fieldH + 46*k]]){
-    ctxStatic.fillStyle = "#242a34";
+    ctxStatic.fillStyle = "#313947";
     ctxStatic.beginPath(); ctxStatic.arc(p[0], p[1], 3.4*k, 0, 2*Math.PI); ctxStatic.fill();
     ctxStatic.strokeStyle = "rgba(0,0,0,0.7)";
     ctxStatic.lineWidth = 1;
@@ -3425,7 +3425,7 @@ function drawTriad(t){
     } else {
       ctx.fillStyle = "#151920";
       ctx.beginPath(); ctx.arc(lx, L.lampY, 4*L.k, 0, 2*Math.PI); ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.07)";
+      ctx.strokeStyle = "rgba(255,255,255,0.14)";
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.arc(lx, L.lampY, 4*L.k, 0, 2*Math.PI); ctx.stroke();
     }
@@ -3808,9 +3808,9 @@ function drawGearShape(c, cx, cy, r, teeth, angle, style, s){
   c.closePath();
   const mg = c.createRadialGradient(-r*0.3, -r*0.3, r*0.2, 0, 0, ro);
   if (style === 'pinion'){
-    mg.addColorStop(0, "#3a4150"); mg.addColorStop(1, "#20242e");
+    mg.addColorStop(0, "#3a4150"); mg.addColorStop(1, "#2b3342");
   } else {
-    mg.addColorStop(0, "#4a5262"); mg.addColorStop(0.6, "#2b303c"); mg.addColorStop(1, "#1a1e26");
+    mg.addColorStop(0, "#5d6880"); mg.addColorStop(0.6, "#2b303c"); mg.addColorStop(1, "#1a1e26");
   }
   c.fillStyle = mg;
   c.fill();
@@ -3823,7 +3823,7 @@ function drawGearShape(c, cx, cy, r, teeth, angle, style, s){
       c.beginPath(); c.moveTo(Math.cos(a)*r*0.3, Math.sin(a)*r*0.3);
       c.lineTo(Math.cos(a)*r*0.78, Math.sin(a)*r*0.78); c.stroke();
     }
-    c.strokeStyle = "rgba(255,255,255,0.07)"; c.lineWidth = 2;
+    c.strokeStyle = "rgba(255,255,255,0.14)"; c.lineWidth = 2;
     c.beginPath(); c.arc(0, 0, r*0.82, 0, 2*Math.PI); c.stroke();
     const jr = Math.max(2, r*0.07);
     c.fillStyle = finished ? "rgba(255,149,0,0.95)" : "rgba(255,170,60,0.9)";
@@ -3850,7 +3850,7 @@ function drawGearsStatic(){
   ctxStatic.textAlign = "center";
   for (let i = 0; i < 7; i++){
     const ux = (G.C[i].x - G.CX)/G.Rc, uy = (G.C[i].y - G.CY)/G.Rc;
-    ctxStatic.fillStyle = (i === 0 || i === 6) ? "rgba(255,170,60,0.7)" : "rgba(150,165,185,0.55)";
+    ctxStatic.fillStyle = (i === 0 || i === 6) ? "rgba(255,170,60,0.7)" : "rgba(168,184,205,0.75)";
     ctxStatic.fillText(GEAR_LABELS[i], G.C[i].x + ux*(G.rw[i] + 15*s),
                        G.C[i].y + uy*(G.rw[i] + 15*s) + 3*s);
   }
@@ -3873,7 +3873,7 @@ function drawGears(t){
   // the fast gear hums
   if (running){
     const a0 = 2*Math.PI * (tt / gearPeriod(0));
-    ctx.strokeStyle = "rgba(255,255,255,0.08)"; ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(255,255,255,0.15)"; ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(G.C[0].x, G.C[0].y, G.rw[0] + 5, a0 - 0.9, a0 - 0.2);
     ctx.stroke();
@@ -5888,7 +5888,7 @@ function drawLedCounter(str, baseY, t){
         } else {
           ctx.fillStyle = "#14181f";
           ctx.beginPath(); ctx.arc(x + s/2, ly, r, 0, 2*Math.PI); ctx.fill();
-          ctx.strokeStyle = "rgba(255,255,255,0.1)";
+          ctx.strokeStyle = "rgba(255,255,255,0.18)";
           ctx.lineWidth = 1;
           ctx.beginPath(); ctx.arc(x + s/2, ly, r, 0, 2*Math.PI); ctx.stroke();
         }
