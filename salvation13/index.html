@@ -1121,7 +1121,7 @@ function abacusWideScale(){
 function abacusWideUnits(){
   const sc = abacusWideScale();
   const R = abacusRows();
-  const target = Math.min(viewW - 24, 860);
+  const target = Math.min(viewW - 8, 860);
   const x0 = viewW/2 - target/2;
   const padXL = 44*sc, padXR = 22*sc, gap0 = 11*sc;
   const slots = Math.max(R.mw, R.fr) + 1;   // columns + the bay
@@ -1146,7 +1146,7 @@ function abacusWideUnits(){
   const Bh = 2*cell + gapY + padTop + padBot;
   const Ah = Bh;
   const Ch = 92*sc;
-  const Cy0 = viewH - 10*sc - Ch;
+  const Cy0 = viewH - 6*sc - Ch;
   const By0 = Cy0 - Bh + 3;
   const Ay0 = By0 - Ah + 3;
   const mkAt = (y0v, n, h) => {
@@ -1165,7 +1165,9 @@ function abacusWideUnits(){
   const keys = [];
   for (let i = 0; i < 3; i++)
     keys.push({ x: x0 + 24*sc + i*(kw + 12*sc), y: Cd.y0 + 34*sc, w: kw, h: kh });
-  const monH = Math.max(170*sc, Math.min(480*sc, Ay0 - 44));
+  const tallForm = target < 700;
+  const monH = Math.max(170*sc, Math.min((tallForm ? 720 : 480)*sc,
+                                          Ay0 - (tallForm ? 18 : 44)));
   const monTop = Ay0 - monH + 3;
   const bayX = slotX(slots - 1);
   const faceR = bayX - cell/2 - 12*sc;
