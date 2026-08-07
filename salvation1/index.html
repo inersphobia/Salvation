@@ -1165,7 +1165,7 @@ function abacusWideUnits(){
   const keys = [];
   for (let i = 0; i < 3; i++)
     keys.push({ x: x0 + 24*sc + i*(kw + 12*sc), y: Cd.y0 + 14*sc, w: kw, h: kh });
-  const tallForm = target < 700;
+  const tallForm = viewH > viewW;
   const monH = Math.max(170*sc, Math.min((tallForm ? 720 : 480)*sc,
                                           Ay0 - (tallForm ? 18 : 44)));
   const monTop = Ay0 - monH + 3;
@@ -1209,7 +1209,7 @@ function abacusWideUnits(){
   // on wide glass the tube splits: a square bay left (scene or box),
   // the working surface right (letter or chart)
   let duo = null;
-  if (dgm.scr.w >= dgm.scr.h*1.9){
+  if (dgm.scr.w >= dgm.scr.h*1.7){
     const lw = Math.min(dgm.scr.h*1.15, dgm.scr.w*0.42);
     duo = { L: { x: dgm.scr.x, y: dgm.scr.y, w: lw, h: dgm.scr.h },
             R: { x: dgm.scr.x + lw + 14*sc, y: dgm.scr.y,
