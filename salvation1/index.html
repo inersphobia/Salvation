@@ -862,7 +862,7 @@ function startClock(){
     try { localStorage.setItem('salvationSaga', String(sagaIdx)); } catch(e) {}
     triadKey = ""; needsStaticRedraw = true;
   }
-  abLib = -1;   // the tale resumes at the true minute, library shut
+  abLib = -1; abLibCarry = -1;   // the tale resumes; library shut
   startMs = pauseMs>0 ? performance.now()-pauseMs : performance.now();
   startWall = Date.now() - (performance.now() - startMs);
   running=true;
@@ -886,7 +886,7 @@ function pauseClock(){
   );
 }
 function resetClock(){
-  abLib = -1;
+  abLib = -1; abLibCarry = -1;
   running=false; finished=false;
   pauseMs=0; startMs=performance.now(); startWall=Date.now(); finishWall=0;
   overtimeStart=0; lastBeepMinute=0; lastToneIdx={}; overtimeStr="";
@@ -1782,8 +1782,26 @@ function drawAbacusWideDots(t){
                    Mi.x + 8*sc, Mi.y + Mi.h - 8*sc);
       ctx.textAlign = "right";
       ctx.fillStyle = !running ? "rgba(255,190,90,0.9)" : "rgba(255,170,60,0.5)";
-      ctx.fillText(!running ? "SELECT · EDIT TEXT" : "LIB " + abDgmCode(Math.floor(li/26), li % 26),
+      ctx.fillText(!running ? (abLibCarry >= 0 ? "SELECT · SWAP HERE" : "SELECT · EDIT TEXT")
+                            : "LIB " + abDgmCode(Math.floor(li/26), li % 26),
                    Mi.x + Mi.w - 8*sc, Mi.y + Mi.h - 8*sc);
+      if (!running){
+        // MOVE: pick this image up, walk to its true place, swap
+        const mv = { x: Mi.x + Mi.w - 62*sc, y: Mi.y + 10*sc, w: 52*sc, h: 18*sc };
+        ctx.fillStyle = abLibCarry === li ? "rgba(255,150,40,0.25)" : "rgba(255,150,40,0.1)";
+        ctx.beginPath(); ctx.roundRect(mv.x, mv.y, mv.w, mv.h, 4); ctx.fill();
+        ctx.strokeStyle = "rgba(255,170,60,0.7)"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect(mv.x, mv.y, mv.w, mv.h, 4); ctx.stroke();
+        ctx.font = Math.round(8.5*sc) + "px monospace"; ctx.textAlign = "center";
+        ctx.fillStyle = "rgba(255,190,90,0.95)";
+        ctx.fillText(abLibCarry === li ? "DROP" : "MOVE", mv.x + mv.w/2, mv.y + mv.h/2 + 3*sc);
+        if (abLibCarry >= 0 && abLibCarry !== li){
+          ctx.textAlign = "left"; ctx.font = Math.round(9*sc) + "px monospace";
+          ctx.fillStyle = "rgba(255,190,90,0.9)";
+          ctx.fillText("carrying the image of SCN " + STORY_PANELS[abLibCarry] +
+                       " · SELECT swaps it with this one", Mi.x + 10*sc, Mi.y + 22*sc);
+        }
+      }
       if (U.duo){
         const E9 = U.duo.R;
         ctx.save();
@@ -3338,9 +3356,23 @@ const STORY_TEXTS = [
   "Prometheus catches on fire.",
   "Hermes is struck by lightning.",
   "Epimetheus speaks with the owl."];
+// VOL-II tells the tale its own way (no Saturn, no mirror, no fire)
+const STORY_TEXTS2 = STORY_TEXTS.map((t, i) => ({
+  15: "Prometheus walks to the window.",
+  16: "Hermes begins running.",
+  17: "Epimetheus crawls out of the corner.",
+  18: "Prometheus stands at large windows, holding a telescope.",
+  19: "Hermes takes flight, with huge wings.",
+  20: "Epimetheus enters the library.",
+  21: "Prometheus backs away from the telescope in horror.",
+  22: "Hermes approaches Olympus.",
+  23: "Epimetheus pulls a large volume off of the shelf.",
+  24: "Prometheus draws diagrams."
+}[i] || t));
 let abLib = -1;   // -1 live · 0 collections · 1 plate index · 2+n plate n
 let abLibVol = 0; // which volume the library is browsing
 let abLibNavT = 0; // stick-step repeat clock
+let abLibCarry = -1; // the place whose image is being carried to a new seat
 // repainted plates: index -> standalone file, overriding the sheet
 const STORY_ALT = { 2: "epimetheus.png" };
 const storyAltImgs = {};
@@ -3350,6 +3382,18 @@ let storyVol = 0;
 try { storyVol = +(localStorage.getItem('salvationStoryVol') || 0) ? 1 : 0; } catch(e) {}
 const storyVol2Imgs = {};
 const storyVolTexts = [{}, {}];
+const storyVolOrder = [null, null];
+for (let v9 = 0; v9 < 2; v9++){
+  let o9 = null;
+  try { o9 = JSON.parse(localStorage.getItem('salvationStory' + (v9 + 1) + 'Order') || "null"); } catch(e) {}
+  storyVolOrder[v9] = Array.isArray(o9) && o9.length === 27
+    ? o9 : Array.from({ length: 27 }, (_, i) => i);
+}
+function storySwapOrder(v9, a, b){
+  const O = storyVolOrder[v9];
+  const t9 = O[a]; O[a] = O[b]; O[b] = t9;
+  try { localStorage.setItem('salvationStory' + (v9 + 1) + 'Order', JSON.stringify(O)); } catch(e) {}
+}
 try { storyVolTexts[0] = JSON.parse(localStorage.getItem('salvationStory1Texts') || "{}"); } catch(e) {}
 try { storyVolTexts[1] = JSON.parse(localStorage.getItem('salvationStory2Texts') || "{}"); } catch(e) {}
 function vol2Img(fi){
@@ -3366,24 +3410,25 @@ function vol2Img(fi){
 function storyTextFor(idx, vol){
   const v = vol === undefined ? storyVol : vol;
   const i2 = Math.min(idx, STORY_TEXTS.length - 1);
-  return storyVolTexts[v][i2] || STORY_TEXTS[i2];
+  return storyVolTexts[v][i2] || (v === 1 ? STORY_TEXTS2[i2] : STORY_TEXTS[i2]);
 }
 function storySrc(idx, vol){
   const v = vol === undefined ? storyVol : vol;
   const i2 = Math.min(idx, STORY_CROPS.length - 1);
+  const oi = storyVolOrder[v][i2];   // the image that owns this place
   if (v === 1){
-    const im = vol2Img(Math.floor(i2/3));
+    const im = vol2Img(Math.floor(oi/3));
     if (im._ready){
-      const pi = i2 % 3;
-      return { img: im, r: [pi/3 + 0.012, 0.02, 1/3 - 0.024, 0.96], k: "v" };
+      const pi = oi % 3;
+      return { img: im, r: [pi/3 + 0.012, 0.02, 1/3 - 0.024, 0.96], k: "v" + oi };
     }
     // the plate is still in transit - hold the glass, never swap books
     return { wait: true, k: "w" };
   }
-  const alt = storyAltImgs[i2];
+  const alt = storyAltImgs[oi];
   if (alt && alt._ready)
-    return { img: alt, r: [0.015, 0.015, 0.97, 0.97], k: "a" };
-  return { img: storyImg, r: STORY_CROPS[i2], k: "s" };
+    return { img: alt, r: [0.015, 0.015, 0.97, 0.97], k: "a" + oi };
+  return { img: storyImg, r: STORY_CROPS[oi], k: "s" + oi };
 }
 let storyImg = null, storyReady = false;
 const storyCache = {};
@@ -6621,8 +6666,16 @@ canvasAnim.addEventListener("click", (e) => {
         } else if (abLib === 1){
           if (biS < STORY_PANELS.length - 1){ abLib = 2 + biS; haptic('medium'); }
         } else if (!running){
-          // a plate is open and time is stopped: SELECT rewrites its text
-          openStoryEdit(abLib - 2, abLibVol);
+          if (abLibCarry >= 0){
+            // set the carried image down here: the two places trade art
+            if (abLibCarry !== abLib - 2)
+              storySwapOrder(abLibVol, abLibCarry, abLib - 2);
+            abLibCarry = -1;
+            haptic('medium');
+          } else {
+            // a plate is open and time is stopped: SELECT rewrites its text
+            openStoryEdit(abLib - 2, abLibVol);
+          }
         } else haptic('light');
       } else if (abDgm < 0 && !running && pauseMs > 0 && !finished){
         // paused mid-tale: SELECT opens the editor on this minute's text
@@ -6646,8 +6699,8 @@ canvasAnim.addEventListener("click", (e) => {
           if (!U.duo) abStoryPage = 1 - abStoryPage;
         }
         else if (abLib >= 2) abLib = 1;
-        else if (abLib === 1) abLib = 0;
-        else if (abLib === 0){ abLib = -1; abStoryPage = 0; }
+        else if (abLib === 1){ abLib = 0; abLibCarry = -1; }
+        else if (abLib === 0){ abLib = -1; abStoryPage = 0; abLibCarry = -1; }
         else if (U.duo) abLib = 0;
         else if (abStoryPage === 0) abStoryPage = 1;
         else { abStoryPage = 0; abLib = 0; }
@@ -6763,6 +6816,15 @@ canvasAnim.addEventListener("click", (e) => {
           if (!hit(rows[i])) continue;
           abDgmWheel = [Math.floor(i/26), i % 26];
           abLib = 2 + i;
+          haptic('medium');
+          return;
+        }
+      } else if (abLib >= 2 && !running){
+        // the MOVE key on the plate glass
+        const Mi = U.duo ? U.duo.L : U.dgm.scr;
+        const mv = { x: Mi.x + Mi.w - 62*sc, y: Mi.y + 10*sc, w: 52*sc, h: 18*sc };
+        if (hit(mv)){
+          abLibCarry = abLibCarry === abLib - 2 ? -1 : abLib - 2;
           haptic('medium');
           return;
         }
