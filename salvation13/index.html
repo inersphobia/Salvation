@@ -6821,8 +6821,9 @@ canvasAnim.addEventListener("click", (e) => {
         }
       } else if (abLib >= 2 && !running){
         // the MOVE key on the plate glass
+        const sc9 = U.sc;
         const Mi = U.duo ? U.duo.L : U.dgm.scr;
-        const mv = { x: Mi.x + Mi.w - 62*sc, y: Mi.y + 10*sc, w: 52*sc, h: 18*sc };
+        const mv = { x: Mi.x + Mi.w - 62*sc9, y: Mi.y + 10*sc9, w: 52*sc9, h: 18*sc9 };
         if (hit(mv)){
           abLibCarry = abLibCarry === abLib - 2 ? -1 : abLib - 2;
           haptic('medium');
