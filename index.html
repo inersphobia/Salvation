@@ -1104,11 +1104,8 @@ function abacusWideUnits(){
   const padX = 22*sc, gap0 = 11*sc;
   const slots = Math.max(R.mw, R.fr) + 1;   // columns + the bay
   const cell = Math.min((target - 2*padX - (slots - 1)*gap0)/slots, 48*sc);
-  const gap = Math.min(cell*1.05,
-    (target - 2*padX - slots*cell)/Math.max(1, slots - 1));
-  const slotX = i => (i < slots - 1)
-    ? x0 + padX + i*(cell + gap) + cell/2
-    : x0 + target - padX - cell/2;
+  const gap = (target - 2*padX - slots*cell)/Math.max(1, slots - 1);
+  const slotX = i => x0 + padX + i*(cell + gap) + cell/2;
   const mk = (cy, n, extra) => {
     const gapY = 5*sc, padTop = 31*sc, padBot = 13*sc;
     const h = 2*cell + gapY + padTop + padBot + (extra || 0);
@@ -1171,12 +1168,12 @@ function abacusWideUnits(){
   dgm.w2u = { x: px5, y: dgm.pan.y + 172*pu, w: pw5, h: 36*pu };
   dgm.w2  = { x: px5, y: dgm.pan.y + 212*pu, w: pw5, h: 72*pu };
   dgm.w2d = { x: px5, y: dgm.pan.y + 288*pu, w: pw5, h: 36*pu };
-  const dcx = x0 + 62*sc, dcy = monTop + monH - 46*sc;
+  const dcx = x0 + 62*sc, dcy = monTop + monH - 49*sc;
   dgm.dpad = {
-    up:    { x: dcx - 14*sc, y: dcy - 33*sc, w: 28*sc, h: 22*sc },
-    down:  { x: dcx - 14*sc, y: dcy + 11*sc, w: 28*sc, h: 22*sc },
-    left:  { x: dcx - 42*sc, y: dcy - 11*sc, w: 28*sc, h: 22*sc },
-    right: { x: dcx + 14*sc, y: dcy - 11*sc, w: 28*sc, h: 22*sc }
+    up:    { x: dcx - 15*sc, y: dcy - 24*sc, w: 30*sc, h: 24*sc },
+    down:  { x: dcx - 15*sc, y: dcy,         w: 30*sc, h: 24*sc },
+    left:  { x: dcx - 45*sc, y: dcy - 12*sc, w: 30*sc, h: 24*sc },
+    right: { x: dcx + 15*sc, y: dcy - 12*sc, w: 30*sc, h: 24*sc }
   };
   // on wide glass the tube splits: a square bay left (scene or box),
   // the working surface right (letter or chart)
@@ -1485,7 +1482,7 @@ function drawAbacusWideDots(t){
       { lb: "MENU", led: "rgb(0,144,126)", on: true },
       { lb: finished ? "START" : running ? "PAUSE" : pauseMs > 0 ? "RESUME" : "START",
         led: "rgb(0,116,255)", on: !finished },
-      { lb: "RESET", led: "rgb(226,59,59)", on: !idle2 }
+      { lb: "RESET", led: "rgb(226,59,59)", on: !idle2 && !running }
     ];
     for (let i = 0; i < 3; i++){
       const K = KEYS[i], b = U.keys[i];
@@ -2094,9 +2091,6 @@ function drawAbacusWideDots(t){
       ctx.strokeStyle = "rgba(160,190,235,0.12)"; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(px0 - 1, py0 - 1, pw0 + 2, ph0 + 2, 13); ctx.stroke();
     }
-    // the plus is one solid body: fill the heart between the keys
-    ctx.fillStyle = "#2a3240";
-    ctx.fillRect(DP.up.x, DP.left.y, DP.up.w, DP.left.h);
     const dkeys = [["up", DP.up, 0, -1], ["down", DP.down, 0, 1],
                    ["left", DP.left, -1, 0], ["right", DP.right, 1, 0]];
     for (const dk of dkeys){
@@ -6709,7 +6703,7 @@ function draw(now){
   // completion is a full stop: START sleeps until RESET clears the bell
   btnPlay.classList.toggle('disabled', finished);
   // and RESET grays out once there is nothing left to reset
-  btnReset.classList.toggle('disabled', !running && !finished && pauseMs === 0);
+  btnReset.classList.toggle('disabled', running || (!finished && pauseMs === 0));
   // the abacus carries its own control deck - the bar stands down there
   const uiBar = document.getElementById('ui');
   const wantBar = viewMode === 2 ? 'none' : '';
@@ -7051,7 +7045,8 @@ canvasAnim.addEventListener("click", (e) => {
       } else if (i === 1){
         toggleClock();
       } else {
-        if (!running && !finished && pauseMs === 0){ haptic('light'); }
+        // reset demands a stopped clock: pause first, then reset
+        if (running || (!finished && pauseMs === 0)){ haptic('light'); }
         else { resetClock(); haptic('medium'); }
       }
       return;
@@ -7597,7 +7592,7 @@ if ('serviceWorker' in navigator) {
   // Notification action buttons (Pause/Reset) arrive as messages from the SW
   navigator.serviceWorker.addEventListener('message', (e) => {
     if (e.data === 'pause') pauseClock();
-    else if (e.data === 'reset') resetClock();
+    else if (e.data === 'reset'){ if (!running) resetClock(); }
   });
 }
 
@@ -7691,7 +7686,8 @@ drawStaticLayer();
 
 /* ---------- BUTTON HOOKS ---------- */
 btnReset.onclick = ()=>{
-  if (!running && !finished && pauseMs === 0){ haptic('light'); return; } // spent
+  // reset demands a stopped clock: pause first, then reset
+  if (running || (!finished && pauseMs === 0)){ haptic('light'); return; }
   pulseButton(btnReset); resetClock();
 };
 btnPlay.onclick = ()=>{
