@@ -1200,11 +1200,12 @@ function abacusWideUnits(){
   const gBot = (monTop + 30*sc) + monIH;
   const dS = ((monTop + monH - 4*sc) - (gBot + 9*sc))/2;
   const dX0 = x0 + 16*sc, dJy = gBot + 9*sc + dS;
+  const railGap0 = ((target - 32*sc) - 6*dS)/5;
   dgm.dpad = {
-    up:    { x: dX0 + dS + 20*sc, y: gBot + 9*sc, w: dS, h: dS },
-    down:  { x: dX0 + dS + 20*sc, y: dJy,         w: dS, h: dS },
-    left:  { x: dX0,              y: dJy - dS/2, w: dS, h: dS },
-    right: { x: dX0 + 2*dS + 40*sc, y: dJy - dS/2, w: dS, h: dS }
+    up:    { x: dX0 + dS + railGap0, y: gBot + 9*sc, w: dS, h: dS },
+    down:  { x: dX0 + dS + railGap0, y: dJy,         w: dS, h: dS },
+    left:  { x: dX0,                 y: dJy - dS/2,  w: dS, h: dS },
+    right: { x: dX0 + 2*(dS + railGap0), y: dJy - dS/2, w: dS, h: dS }
   };
   // on wide glass the tube splits: a square bay left (scene or box),
   // the working surface right (letter or chart)
@@ -1215,15 +1216,15 @@ function abacusWideUnits(){
             R: { x: dgm.scr.x + lw + 14*sc, y: dgm.scr.y,
                  w: dgm.scr.w - lw - 14*sc, h: dgm.scr.h } };
   }
-  const navEnd = dX0 + 3*dS + 40*sc;
-  const rGap = ((x0 + target - 16*sc - navEnd) - 2*dS)/3;
-  const sdX = navEnd + rGap, xvX = sdX + dS + rGap;
+  const railGap = ((target - 32*sc) - 6*dS)/5;
+  const railX = i => x0 + 16*sc + i*(dS + railGap);
   const dgmBtns = [
-    { x: sdX, y: gBot + 9*sc, w: dS, h: dS },
-    { x: sdX, y: dJy,         w: dS, h: dS }
+    { x: railX(3), y: gBot + 9*sc, w: dS, h: dS },
+    { x: railX(3), y: dJy,         w: dS, h: dS }
   ];
-  const backBtn = { x: xvX, y: gBot + 9*sc, w: dS, h: dS };
-  const selBtn  = { x: xvX, y: dJy,         w: dS, h: dS };
+  const backBtn = { x: railX(4), y: gBot + 9*sc, w: dS, h: dS };
+  const selBtn  = { x: railX(4), y: dJy,         w: dS, h: dS };
+  const letterBtn = { x: railX(5), y: dJy - dS/2, w: dS, h: dS };
   const bedA = A.cols[2] + cell*0.5 + 12*sc;   // MINUTES bed right edge
   const markBtn = { x: x0 + target - 71*sc, y: Ay0 + 23*sc, w: 58*sc, h: 22*sc };
   const logBtn  = { x: x0 + target - 71*sc, y: Ay0 + 82*sc, w: 58*sc, h: 22*sc };
@@ -1233,7 +1234,7 @@ function abacusWideUnits(){
     : { x: mon.x + mon.w/2 - 28*sc, y: mon.y + mon.h - 26*sc,
         w: 56*sc, h: 18*sc };
   return { sc, x0, R, A, B, Cd, keys, bayX, faceR, monTop, monH, mon, mon2,
-           dgm, dgmBtns, selBtn, backBtn, edit, duo, markBtn, logBtn,
+           dgm, dgmBtns, selBtn, backBtn, letterBtn, edit, duo, markBtn, logBtn,
            bedA,
            ext: { x: bedA + 10*sc, y: A.y0 + 88*sc,
                   w: 58*sc, h: 22*sc } };
@@ -1308,9 +1309,7 @@ function drawAbacusWideStatic(){
       } else if (abLog >= 0){
         cur = "SESSIONS"; prv = nxt = "STORY";
       } else {
-        const ring = U.duo ? (running ? ["STORY", "LETTER"] : ["STORY", "LIBRARY"])
-                   : (running ? ["STORY", "LETTER"]
-                              : ["STORY", "LETTER", "LIBRARY"]);
+        const ring = running ? ["STORY"] : ["STORY", "LIBRARY"];
         cur = abLib >= 0 ? "LIBRARY" : abStoryPage ? "LETTER" : "STORY";
         const ci = ring.indexOf(cur);
         if (ci < 0){ prv = nxt = "STORY"; }
@@ -1872,7 +1871,7 @@ function drawAbacusWideDots(t){
     ctx.fillStyle = "rgba(255,170,60,0.5)";
     ctx.fillText(abLog === 0 ? "LOG · LEDGER" : "LOG · SESSION", S.x + 8*sc, S.y + S.h - 8*sc);
     ctx.textAlign = "right";
-    ctx.fillText(abLog === 0 ? "SELECT · OPEN" : "LEFT · BACK", S.x + S.w - 8*sc, S.y + S.h - 8*sc);
+    ctx.fillText(abLog === 0 ? "SELECT · OPEN" : "X · BACK", S.x + S.w - 8*sc, S.y + S.h - 8*sc);
   }
   // the LIBRARY: a shelf of collections; a volume opens to its 27
   // plates; a plate opens to its art and text. The session's book is
@@ -2179,6 +2178,28 @@ function drawAbacusWideDots(t){
       ctx.stroke();
     }
     ctx.lineCap = "butt"; ctx.lineJoin = "miter";
+    // the LETTER key at the rail's end: three etched lines of text
+    {
+      const lb9 = U.letterBtn;
+      const onL = abStoryPage === 1 && abDgm < 0 && abViz < 0 && abLib < 0 && abLog < 0;
+      const kgL = ctx.createLinearGradient(0, lb9.y, 0, lb9.y + lb9.h);
+      kgL.addColorStop(0, onL ? "#4c4430" : "#333d4e");
+      kgL.addColorStop(1, onL ? "#2f2718" : "#1c222d");
+      ctx.fillStyle = kgL;
+      ctx.beginPath(); ctx.roundRect(lb9.x, lb9.y, lb9.w, lb9.h, 4); ctx.fill();
+      ctx.strokeStyle = onL ? "rgba(255,170,60,0.7)" : "rgba(255,255,255,0.22)";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(lb9.x, lb9.y, lb9.w, lb9.h, 4); ctx.stroke();
+      ctx.strokeStyle = onL ? "rgba(255,190,90,0.95)" : "rgba(168,184,205,0.8)";
+      ctx.lineWidth = 2*sc; ctx.lineCap = "round";
+      const lcx = lb9.x + lb9.w/2, lcy = lb9.y + lb9.h/2;
+      ctx.beginPath();
+      ctx.moveTo(lcx - 9*sc, lcy - 7*sc); ctx.lineTo(lcx + 9*sc, lcy - 7*sc);
+      ctx.moveTo(lcx - 9*sc, lcy);        ctx.lineTo(lcx + 9*sc, lcy);
+      ctx.moveTo(lcx - 9*sc, lcy + 7*sc); ctx.lineTo(lcx + 4*sc, lcy + 7*sc);
+      ctx.stroke();
+      ctx.lineCap = "butt";
+    }
     // BACK: one step up, whatever the deck - the left arrow's twin
     const bb = U.backBtn;
     const canBack = abDgm >= 0 || abViz >= 0 || abLib >= 0 || abLog >= 0 ||
@@ -7125,7 +7146,8 @@ function draw(now){
 // nearest arrow by dominant axis; holding a direction repeats it
 function abDpadResolve(U, cx, cy){
   const DP = U.dgm.dpad, sl9 = 8*U.sc;
-  const x0b = DP.left.x - sl9, x1b = DP.right.x + DP.right.w + sl9;
+  const slR = Math.min(sl9, Math.max(2, (U.dgmBtns[0].x - (DP.right.x + DP.right.w))/2));
+  const x0b = DP.left.x - sl9, x1b = DP.right.x + DP.right.w + slR;
   const y0b = DP.up.y - sl9, y1b = DP.down.y + DP.down.h + sl9;
   if (cx < x0b || cx > x1b || cy < y0b || cy > y1b) return null;
   let best = null, bd = Infinity;
@@ -7147,11 +7169,7 @@ function abDpadFire(U, ax, ay){
     abDgmGlide = null;
   } else if (abViz >= 0){
     if (abVizMenu >= 0){
-      if (ax < 0) abVizMenu = -1;
-      else abVizMenu = Math.max(0, Math.min(1, abVizMenu + ay));
-    } else if (ax < 0){
-      if (abViz > 0) abViz = 0;
-      else { abViz = -1; if (abVizFromLib) abLib = 0; needsStaticRedraw = true; }
+      abVizMenu = Math.max(0, Math.min(1, abVizMenu + ay));
     } else {
       const colsV = U.dgm.scr.w >= 420 ? 3 : 2;
       let nv = abDgmWheel[0]*26 + abDgmWheel[1] + ax + ay*colsV;
@@ -7161,8 +7179,7 @@ function abDpadFire(U, ax, ay){
     }
   } else if (abLib >= 0){
     if (abLibMenu >= 0){
-      if (ax < 0) abLibMenu = -1;                    // left backs out
-      else abLibMenu = Math.max(0, Math.min(2, abLibMenu + ay));
+      abLibMenu = Math.max(0, Math.min(2, abLibMenu + ay));
     } else if (abLibCarry >= 0 && abLib === 1){
       // moving an image: all four arrows carry it
       const colsL = U.dgm.scr.w >= 420 ? 4 : 3;
@@ -7174,39 +7191,33 @@ function abDpadFire(U, ax, ay){
       }
     } else if (abLib === 0){
       if (abTxtMenu >= 0){
-        if (ax < 0) abTxtMenu = -1;
-        else abTxtMenu = Math.max(0, Math.min(1, abTxtMenu + ay));
-      }
-      else if (ax < 0){ abLib = -1; abStoryPage = 0; needsStaticRedraw = true; }
-      else {
-        const nv = Math.max(0, Math.min(5, abDgmWheel[1] + (ax || ay)));
+        abTxtMenu = Math.max(0, Math.min(1, abTxtMenu + ay));
+      } else if (ay){
+        const nv = Math.max(0, Math.min(5, abDgmWheel[1] + ay));
         abDgmWheel = [0, nv];
       }
     } else if (abLib === 1){
-      if (ax < 0){ abLib = 0; }                      // left backs out
-      else {
+      {
         const colsL = U.dgm.scr.w >= 420 ? 4 : 3;
         let nv = abDgmWheel[0]*26 + abDgmWheel[1] + ax + ay*colsL;
         nv = Math.max(0, Math.min(26, nv));
         abDgmWheel = [Math.floor(nv/26), nv % 26];
       }
     } else {
-      // a plate is open: up/down turn the pages, left backs out
-      if (ax < 0){ abLib = 1; }
-      else if (ay){
-        const np = Math.max(0, Math.min(26, (abLib - 2) + ay));
+      // a plate is open: the arrows turn its pages; X climbs out
+      const st9 = ax || ay;
+      if (st9){
+        const np = Math.max(0, Math.min(26, (abLib - 2) + st9));
         abLib = 2 + np;
         abDgmWheel = [Math.floor(np/26), np % 26];
       }
     }
   } else if (abLog >= 0){
     if (abLog === 0){
-      if (ax < 0){ abLog = -1; needsStaticRedraw = true; }
-      else if (ay && sessLog.length)
+      if (ay && sessLog.length)
         abLogSel = Math.max(0, Math.min(sessLog.length - 1, abLogSel + ay));
     } else {
-      if (ax < 0){ abLog = 0; abLogScroll = 0; }
-      else if (ay){
+      if (ay){
         const sD = sessLog[abLog - 1];
         const mxD = sD ? Math.max(0, sD.marks.length - 1) : 0;
         abLogScroll = Math.max(0, Math.min(mxD, abLogScroll + ay));
@@ -7253,6 +7264,16 @@ canvasAnim.addEventListener("click", (e) => {
     // the D-pad fires at pointerdown (with hold-to-repeat); the click
     // that follows the release must not fire it twice
     if (abDpadResolve(U, cx, cy)) return;
+    // the LETTER key: the chosen transmission, from anywhere on the
+    // story channel; menus keep their hands on the glass
+    if (hit(U.letterBtn)){
+      if (abDgm < 0 && abViz < 0 && abLib < 0 && abLog < 0){
+        abStoryPage = 1 - abStoryPage;
+        needsStaticRedraw = true;
+        haptic('light');
+      } else haptic('light');
+      return;
+    }
     // BACK: the left arrow's twin - one step up, whatever the deck
     if (hit(U.backBtn)){
       abDgmFlash = { k: "back", until: performance.now() + 140 };
@@ -7385,21 +7406,18 @@ canvasAnim.addEventListener("click", (e) => {
     // the channel row: STORY / DIAGRAM (again flips charts) / VISUALS
     if (hit(U.dgmBtns[0])){
       if (abDgm < 0 && abViz < 0){
-        // the key walks its own pages; while the timer runs the
-        // library stays shut - only the tale and the letter
+        // S walks story and library; the letter has its own key now,
+        // and while the timer runs the library stays shut
         if (abLog >= 0){ abLog = -1; }
-        else if (running){
-          abStoryPage = 1 - abStoryPage;
-        }
+        else if (abStoryPage === 1){ abStoryPage = 0; }
+        else if (running){ }
         else if (abLib >= 2) abLib = 1;
         else if (abLib === 1 && abLibMenu >= 0) abLibMenu = -1;
         else if (abLib === 1 && abLibCarry >= 0) abLibCarry = -1;
         else if (abLib === 1) abLib = 0;
         else if (abLib === 0 && abTxtMenu >= 0) abTxtMenu = -1;
-        else if (abLib === 0){ abLib = -1; abStoryPage = 0; abLibCarry = -1; }
-        else if (U.duo) abLib = 0;
-        else if (abStoryPage === 0) abStoryPage = 1;
-        else { abStoryPage = 0; abLib = 0; }
+        else if (abLib === 0){ abLib = -1; abLibCarry = -1; }
+        else abLib = 0;
       } else { abDgm = -1; abViz = -1; }
       abDgmGlide = null;
       needsStaticRedraw = true;
