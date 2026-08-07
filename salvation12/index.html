@@ -903,6 +903,7 @@ function startClock(){
     sessSave();
   }
   abLib = -1; abLibCarry = -1; abLog = -1;   // the tale resumes; decks shut
+  needsStaticRedraw = true;                  // the ring watches `running`
   startMs = pauseMs>0 ? performance.now()-pauseMs : performance.now();
   startWall = Date.now() - (performance.now() - startMs);
   running=true;
@@ -918,6 +919,7 @@ function pauseClock(){
   if (!running||finished) return;
   running=false;
   pauseMs=performance.now()-startMs;
+  needsStaticRedraw = true;
   releaseWakeLock();
   showTimerNotification(
     'Salvation timer paused',
@@ -940,6 +942,7 @@ function resetClock(){
   clearTimerNotification();
 }
 function finishClock(){
+  needsStaticRedraw = true;
   finished=true;
   if (sessCurrent()){ curSess.done = true; curSess.dur = Math.round(totalCycle/60); sessSave(); }
   running=false;
@@ -1287,16 +1290,28 @@ function drawAbacusWideStatic(){
     wideScrew(c, U.x0 + 10*sc, My0 + 10*sc, sc); wideScrew(c, U.x0 + U.A.w - 10*sc, My0 + 10*sc, sc);
     wideScrew(c, U.x0 + 10*sc, My0 + Mh - 10*sc, sc); wideScrew(c, U.x0 + U.A.w - 10*sc, My0 + Mh - 10*sc, sc);
     {
-      const ring = U.duo ? ["STORY", "LIBRARY", "SESSIONS", "DIAGRAM", "VISUALS"]
-                         : ["STORY", "LETTER", "LIBRARY", "SESSIONS", "DIAGRAM", "VISUALS"];
-      const cur = abDgm >= 0 ? "DIAGRAM"
-                : abViz >= 0 ? "VISUALS"
-                : abLib >= 0 ? "LIBRARY"
-                : abLog >= 0 ? "SESSIONS"
-                : (!U.duo && abStoryPage) ? "LETTER" : "STORY";
-      const ci = Math.max(0, ring.indexOf(cur));
-      const prv = ring[(ci + ring.length - 1) % ring.length];
-      const nxt = ring[(ci + 1) % ring.length];
+      // the indicator reads the ACTIVE key's own cycle: center is where
+      // you stand, the sides are one press back and one press on
+      let prv, cur, nxt;
+      if (abDgm >= 0){
+        cur = abDgm ? "GOAL" : "FRAME"; prv = nxt = abDgm ? "FRAME" : "GOAL";
+      } else if (abViz >= 0){
+        cur = "VISUALS"; prv = nxt = "LIST";
+      } else if (abLog >= 0){
+        cur = "SESSIONS"; prv = nxt = "STORY";
+      } else {
+        const ring = U.duo ? (running ? ["STORY"] : ["STORY", "LIBRARY"])
+                   : (running ? ["STORY", "LETTER"]
+                              : ["STORY", "LETTER", "LIBRARY"]);
+        cur = abLib >= 0 ? "LIBRARY" : (!U.duo && abStoryPage) ? "LETTER" : "STORY";
+        const ci = ring.indexOf(cur);
+        if (ci < 0){ prv = nxt = "STORY"; }
+        else if (ring.length < 2){ prv = nxt = "\u00b7"; }
+        else {
+          prv = ring[(ci + ring.length - 1) % ring.length];
+          nxt = ring[(ci + 1) % ring.length];
+        }
+      }
       const rx = U.x0 + 12*sc, rh = 17*sc, ry = My0 + 5*sc;
       const rw = Math.min(260*sc, U.A.w - 180*sc);
       c.fillStyle = "#040404";
