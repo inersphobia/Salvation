@@ -1082,10 +1082,13 @@ function abacusWideUnits(){
   const padX = 22*sc, gap0 = 11*sc;
   const slots = Math.max(R.mw, R.fr) + 1;   // columns + the bay
   const cell = Math.min((target - 2*padX - (slots - 1)*gap0)/slots, 48*sc);
-  const gap = (target - 2*padX - slots*cell)/Math.max(1, slots - 1);
-  const slotX = i => x0 + padX + i*(cell + gap) + cell/2;
+  const gap = Math.min(26*sc,
+    (target - 2*padX - slots*cell)/Math.max(1, slots - 1));
+  const slotX = i => (i < slots - 1)
+    ? x0 + padX + i*(cell + gap) + cell/2
+    : x0 + target - padX - cell/2;
   const mk = (cy, n, extra) => {
-    const gapY = 6*sc, padTop = 27*sc, padBot = 20*sc;
+    const gapY = 5*sc, padTop = 24*sc, padBot = 10*sc;
     const h = 2*cell + gapY + padTop + padBot + (extra || 0);
     const uy = cy*sc - h/2;
     const cols = [];
@@ -1096,7 +1099,7 @@ function abacusWideUnits(){
   };
   // the tower is rooted at the bottom of the screen and grows upward:
   // CONTROL, FRACTIONS, MINUTES, and the STORY monitor crowning it
-  const gapY = 6*sc, padTop = 27*sc, padBot = 20*sc;
+  const gapY = 5*sc, padTop = 24*sc, padBot = 10*sc;
   const Bh = 2*cell + gapY + padTop + padBot;
   const Ah = Bh;
   const Ch = 92*sc;
@@ -1117,13 +1120,13 @@ function abacusWideUnits(){
   const keys = [];
   for (let i = 0; i < 3; i++)
     keys.push({ x: x0 + 24*sc + i*(kw + 12*sc), y: Cd.y0 + 34*sc, w: kw, h: kh });
-  const monH = Math.max(170*sc, Math.min(440*sc, Ay0 - 44));
+  const monH = Math.max(170*sc, Math.min(460*sc, Ay0 - 44));
   const monTop = Ay0 - monH + 3;
   const bayX = slotX(slots - 1);
   const faceR = bayX - cell/2 - 12*sc;
   const extX = faceR + 8*sc;
   // one monitor, always - on wide glass its interior splits instead
-  const monW = target - 52*sc, monIH = monH - 108*sc;
+  const monW = target - 52*sc, monIH = monH - 128*sc;
   const mon = { x: x0 + 26*sc, y: monTop + 30*sc, w: monW, h: monIH };
   const mon2 = null;
   // the diagram deck: FRAME/GOAL keycaps on the bezel foot, and - when
@@ -1144,12 +1147,12 @@ function abacusWideUnits(){
   dgm.w2u = { x: px5, y: dgm.pan.y + 172*pu, w: pw5, h: 36*pu };
   dgm.w2  = { x: px5, y: dgm.pan.y + 212*pu, w: pw5, h: 72*pu };
   dgm.w2d = { x: px5, y: dgm.pan.y + 288*pu, w: pw5, h: 36*pu };
-  const dcx = x0 + 56*sc, dcy = monTop + monH - 46*sc;
+  const dcx = x0 + 58*sc, dcy = monTop + monH - 49*sc;
   dgm.dpad = {
-    up:    { x: dcx - 13*sc, y: dcy - 30*sc,  w: 26*sc, h: 19*sc },
-    down:  { x: dcx - 13*sc, y: dcy + 11*sc,  w: 26*sc, h: 19*sc },
-    left:  { x: dcx - 44*sc, y: dcy - 9.5*sc, w: 26*sc, h: 19*sc },
-    right: { x: dcx + 18*sc, y: dcy - 9.5*sc, w: 26*sc, h: 19*sc }
+    up:    { x: dcx - 15*sc, y: dcy - 42*sc, w: 30*sc, h: 26*sc },
+    down:  { x: dcx - 15*sc, y: dcy + 16*sc, w: 30*sc, h: 26*sc },
+    left:  { x: dcx - 49*sc, y: dcy - 13*sc, w: 30*sc, h: 26*sc },
+    right: { x: dcx + 19*sc, y: dcy - 13*sc, w: 30*sc, h: 26*sc }
   };
   // on wide glass the tube splits: a square bay left (scene or box),
   // the working surface right (letter or chart)
@@ -1161,7 +1164,7 @@ function abacusWideUnits(){
                  w: dgm.scr.w - lw - 14*sc, h: dgm.scr.h } };
   }
   const ventEnd = x0 + 92*sc, knobStart = x0 + target - 92*sc;
-  const dbw = 56*sc, dbh = 26*sc, dbg = 6*sc;
+  const dbw = 50*sc, dbh = 26*sc, dbg = 7*sc;
   const dbx = (ventEnd + knobStart)/2 - (3*dbw + 2*dbg)/2;
   const dgmBtns = [];
   for (let i = 0; i < 3; i++)
@@ -1252,7 +1255,8 @@ function drawAbacusWideStatic(){
     }
     c.textAlign = "right";
     c.fillStyle = "rgba(168,184,205,0.52)";
-    c.fillText(U.mon2 ? "MON · D + E" : "MON · D", U.x0 + U.A.w - 16*sc, My0 + 18*sc);
+    c.fillText((U.mon2 ? "MON · D + E" : "MON · D") + (abVer ? "  ·  " + abVer : ""),
+               U.x0 + U.A.w - 16*sc, My0 + 18*sc);
     // brass trim around the tube(s)
     for (const S of (U.mon2 ? [U.mon, U.mon2] : [U.mon])){
       c.strokeStyle = "rgba(200,160,85,0.55)"; c.lineWidth = 3;
@@ -1295,9 +1299,9 @@ function drawAbacusWideStatic(){
         c.fillStyle = "rgba(140,170,220,0.05)";
         c.beginPath(); c.ellipse(u.cols[i] - u.cell*0.1, yy - u.cell*0.14, u.cell*0.16, u.cell*0.08, -0.5, 0, 2*Math.PI); c.fill();
       }
-      c.font = Math.round(9*sc) + "px monospace"; c.textAlign = "center";
+      c.font = Math.round(9*sc) + "px monospace"; c.textAlign = "left";
       c.fillStyle = "rgba(168,184,205,0.7)";
-      c.fillText(labels[i], u.cols[i], u.y0 + u.h - 9*sc);
+      c.fillText(labels[i], u.cols[i] + u.cell*0.55, (u.yTop + u.yBot)/2 + 3*sc);
     }
     const sh = c.createLinearGradient(u.x0, u.y0, u.x0 + u.w*0.9, u.y0 + u.h);
     sh.addColorStop(0, "rgba(190,215,255,0.1)"); sh.addColorStop(0.35, "rgba(255,255,255,0)");
@@ -2050,17 +2054,35 @@ function drawAbacusWideDots(t){
     arrow(D.w1u, "w0u", true); arrow(D.w1d, "w0d", false);
     arrow(D.w2u, "w1u", true); arrow(D.w2d, "w1d", false);
     const DP = D.dpad;
+    // the plinth: one mounting plate under the four keys
+    {
+      const px0 = DP.left.x - 6*sc, py0 = DP.up.y - 6*sc;
+      const pw0 = (DP.right.x + DP.right.w + 6*sc) - px0;
+      const ph0 = (DP.down.y + DP.down.h + 6*sc) - py0;
+      ctx.fillStyle = "#12161f";
+      ctx.beginPath(); ctx.roundRect(px0, py0, pw0, ph0, 10); ctx.fill();
+      ctx.strokeStyle = "rgba(160,190,235,0.14)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(px0, py0, pw0, ph0, 10); ctx.stroke();
+    }
     const dkeys = [["up", DP.up, 0, -1], ["down", DP.down, 0, 1],
                    ["left", DP.left, -1, 0], ["right", DP.right, 1, 0]];
     for (const dk of dkeys){
       const nm = dk[0], r9 = dk[1], ax = dk[2], ay = dk[3];
       const pr9 = abDgmFlash.k === "d" + nm && performance.now() < abDgmFlash.until;
-      ctx.fillStyle = pr9 ? "#1d2431" : "#2e3a4d";
-      ctx.beginPath(); ctx.roundRect(r9.x, r9.y, r9.w, r9.h, 4); ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.roundRect(r9.x, r9.y, r9.w, r9.h, 4); ctx.stroke();
-      ctx.fillStyle = "rgba(200,215,235,0.88)";
-      const mx9 = r9.x + r9.w/2, my9 = r9.y + r9.h/2, aw9 = 5*sc, ah9 = 3.4*sc;
+      const py9 = pr9 ? 1.5*sc : 0;
+      // a real keycap, kin to the REG-C keys: gradient face, inset ring
+      const kg9 = ctx.createLinearGradient(0, r9.y + py9, 0, r9.y + r9.h + py9);
+      if (pr9){ kg9.addColorStop(0, "#242b38"); kg9.addColorStop(1, "#171c26"); }
+      else { kg9.addColorStop(0, "#38445a"); kg9.addColorStop(0.5, "#262e3c"); kg9.addColorStop(1, "#1a2029"); }
+      ctx.fillStyle = kg9;
+      ctx.beginPath(); ctx.roundRect(r9.x, r9.y + py9, r9.w, r9.h, 6); ctx.fill();
+      ctx.strokeStyle = pr9 ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(r9.x, r9.y + py9, r9.w, r9.h, 6); ctx.stroke();
+      ctx.strokeStyle = "rgba(0,0,0,0.7)";
+      ctx.beginPath(); ctx.roundRect(r9.x + 2, r9.y + py9 + 2, r9.w - 4, r9.h - 4, 5); ctx.stroke();
+      ctx.fillStyle = "rgba(225,232,240,0.9)";
+      const mx9 = r9.x + r9.w/2, my9 = r9.y + py9 + r9.h/2, aw9 = 6*sc, ah9 = 4*sc;
       ctx.beginPath();
       ctx.moveTo(mx9 + ax*ah9, my9 + ay*ah9);
       ctx.lineTo(mx9 - ax*ah9 + ay*aw9, my9 - ay*ah9 + ax*aw9);
@@ -3435,6 +3457,11 @@ function storySrc(idx, vol){
     return { img: alt, r: [0.015, 0.015, 0.97, 0.97], k: "a" + oi };
   return { img: storyImg, r: STORY_CROPS[oi], k: "s" + oi };
 }
+let abVer = "";
+fetch('./sw.js').then(r => r.text()).then(t => {
+  const m = t.match(/-v(\d+)/);
+  if (m){ abVer = "v" + m[1]; needsStaticRedraw = true; }
+}).catch(() => {});
 let storyImg = null, storyReady = false;
 const storyCache = {};
 let storyScene = -1, storyPlotted = 0;
@@ -6706,7 +6733,11 @@ canvasAnim.addEventListener("click", (e) => {
         // commit the dialed feed (the VISUALS key brings the list back)
         if (biS < VIZ_DEFS.length){ abViz = biS + 1; haptic('medium'); }
       } else if (abLib >= 0){
-        if (abLib === 0){
+        if (abLibCarry >= 0 && abLibMenu < 0){
+          // carrying: SELECT sets the image down, wherever you stand
+          abLibCarry = -1;
+          haptic('medium');
+        } else if (abLib === 0){
           // open the dialed volume; idle also makes it the session's book
           if (biS < 2){
             abLibVol = biS;
@@ -6726,10 +6757,6 @@ canvasAnim.addEventListener("click", (e) => {
             if (op9 === 0) abLib = 2 + pi9;
             else if (op9 === 1) openStoryEdit(pi9, abLibVol);
             else { abLibCarry = pi9; abDgmWheel = [Math.floor(pi9/26), pi9 % 26]; }
-            haptic('medium');
-          } else if (abLibCarry >= 0){
-            // the image is seated where it stands: done moving
-            abLibCarry = -1;
             haptic('medium');
           } else if (biS < STORY_PANELS.length - 1){
             abLibMenu = 0; abLibMenuFor = biS;
