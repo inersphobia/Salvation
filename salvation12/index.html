@@ -1216,14 +1216,14 @@ function abacusWideUnits(){
                  w: dgm.scr.w - lw - 14*sc, h: dgm.scr.h } };
   }
   const navEnd = dX0 + 3*dS + 40*sc;
-  const rGap = ((x0 + target - 16*sc - navEnd) - 60*sc)/3;
-  const sdX = navEnd + rGap, xvX = sdX + 30*sc + rGap;
+  const rGap = ((x0 + target - 16*sc - navEnd) - 2*dS)/3;
+  const sdX = navEnd + rGap, xvX = sdX + dS + rGap;
   const dgmBtns = [
-    { x: sdX, y: dJy - 34*sc, w: 30*sc, h: 30*sc },
-    { x: sdX, y: dJy + 4*sc,  w: 30*sc, h: 30*sc }
+    { x: sdX, y: gBot + 9*sc, w: dS, h: dS },
+    { x: sdX, y: dJy,         w: dS, h: dS }
   ];
-  const backBtn = { x: xvX, y: dJy - 34*sc, w: 30*sc, h: 30*sc };
-  const selBtn  = { x: xvX, y: dJy + 4*sc,  w: 30*sc, h: 30*sc };
+  const backBtn = { x: xvX, y: gBot + 9*sc, w: dS, h: dS };
+  const selBtn  = { x: xvX, y: dJy,         w: dS, h: dS };
   const bedA = A.cols[2] + cell*0.5 + 12*sc;   // MINUTES bed right edge
   const markBtn = { x: x0 + target - 71*sc, y: Ay0 + 23*sc, w: 58*sc, h: 22*sc };
   const logBtn  = { x: x0 + target - 71*sc, y: Ay0 + 82*sc, w: 58*sc, h: 22*sc };
@@ -2173,9 +2173,9 @@ function drawAbacusWideDots(t){
     {
       const cxk = b.x + b.w/2, cyk = b.y + py + b.h/2;
       ctx.beginPath();
-      ctx.moveTo(cxk - 6*sc, cyk + 0.5*sc);
-      ctx.lineTo(cxk - 1.5*sc, cyk + 5*sc);
-      ctx.lineTo(cxk + 6.5*sc, cyk - 4.5*sc);
+      ctx.moveTo(cxk - 8.5*sc, cyk + 0.7*sc);
+      ctx.lineTo(cxk - 2*sc, cyk + 7*sc);
+      ctx.lineTo(cxk + 9*sc, cyk - 6.5*sc);
       ctx.stroke();
     }
     ctx.lineCap = "butt"; ctx.lineJoin = "miter";
@@ -2198,8 +2198,8 @@ function drawAbacusWideDots(t){
     {
       const cxb = bb.x + bb.w/2, cyb = bb.y + pyB + bb.h/2;
       ctx.beginPath();
-      ctx.moveTo(cxb - 4.5*sc, cyb - 4.5*sc); ctx.lineTo(cxb + 4.5*sc, cyb + 4.5*sc);
-      ctx.moveTo(cxb + 4.5*sc, cyb - 4.5*sc); ctx.lineTo(cxb - 4.5*sc, cyb + 4.5*sc);
+      ctx.moveTo(cxb - 6.5*sc, cyb - 6.5*sc); ctx.lineTo(cxb + 6.5*sc, cyb + 6.5*sc);
+      ctx.moveTo(cxb + 6.5*sc, cyb - 6.5*sc); ctx.lineTo(cxb - 6.5*sc, cyb + 6.5*sc);
       ctx.stroke();
     }
     ctx.lineCap = "butt";
@@ -2219,9 +2219,9 @@ function drawAbacusWideDots(t){
       ctx.strokeStyle = on ? "rgba(255,170,60,0.7)" : "rgba(255,255,255,0.22)";
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.stroke();
-      ctx.font = "bold " + Math.round(13*sc) + "px monospace"; ctx.textAlign = "center";
+      ctx.font = "bold " + Math.round(17*sc) + "px monospace"; ctx.textAlign = "center";
       ctx.fillStyle = on ? "rgba(255,190,90,0.95)" : "rgba(168,184,205,0.8)";
-      ctx.fillText(lb2, b.x + b.w/2, b.y + b.h/2 + 4.5*sc);
+      ctx.fillText(lb2, b.x + b.w/2, b.y + b.h/2 + 6*sc);
     }
   }
   // the DIAGRAM DECK: flowchart in phosphor, wheels, SEL, the stick
