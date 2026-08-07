@@ -1488,11 +1488,20 @@ function drawAbacusWideDots(t){
     const minute = Math.floor((finished ? totalCycle : idle2 ? 0 : t)/60);
     const idx = finished ? 27 : (minute % 27);
     storyBoot();
-    const cv = abMonRender(idx, M.w, M.h);
+    const cv = abMonRender(idx, M.w, M.h, Math.floor(performance.now()/140) % 3);
     ctx.save();
     ctx.beginPath(); ctx.roundRect(M.x, M.y, M.w, M.h, 14); ctx.clip();
     if (cv) ctx.drawImage(cv, M.x, M.y);
     else { ctx.fillStyle = "#0b0e42"; ctx.fillRect(M.x, M.y, M.w, M.h); }
+    // the retrace: a faint line forever climbing the tube
+    const rp2 = (performance.now() % 6500)/6500;
+    const ry2 = M.y + M.h*(1 - rp2);
+    const rg2 = ctx.createLinearGradient(0, ry2 - 14, 0, ry2 + 14);
+    rg2.addColorStop(0, "rgba(190,215,255,0)");
+    rg2.addColorStop(0.5, "rgba(190,215,255,0.08)");
+    rg2.addColorStop(1, "rgba(190,215,255,0)");
+    ctx.fillStyle = rg2;
+    ctx.fillRect(M.x, ry2 - 14, M.w, 28);
     ctx.restore();
     // burned-in tags, live
     ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
@@ -1782,8 +1791,9 @@ function drawAbacusWideDots(t){
 // the tube's picture, cached per scene and size
 let abMonCanvas = null, abMonKey = "";
 const abMonCache = new Map();
-function abMonRender(idx, mw, mh){
-  const key = idx + ":" + Math.round(mw) + ":" + Math.round(mh);
+function abMonRender(idx, mw, mh, v){
+  v = v || 0;
+  const key = idx + ":" + Math.round(mw) + ":" + Math.round(mh) + ":" + v;
   const hit0 = abMonCache.get(key);
   if (hit0){ abMonKey = key; abMonCanvas = hit0; return hit0; }
   if (!storyReady) return null;
@@ -1812,13 +1822,19 @@ function abMonRender(idx, mw, mh){
   const srt = lums.slice().sort((a, b) => a - b);
   const lo = srt[Math.floor(G*G*0.04)], hi = srt[Math.floor(G*G*0.97)];
   const cs = Math.min(mw, mh)/G, ox = (mw - G*cs)/2, oy = (mh - G*cs)/2;
+  // the boil: each variant nudges every dot a hair, like linework
+  // traced three times by hand
+  let js = 76321 + idx*97 + v*7919;
+  const jrr = () => { js = (js*48271) % 2147483647; return js/2147483647; };
   for (let i = 0; i < G*G; i++){
     const L = Math.max(0, Math.min(1, (lums[i] - lo)/(hi - lo)));
     if (L < 0.15) continue;
     const x = i % G, y = (i - x)/G;
     c2.fillStyle = "rgba(224,232,250," + (0.45 + 0.5*L).toFixed(2) + ")";
     c2.beginPath();
-    c2.arc(ox + (x + 0.5)*cs, oy + (y + 0.5)*cs, cs*(0.1 + 0.42*L*L), 0, 2*Math.PI);
+    c2.arc(ox + (x + 0.5)*cs + (jrr() - 0.5)*cs*0.6,
+           oy + (y + 0.5)*cs + (jrr() - 0.5)*cs*0.6,
+           cs*(0.1 + 0.42*L*L)*(0.85 + jrr()*0.3), 0, 2*Math.PI);
     c2.fill();
   }
   const vg = c2.createRadialGradient(mw/2, mh/2, mh*0.3, mw/2, mh/2, mh*0.85);
@@ -1831,7 +1847,7 @@ function abMonRender(idx, mw, mh){
   gl.addColorStop(0, "rgba(180,210,255,0.10)"); gl.addColorStop(0.3, "rgba(180,210,255,0)");
   c2.fillStyle = gl; c2.fillRect(0, 0, mw, mh);
   abMonCache.set(key, abMonCanvas);
-  if (abMonCache.size > 8) abMonCache.delete(abMonCache.keys().next().value);
+  if (abMonCache.size > 12) abMonCache.delete(abMonCache.keys().next().value);
   return abMonCanvas;
 }
 // MON-E: the letter, an amber transmission beside the story tube
