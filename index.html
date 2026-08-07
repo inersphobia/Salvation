@@ -1241,7 +1241,7 @@ function drawAbacusWideStatic(){
                U.x0 + 16*sc, My0 + 18*sc);
     if (U.duo && abViz < 0 && abLib < 0){
       c.fillStyle = "rgba(168,184,205,0.7)";
-      c.fillText(abDgm >= 0 ? "D I A G R A M" : "L E T T E R",
+      c.fillText(abDgm >= 0 ? "D I A G R A M" : "T E X T",
                  U.duo.R.x - 4, My0 + 18*sc);
     }
     c.textAlign = "right";
@@ -1535,12 +1535,45 @@ function drawAbacusWideDots(t){
     ctx.fillText("CYCLE " + timerStr + (finished && overtimeStr ? "  " + overtimeStr : ""),
                  M.x + M.w - 8*sc, M.y + M.h - 8*sc);
   };
-  if (abDgm < 0 && abViz < 0 && abLib < 0 && (U.duo || abStoryPage === 0))
-    abMonStory(U.duo ? U.duo.L : U.dgm.scr);
+  const abSceneWords = (M, idx9, vol9) => {
+    // subtitle ink: the scene's words over the glass, white on shadow
+    ctx.save();
+    ctx.beginPath(); ctx.roundRect(M.x, M.y, M.w, M.h, 14); ctx.clip();
+    const gGrad = ctx.createLinearGradient(0, M.y + M.h - 96*sc, 0, M.y + M.h);
+    gGrad.addColorStop(0, "rgba(2,4,16,0)");
+    gGrad.addColorStop(1, "rgba(2,4,16,0.9)");
+    ctx.fillStyle = gGrad;
+    ctx.fillRect(M.x, M.y + M.h - 96*sc, M.w, 96*sc);
+    ctx.font = Math.round(10.5*sc) + "px monospace"; ctx.textAlign = "left";
+    const words = storyTextFor(idx9, vol9).split(" ");
+    const maxc = Math.floor((M.w - 24*sc)/(6.3*sc));
+    const lines9 = [];
+    let ln9 = "";
+    for (const w9 of words){
+      if ((ln9 + w9).length > maxc){ lines9.push(ln9.trim()); ln9 = ""; }
+      ln9 += w9 + " ";
+    }
+    if (ln9.trim()) lines9.push(ln9.trim());
+    let yy9 = M.y + M.h - 22*sc - (lines9.length - 1)*15*sc;
+    ctx.fillStyle = "rgba(240,245,255,0.95)";
+    ctx.shadowColor = "rgba(0,0,0,0.9)"; ctx.shadowBlur = 4;
+    for (const L9 of lines9){ ctx.fillText(L9, M.x + 12*sc, yy9); yy9 += 15*sc; }
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  };
+  if (abDgm < 0 && abViz < 0 && abLib < 0 && (U.duo || abStoryPage === 0)){
+    const MS9 = U.duo ? U.duo.L : U.dgm.scr;
+    abMonStory(MS9);
+    if (!U.duo){
+      const idle3 = !running && !finished && pauseMs === 0;
+      const mi9 = finished ? 26 : idle3 ? 0 : Math.floor(t/60) % 27;
+      abSceneWords(MS9, mi9, storyVol);
+    }
+  }
   // MON-E: beside the story the letter crawls - one full transmission
   // per 27 minutes, re-sent from the top on every EXTEND
-  if ((U.duo || abStoryPage === 1) && abDgm < 0 && abViz < 0 && abLib < 0){
-    const E = U.duo ? U.duo.R : U.dgm.scr;
+  if (!U.duo && abStoryPage === 1 && abDgm < 0 && abViz < 0 && abLib < 0){
+    const E = U.dgm.scr;
     const idle3 = !running && !finished && pauseMs === 0;
     const per = 27*60;
     const local = finished ? per : idle3 ? 0 : (t % per);
@@ -1575,6 +1608,33 @@ function drawAbacusWideDots(t){
     ctx.textAlign = "right";
     const ln = Math.min(abLetterN, Math.max(1, Math.floor((scr + E.h)/abLetterLH)));
     ctx.fillText("LN " + ln + "/" + abLetterN, E.x + E.w - 8*sc, E.y + E.h - 8*sc);
+  }
+  // the scene's own words on the right glass, turning with the minute
+  if (U.duo && abDgm < 0 && abViz < 0 && abLib < 0){
+    const E = U.duo.R;
+    const idle3 = !running && !finished && pauseMs === 0;
+    const mi9 = finished ? 26 : idle3 ? 0 : Math.floor(t/60) % 27;
+    ctx.save();
+    ctx.beginPath(); ctx.roundRect(E.x, E.y, E.w, E.h, 14); ctx.clip();
+    ctx.fillStyle = "#0b0e42"; ctx.fillRect(E.x, E.y, E.w, E.h);
+    ctx.font = "bold " + Math.round(15*sc) + "px monospace"; ctx.textAlign = "left";
+    ctx.fillStyle = "rgba(255,170,60,0.9)";
+    ctx.fillText("SCN " + STORY_PANELS[Math.min(mi9, 26)], E.x + 20*sc, E.y + 34*sc);
+    ctx.font = Math.round(12*sc) + "px monospace";
+    ctx.fillStyle = "rgba(255,196,120,0.9)";
+    const wordsT = storyTextFor(mi9).split(" ");
+    const maxcT = Math.floor((E.w - 40*sc)/(7.2*sc));
+    let lnT = "", yyT = E.y + 62*sc;
+    for (const wT of wordsT){
+      if ((lnT + wT).length > maxcT){ ctx.fillText(lnT.trim(), E.x + 20*sc, yyT); yyT += 18*sc; lnT = ""; }
+      lnT += wT + " ";
+    }
+    if (lnT.trim()) ctx.fillText(lnT.trim(), E.x + 20*sc, yyT);
+    ctx.drawImage(abMonEOverlay(E.w, E.h), E.x, E.y);
+    ctx.restore();
+    ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
+    ctx.fillStyle = "rgba(255,170,60,0.5)";
+    ctx.fillText("TXT · " + STORY_PANELS[Math.min(mi9, 26)], E.x + 8*sc, E.y + E.h - 8*sc);
   }
   // the LIBRARY: a shelf of collections; a volume opens to its 27
   // plates; a plate opens to its art and text. The session's book is
@@ -1695,7 +1755,12 @@ function drawAbacusWideDots(t){
       ctx.fillText("DIAL " + abDgmCode(abDgmWheel[0], abDgmWheel[1]),
                    S.x + S.w - 8*sc, S.y + S.h - 8*sc);
     } else {
-      const li = abLib - 2;
+      let li = abLib - 2;
+      // the drums retune the open plate live: dial AD and AD appears
+      if (bi3 <= STORY_PANELS.length - 2 && bi3 !== li){
+        abLib = 2 + bi3;
+        li = bi3;
+      }
       const Mi = U.duo ? U.duo.L : S;
       const cv9 = abMonRender(li, Mi.w, Mi.h,
                               Math.floor(performance.now()/140) % 3, abLibVol);
@@ -1709,20 +1774,7 @@ function drawAbacusWideDots(t){
           (0.35 + 0.25*Math.sin(performance.now()/300)).toFixed(2) + ")";
         ctx.fillText("· RECEIVING PLATE ·", Mi.x + Mi.w/2, Mi.y + Mi.h/2);
       }
-      if (!U.duo){
-        ctx.fillStyle = "rgba(4,6,26,0.78)";
-        ctx.fillRect(Mi.x, Mi.y + Mi.h - 64*sc, Mi.w, 64*sc);
-        ctx.font = Math.round(10*sc) + "px monospace"; ctx.textAlign = "left";
-        ctx.fillStyle = "rgba(255,196,120,0.9)";
-        const words9 = storyTextFor(li, abLibVol).split(" ");
-        let ln9 = "", yy9 = Mi.y + Mi.h - 48*sc;
-        const maxc = Math.floor((Mi.w - 24*sc)/(6*sc));
-        for (const w9 of words9){
-          if ((ln9 + w9).length > maxc){ ctx.fillText(ln9.trim(), Mi.x + 12*sc, yy9); yy9 += 14*sc; ln9 = ""; }
-          ln9 += w9 + " ";
-        }
-        if (ln9.trim()) ctx.fillText(ln9.trim(), Mi.x + 12*sc, yy9);
-      }
+      if (!U.duo) abSceneWords(Mi, li, abLibVol);
       ctx.restore();
       ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
       ctx.fillStyle = "rgba(255,170,60,0.5)";
@@ -1767,9 +1819,8 @@ function drawAbacusWideDots(t){
   // in VISUALS; in DIAGRAM it opens the dialed box's text editor
   {
     const b = U.selBtn;
-    const storyPausedEdit = abDgm < 0 && abViz < 0 && abLib < 0 &&
-      !running && pauseMs > 0 && !finished;
-    const armed = abDgm >= 0 || abViz >= 0 || abLib >= 0 || storyPausedEdit;
+    const storyGate = abDgm < 0 && abViz < 0 && abLib < 0 && !running;
+    const armed = abDgm >= 0 || abViz >= 0 || abLib >= 0 || storyGate;
     const pr = abDgmFlash.k === "sel" && performance.now() < abDgmFlash.until;
     const py = pr ? 1.5*sc : 0;
     const kg3 = ctx.createLinearGradient(0, b.y + py, 0, b.y + b.h + py);
@@ -6548,9 +6599,8 @@ canvasAnim.addEventListener("click", (e) => {
     const hit = (b) => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h;
     if (performance.now() < abDgmJoyUntil) return;
     // SELECT: the brass confirm key
-    const storyEdit9 = abDgm < 0 && abViz < 0 && abLib < 0 &&
-      !running && pauseMs > 0 && !finished;
-    if ((abDgm >= 0 || abViz >= 0 || abLib >= 0 || storyEdit9) && hit(U.selBtn)){
+    const storyGate9 = abDgm < 0 && abViz < 0 && abLib < 0 && !running;
+    if ((abDgm >= 0 || abViz >= 0 || abLib >= 0 || storyGate9) && hit(U.selBtn)){
       abDgmFlash = { k: "sel", until: performance.now() + 140 };
       const biS = abDgmWheel[0]*26 + abDgmWheel[1];
       if (abViz >= 0){
@@ -6575,8 +6625,12 @@ canvasAnim.addEventListener("click", (e) => {
           openStoryEdit(abLib - 2, abLibVol);
         } else haptic('light');
       } else if (abDgm < 0 && !running && pauseMs > 0 && !finished){
-        // time is stopped: SELECT opens the editor on this minute's text
+        // paused mid-tale: SELECT opens the editor on this minute's text
         openStoryEdit(Math.floor(pauseMs/60000) % 27);
+      } else if (abDgm < 0 && !running){
+        // at rest on the tale: SELECT steps into the library
+        abLib = 0;
+        haptic('medium');
       } else if (abDgm >= 0 && biS < FRAME_DEFS[abDgm].boxes.length){
         // in DIAGRAM the wheels already select - SELECT opens the editor
         openFrameEdit(abDgm, biS);
