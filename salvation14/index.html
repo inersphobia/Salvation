@@ -1158,7 +1158,7 @@ function abacusWideUnits(){
              yTop: y0v + yOff + cell/2,
              yBot: y0v + yOff + cell + gapY + cell/2 };
   };
-  const A = mkAt(Ay0, R.mw, Ah);
+  const A = mkAt(Ay0, 3, Ah);   // the 27s place lives on the side LEDs now
   const B = mkAt(By0, R.fr, Bh);
   const Cd = { x0, y0: Cy0, w: target, h: Ch };
   const kw = (target - 48*sc - 24*sc)/3, kh = 42*sc;
@@ -1398,7 +1398,7 @@ function drawAbacusWideStatic(){
   const mwL = [], frL = [];
   for (let i = 0; i < U.R.mw; i++) mwL.push(abacusLabel(i));
   for (let i = 0; i < U.R.fr; i++) frL.push(abacusLabel(U.R.mw + i));
-  unit(U.A, "MIN", "", mwL, U.faceR);
+  unit(U.A, "MIN", "", mwL, U.A.cols[2] + U.A.cell*0.5 + 12*sc);
   c.fillStyle = "#171c26";
   c.fillRect(viewW/2 - 66*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
   c.fillRect(viewW/2 + 38*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
@@ -1436,13 +1436,22 @@ function drawAbacusWideStatic(){
   const MODE = ["27","54","81"];
   for (let k = 0; k < 3; k++){
     const ly = U.A.y0 + 26*sc + k*26*sc;
-    c.fillStyle = "#141922";
-    c.beginPath(); c.arc(U.bayX, ly, 6*sc, 0, 2*Math.PI); c.fill();
-    c.strokeStyle = "rgba(255,255,255,0.15)"; c.lineWidth = 1;
-    c.beginPath(); c.arc(U.bayX, ly, 6*sc, 0, 2*Math.PI); c.stroke();
+    // a short rectangular LED window, hi-fi 1980s: dark until its block falls
+    const lw9 = 16*sc, lh9 = 8*sc, lx9 = U.bayX - 26*sc;
+    c.fillStyle = "#1a0705";
+    c.beginPath(); c.roundRect(lx9, ly - lh9/2, lw9, lh9, 1.5); c.fill();
+    c.strokeStyle = "rgba(0,0,0,0.75)"; c.lineWidth = 1;
+    c.beginPath(); c.roundRect(lx9, ly - lh9/2, lw9, lh9, 1.5); c.stroke();
+    c.strokeStyle = "rgba(255,255,255,0.09)";
+    c.beginPath();
+    c.moveTo(lx9 - 0.5, ly + lh9/2 + 1.5); c.lineTo(lx9 + lw9 + 0.5, ly + lh9/2 + 1.5);
+    c.stroke();
+    // the figure, etched into the panel as before
     c.font = Math.round(8*sc) + "px monospace"; c.textAlign = "left";
+    c.fillStyle = "rgba(0,0,0,0.55)";
+    c.fillText(MODE[k], U.bayX - 1*sc + 0.8, ly + 3*sc + 0.8);
     c.fillStyle = "rgba(168,184,205,0.62)";
-    c.fillText(MODE[k], U.bayX + 11*sc, ly + 3*sc);
+    c.fillText(MODE[k], U.bayX - 1*sc, ly + 3*sc);
   }
   // ---- atmosphere ----
   for (let i = 0; i < 3; i++){
@@ -1513,18 +1522,25 @@ function drawAbacusWideDots(t){
       ctx.beginPath(); ctx.arc(u.x0 + u.w/2, u.y0 + u.h, u.w*0.8, 0, 2*Math.PI); ctx.fill();
     }
   };
-  drawUnit(U.A, 0);
+  drawUnit(U.A, 1);   // skip the 27s place: the side LEDs carry it
   drawUnit(U.B, U.R.mw);
   // milestone lamps: one per completed 27
   for (let k = 0; k < 3; k++){
     if (eNow < (k + 1)*27*60) break;
     const ly = U.A.y0 + 26*sc + k*26*sc;
-    const g2 = ctx.createRadialGradient(U.bayX, ly, 0, U.bayX, ly, 18*sc);
-    g2.addColorStop(0, "rgba(255,149,0,0.55)"); g2.addColorStop(1, "rgba(255,149,0,0)");
+    const lw9 = 16*sc, lh9 = 8*sc, lx9 = U.bayX - 26*sc;
+    const g2 = ctx.createRadialGradient(lx9 + lw9/2, ly, 0, lx9 + lw9/2, ly, 22*sc);
+    g2.addColorStop(0, "rgba(255,40,24,0.5)"); g2.addColorStop(1, "rgba(255,40,24,0)");
     ctx.fillStyle = g2;
-    ctx.beginPath(); ctx.arc(U.bayX, ly, 18*sc, 0, 2*Math.PI); ctx.fill();
-    ctx.fillStyle = "#ff9500";
-    ctx.beginPath(); ctx.arc(U.bayX, ly, 5*sc, 0, 2*Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(lx9 + lw9/2, ly, 22*sc, 0, 2*Math.PI); ctx.fill();
+    const lg9 = ctx.createLinearGradient(0, ly - lh9/2, 0, ly + lh9/2);
+    lg9.addColorStop(0, "#ff6a52"); lg9.addColorStop(0.45, "#ff2418"); lg9.addColorStop(1, "#b80e04");
+    ctx.fillStyle = lg9;
+    ctx.beginPath(); ctx.roundRect(lx9, ly - lh9/2, lw9, lh9, 1.5); ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(lx9, ly - lh9/2, lw9, lh9, 1.5); ctx.stroke();
+    ctx.fillStyle = "rgba(255,220,210,0.55)";
+    ctx.fillRect(lx9 + 2*sc, ly - lh9/2 + 1.2, lw9 - 4*sc, 1.4);
   }
   // the fractions bay: MARK writes a line in the session's log;
   // LOG opens the ledger when time is stopped; the count keeps score
