@@ -1079,11 +1079,11 @@ function abacusWideUnits(){
   const x0 = viewW/2 - target/2;
   const padX = 22*sc, gap0 = 11*sc;
   const slots = Math.max(R.mw, R.fr) + 1;   // columns + the bay
-  const cell = Math.min((target - 2*padX - (slots - 1)*gap0)/slots, 60*sc);
+  const cell = Math.min((target - 2*padX - (slots - 1)*gap0)/slots, 48*sc);
   const gap = (target - 2*padX - slots*cell)/Math.max(1, slots - 1);
   const slotX = i => x0 + padX + i*(cell + gap) + cell/2;
   const mk = (cy, n, extra) => {
-    const gapY = 8*sc, padTop = 33*sc, padBot = 25*sc;
+    const gapY = 6*sc, padTop = 27*sc, padBot = 20*sc;
     const h = 2*cell + gapY + padTop + padBot + (extra || 0);
     const uy = cy*sc - h/2;
     const cols = [];
@@ -1094,7 +1094,7 @@ function abacusWideUnits(){
   };
   // the tower is rooted at the bottom of the screen and grows upward:
   // CONTROL, FRACTIONS, MINUTES, and the STORY monitor crowning it
-  const gapY = 8*sc, padTop = 33*sc, padBot = 25*sc;
+  const gapY = 6*sc, padTop = 27*sc, padBot = 20*sc;
   const Bh = 2*cell + gapY + padTop + padBot;
   const Ah = Bh;
   const Ch = 92*sc;
@@ -1115,7 +1115,7 @@ function abacusWideUnits(){
   const keys = [];
   for (let i = 0; i < 3; i++)
     keys.push({ x: x0 + 24*sc + i*(kw + 12*sc), y: Cd.y0 + 34*sc, w: kw, h: kh });
-  const monH = Math.max(170*sc, Math.min(370*sc, Ay0 - 44));
+  const monH = Math.max(170*sc, Math.min(440*sc, Ay0 - 44));
   const monTop = Ay0 - monH + 3;
   const bayX = slotX(slots - 1);
   const faceR = bayX - cell/2 - 12*sc;
@@ -1167,8 +1167,8 @@ function abacusWideUnits(){
         w: 56*sc, h: 18*sc };
   return { sc, x0, R, A, B, Cd, keys, bayX, faceR, monTop, monH, mon, mon2,
            dgm, dgmBtns, selBtn, edit, duo,
-           ext: { x: extX, y: A.y0 + 112*sc,
-                  w: x0 + target - 13*sc - extX, h: 28*sc } };
+           ext: { x: extX, y: A.y0 + 106*sc,
+                  w: x0 + target - 13*sc - extX, h: 26*sc } };
 }
 function wideScrew(c, x, y, sc){
   c.fillStyle = "#313947";
@@ -1366,7 +1366,7 @@ function drawAbacusWideDots(t){
   const U = abacusWideUnits(), sc = U.sc;
   const T27 = 60/27;
   const jewel = (cx, cy, cell, pulse) => {
-    const base = finished ? "rgb(255,170,50)" : "rgb(245,240,222)";
+    const base = finished ? "rgb(255,170,50)" : "rgb(249,222,170)";
     const R = cell*(1.35 + 0.5*(pulse || 0));
     const gr = ctx.createRadialGradient(cx,cy,0, cx,cy,R);
     gr.addColorStop(0, withA(base, "0.45"));
