@@ -876,6 +876,14 @@ function startClock(){
     try { localStorage.setItem('salvationSaga', String(sagaIdx)); } catch(e) {}
     triadKey = ""; needsStaticRedraw = true;
   }
+  if (abLib === 0 && !running && pauseMs === 0){
+    // starting straight from the shelf: the dialed book is the choice
+    const b9 = abDgmWheel[0]*26 + abDgmWheel[1];
+    if (b9 < 2 && b9 !== storyVol){
+      storyVol = b9;
+      try { localStorage.setItem('salvationStoryVol', storyVol); } catch(e) {}
+    }
+  }
   abLib = -1; abLibCarry = -1;   // the tale resumes; library shut
   startMs = pauseMs>0 ? performance.now()-pauseMs : performance.now();
   startWall = Date.now() - (performance.now() - startMs);
@@ -1699,6 +1707,11 @@ function drawAbacusWideDots(t){
         ctx.textAlign = "center"; ctx.font = Math.round(8.5*sc) + "px monospace";
         ctx.fillStyle = "rgba(255,149,0,0.6)";
         ctx.fillText("the session's book is locked · browsing stays open",
+                     S.x + S.w/2, S.y + S.h - 24*sc);
+      } else if (bi3 < 2 && bi3 !== storyVol){
+        ctx.textAlign = "center"; ctx.font = Math.round(8.5*sc) + "px monospace";
+        ctx.fillStyle = "rgba(255,190,90,0.85)";
+        ctx.fillText("SELECT — or START — puts " + STORY_VOLS[bi3][0] + " on the clock",
                      S.x + S.w/2, S.y + S.h - 24*sc);
       }
       ctx.drawImage(abMonEOverlay(S.w, S.h), S.x, S.y);
