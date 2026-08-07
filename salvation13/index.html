@@ -1302,10 +1302,10 @@ function drawAbacusWideStatic(){
       } else if (abLog >= 0){
         cur = "SESSIONS"; prv = nxt = "STORY";
       } else {
-        const ring = U.duo ? (running ? ["STORY"] : ["STORY", "LIBRARY"])
+        const ring = U.duo ? (running ? ["STORY", "LETTER"] : ["STORY", "LIBRARY"])
                    : (running ? ["STORY", "LETTER"]
                               : ["STORY", "LETTER", "LIBRARY"]);
-        cur = abLib >= 0 ? "LIBRARY" : (!U.duo && abStoryPage) ? "LETTER" : "STORY";
+        cur = abLib >= 0 ? "LIBRARY" : abStoryPage ? "LETTER" : "STORY";
         const ci = ring.indexOf(cur);
         if (ci < 0){ prv = nxt = "STORY"; }
         else if (ring.length < 2){ prv = nxt = "\u00b7"; }
@@ -1694,43 +1694,34 @@ function drawAbacusWideDots(t){
     ctx.fillStyle = gGrad;
     ctx.fillRect(M.x, M.y + M.h - 96*sc, M.w, 96*sc);
     ctx.font = Math.round(10.5*sc) + "px monospace"; ctx.textAlign = "left";
-    const words = storyTextFor(idx9, vol9).split(" ");
     const maxc = Math.floor((M.w - 24*sc)/(6.3*sc));
-    const lines9 = [];
-    let ln9 = "";
-    for (const w9 of words){
-      if ((ln9 + w9).length > maxc){ lines9.push(ln9.trim()); ln9 = ""; }
-      ln9 += w9 + " ";
-    }
-    if (ln9.trim()) lines9.push(ln9.trim());
+    const lines9 = abWrapLines(storyTextFor(idx9, vol9), maxc);
     let yy9 = M.y + M.h - 22*sc - (lines9.length - 1)*15*sc;
-    ctx.fillStyle = "rgba(240,245,255,0.95)";
+    ctx.fillStyle = "rgba(255,196,120,0.95)";
     ctx.shadowColor = "rgba(0,0,0,0.9)"; ctx.shadowBlur = 4;
     for (const L9 of lines9){ ctx.fillText(L9, M.x + 12*sc, yy9); yy9 += 15*sc; }
     ctx.shadowBlur = 0;
     ctx.restore();
   };
-  if (abDgm < 0 && abViz < 0 && abLib < 0 && abLog < 0 && (U.duo || abStoryPage === 0)){
+  if (abDgm < 0 && abViz < 0 && abLib < 0 && abLog < 0){
     const MS9 = U.duo ? U.duo.L : U.dgm.scr;
     abMonStory(MS9);
-    if (!U.duo){
+    if (!U.duo && abStoryPage === 0){
       const idle3 = !running && !finished && pauseMs === 0;
       const mi9 = finished ? 26 : idle3 ? 0 : Math.floor(t/60) % 27;
       abSceneWords(MS9, mi9, storyVol);
     }
   }
-  // MON-E: beside the story the letter crawls - one full transmission
-  // per 27 minutes, re-sent from the top on every EXTEND
-  if (!U.duo && abStoryPage === 1 && abDgm < 0 && abViz < 0 && abLib < 0 && abLog < 0){
-    const E = U.dgm.scr;
+  // the LONG TEXT: the chosen transmission crawls - one full pass per
+  // 27 minutes. Wide glass gives it the right tube; the phone lets it
+  // ride over the very scene you are watching
+  if (abStoryPage === 1 && abDgm < 0 && abViz < 0 && abLib < 0 && abLog < 0){
+    const E = U.duo ? U.duo.R : U.dgm.scr;
     const idle3 = !running && !finished && pauseMs === 0;
     const per = 27*60;
     const local = finished ? per : idle3 ? 0 : (t % per);
-    const cv = abLetterRender(E.w, sc);
+    const cv = abLetterRender(E.w, sc, storyTxt, !U.duo);
     const span = Math.max(0, cv.height - E.h);
-    // the stick bends the crawl: push down to hurry it, up to slow it
-    // to a stop and then roll the letter backwards; released, it walks
-    // on at its own pace from wherever you left it
     const nw4 = performance.now();
     const dt4 = Math.min(0.1, Math.max(0, (nw4 - abLetterT)/1000));
     abLetterT = nw4;
@@ -1745,20 +1736,24 @@ function drawAbacusWideDots(t){
     const scr = Math.round(abLetterPos !== null ? abLetterPos : span*(local/per));
     ctx.save();
     ctx.beginPath(); ctx.roundRect(E.x, E.y, E.w, E.h, 14); ctx.clip();
-    ctx.fillStyle = "#0b0e42"; ctx.fillRect(E.x, E.y, E.w, E.h);
+    if (U.duo){ ctx.fillStyle = "#0b0e42"; ctx.fillRect(E.x, E.y, E.w, E.h); }
     const sh3 = Math.min(E.h, cv.height - scr);
     ctx.drawImage(cv, 0, scr, cv.width, sh3, E.x, E.y, E.w, sh3);
-    ctx.drawImage(abMonEOverlay(E.w, E.h), E.x, E.y);
+    if (U.duo) ctx.drawImage(abMonEOverlay(E.w, E.h), E.x, E.y);
+    else {
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(E.x, E.y + E.h - 18*sc, E.w, 18*sc);
+    }
     ctx.restore();
     ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
-    ctx.fillStyle = "rgba(255,170,60,0.5)";
-    ctx.fillText("XMIT · BROTHER", E.x + 8*sc, E.y + E.h - 8*sc);
+    ctx.fillStyle = "rgba(255,170,60,0.6)";
+    ctx.fillText("XMIT \u00b7 " + longName(storyTxt), E.x + 8*sc, E.y + E.h - 6*sc);
     ctx.textAlign = "right";
     const ln = Math.min(abLetterN, Math.max(1, Math.floor((scr + E.h)/abLetterLH)));
-    ctx.fillText("LN " + ln + "/" + abLetterN, E.x + E.w - 8*sc, E.y + E.h - 8*sc);
+    ctx.fillText("LN " + ln + "/" + abLetterN, E.x + E.w - 8*sc, E.y + E.h - 6*sc);
   }
   // the scene's own words on the right glass, turning with the minute
-  if (U.duo && abDgm < 0 && abViz < 0 && abLib < 0 && abLog < 0){
+  if (U.duo && abDgm < 0 && abViz < 0 && abLib < 0 && abLog < 0 && abStoryPage === 0){
     const E = U.duo.R;
     const idle3 = !running && !finished && pauseMs === 0;
     const mi9 = finished ? 26 : idle3 ? 0 : Math.floor(t/60) % 27;
@@ -1770,14 +1765,12 @@ function drawAbacusWideDots(t){
     ctx.fillText("SCN " + storyLabelFor(mi9), E.x + 20*sc, E.y + 34*sc);
     ctx.font = Math.round(12*sc) + "px monospace";
     ctx.fillStyle = "rgba(255,196,120,0.9)";
-    const wordsT = storyTextFor(mi9).split(" ");
     const maxcT = Math.floor((E.w - 40*sc)/(7.2*sc));
-    let lnT = "", yyT = E.y + 62*sc;
-    for (const wT of wordsT){
-      if ((lnT + wT).length > maxcT){ ctx.fillText(lnT.trim(), E.x + 20*sc, yyT); yyT += 18*sc; lnT = ""; }
-      lnT += wT + " ";
+    let yyT = E.y + 62*sc;
+    for (const lnT of abWrapLines(storyTextFor(mi9), maxcT)){
+      if (lnT) ctx.fillText(lnT, E.x + 20*sc, yyT);
+      yyT += 18*sc;
     }
-    if (lnT.trim()) ctx.fillText(lnT.trim(), E.x + 20*sc, yyT);
     ctx.drawImage(abMonEOverlay(E.w, E.h), E.x, E.y);
     ctx.restore();
     ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
@@ -1896,6 +1889,59 @@ function drawAbacusWideDots(t){
           ctx.fillText("· ON THE CLOCK ·", r.x + r.w - 10*sc, r.y + r.h/2 + 6*sc);
         }
       });
+      // the long-texts shelf: the letter and its companions
+      const trows = abTxtRows(S, sc);
+      ctx.font = "bold " + Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
+      ctx.fillStyle = "rgba(255,170,60,0.55)";
+      ctx.fillText("L O N G · T E X T S", trows[0].x, trows[0].y - 8*sc);
+      trows.forEach((r, i) => {
+        const dialed = bi3 === 2 + i, active = i === storyTxt;
+        if (active){
+          ctx.fillStyle = "rgba(255,170,60,0.1)";
+          ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 5); ctx.fill();
+        }
+        ctx.strokeStyle = dialed ? "rgba(255,170,60,0.7)" : "rgba(160,190,235,0.18)";
+        ctx.lineWidth = dialed ? 1.6 : 1;
+        if (dialed) ctx.setLineDash([4, 5]);
+        ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 5); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.font = "bold " + Math.round(10*sc) + "px monospace"; ctx.textAlign = "left";
+        ctx.fillStyle = "rgba(255,170,60,0.85)";
+        ctx.fillText(abDgmCode(0, 2 + i), r.x + 10*sc, r.y + r.h/2 + 3.5*sc);
+        ctx.font = "bold " + Math.round(11*sc) + "px monospace";
+        ctx.fillStyle = active ? "rgba(255,190,90,0.95)" : "rgba(224,232,250,0.8)";
+        const hasBody = !!(longMeta[i] && longMeta[i].t) || LONG_DEFS[i].body === null;
+        ctx.fillText(longName(i) + (hasBody ? "" : " · blank"),
+                     r.x + 44*sc, r.y + r.h/2 + 3.5*sc);
+        if (active){
+          ctx.textAlign = "right";
+          ctx.font = Math.round(8*sc) + "px monospace";
+          ctx.fillStyle = "rgba(255,170,60,0.75)";
+          ctx.fillText("ON THE AIR", r.x + r.w - 8*sc, r.y + r.h/2 + 3*sc);
+          ctx.textAlign = "left";
+        }
+      });
+      if (abTxtMenu >= 0){
+        const mw8 = Math.min(200*sc, S.w - 40*sc), mh8 = 90*sc;
+        const mx8 = S.x + S.w/2 - mw8/2, my8 = S.y + S.h/2 - mh8/2;
+        ctx.fillStyle = "rgba(4,6,16,0.94)";
+        ctx.beginPath(); ctx.roundRect(mx8, my8, mw8, mh8, 8); ctx.fill();
+        ctx.strokeStyle = "rgba(255,170,60,0.5)"; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.roundRect(mx8, my8, mw8, mh8, 8); ctx.stroke();
+        ctx.font = "bold " + Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
+        ctx.fillStyle = "rgba(255,190,90,0.9)";
+        ctx.fillText(longName(abTxtFor), mx8 + 12*sc, my8 + 17*sc);
+        ["PUT ON THE AIR", "EDIT"].forEach((op, i) => {
+          const oy = my8 + 30*sc + i*28*sc;
+          if (i === abTxtMenu){
+            ctx.fillStyle = "rgba(255,170,60,0.16)";
+            ctx.beginPath(); ctx.roundRect(mx8 + 8*sc, oy, mw8 - 16*sc, 24*sc, 5); ctx.fill();
+          }
+          ctx.fillStyle = i === abTxtMenu ? "rgba(255,190,90,0.95)" : "rgba(224,232,250,0.7)";
+          ctx.font = Math.round(10*sc) + "px monospace";
+          ctx.fillText(op, mx8 + 16*sc, oy + 16*sc);
+        });
+      }
       if (!idle9){
         ctx.textAlign = "center"; ctx.font = Math.round(8.5*sc) + "px monospace";
         ctx.fillStyle = "rgba(255,149,0,0.6)";
@@ -2033,14 +2079,12 @@ function drawAbacusWideDots(t){
         ctx.fillText("SCN " + storyLabelFor(li, abLibVol), E9.x + 20*sc, E9.y + 34*sc);
         ctx.font = Math.round(12*sc) + "px monospace";
         ctx.fillStyle = "rgba(255,196,120,0.9)";
-        const words8 = storyTextFor(li, abLibVol).split(" ");
-        let ln8 = "", yy8 = E9.y + 62*sc;
         const maxc8 = Math.floor((E9.w - 40*sc)/(7.2*sc));
-        for (const w8 of words8){
-          if ((ln8 + w8).length > maxc8){ ctx.fillText(ln8.trim(), E9.x + 20*sc, yy8); yy8 += 18*sc; ln8 = ""; }
-          ln8 += w8 + " ";
+        let yy8 = E9.y + 62*sc;
+        for (const ln8 of abWrapLines(storyTextFor(li, abLibVol), maxc8)){
+          if (ln8) ctx.fillText(ln8, E9.x + 20*sc, yy8);
+          yy8 += 18*sc;
         }
-        if (ln8.trim()) ctx.fillText(ln8.trim(), E9.x + 20*sc, yy8);
         if (!running){
           ctx.font = Math.round(9*sc) + "px monospace";
           ctx.fillStyle = "rgba(255,170,60,0.55)";
@@ -2085,7 +2129,7 @@ function drawAbacusWideDots(t){
     // BACK: one step up, whatever the deck - the left arrow's twin
     const bb = U.backBtn;
     const canBack = abDgm >= 0 || abViz >= 0 || abLib >= 0 || abLog >= 0 ||
-                    (!U.duo && abStoryPage === 1);
+                    abStoryPage === 1;
     const prB = abDgmFlash.k === "back" && performance.now() < abDgmFlash.until;
     const pyB = prB ? 1.5*sc : 0;
     const kgB = ctx.createLinearGradient(0, bb.y + pyB, 0, bb.y + bb.h + pyB);
@@ -2459,9 +2503,31 @@ Are some constellations circles?`;
 let abLetterCv = null, abLetterKey = "", abLetterLH = 16, abLetterN = 1;
 let abLetterPos = null, abLetterT = 0, abLetterStep = 0;   // arrow-nudged crawl
 let abRoll = { t0: 0, dur: 6500, amp: 0.08, ghost: 0 }, abRollUntil = 0;
-let abStoryPage = 0;   // one-tube STORY: 0 the scenes, 1 the letter
-function abLetterRender(w, sc){
-  const key = Math.round(w) + ":" + Math.round(sc*100);
+let abStoryPage = 0;   // one-tube STORY: 0 the scenes, 1 the long text
+// the LONG TEXTS: a shelf of transmissions; the letter is the first
+const LONG_DEFS = [
+  { n: "THE LETTER", body: null },     // null means AB_LETTER itself
+  { n: "TEXT \u00b7 II", body: "" },
+  { n: "TEXT \u00b7 III", body: "" }
+];
+let longMeta = {};
+try { longMeta = JSON.parse(localStorage.getItem('salvationTexts') || "{}") || {}; } catch(e) {}
+let longRev = 0, ltextIdx = 0;
+let storyTxt = 0;
+try { storyTxt = Math.min(2, Math.max(0, parseInt(localStorage.getItem('salvationStoryTxt') || "0", 10) || 0)); } catch(e) {}
+let abTxtMenu = -1, abTxtFor = 0;
+function longName(i){ return (longMeta[i] && longMeta[i].l) || LONG_DEFS[i].n; }
+function longBody(i){
+  if (longMeta[i] && longMeta[i].t) return longMeta[i].t;
+  return LONG_DEFS[i].body === null ? AB_LETTER : LONG_DEFS[i].body;
+}
+function longSave(){ try { localStorage.setItem('salvationTexts', JSON.stringify(longMeta)); } catch(e) {} }
+function abLetterRender(w, sc, ti, bare){
+  ti = ti === undefined ? storyTxt : ti;
+  const body = longBody(ti) ||
+    "(this page is blank - open the library shelf, dial it, and EDIT)";
+  const key = Math.round(w) + ":" + Math.round(sc*100) + ":" + ti + ":" +
+              (bare ? 1 : 0) + ":" + longRev + ":" + body.length;
   if (abLetterKey === key && abLetterCv) return abLetterCv;
   abLetterKey = key;
   const fs = Math.max(9, Math.round(10.5*sc));
@@ -2470,7 +2536,7 @@ function abLetterRender(w, sc){
   const mc = document.createElement('canvas').getContext('2d');
   mc.font = fs + "px monospace";
   const lines = [];
-  for (const raw of AB_LETTER.split("\n")){
+  for (const raw of body.split("\n")){
     const src = raw.replace(/\t/g, "").trim();
     if (!src){ lines.push(null); continue; }
     const ind = raw.startsWith("\t") ? "   " : "";
@@ -2488,10 +2554,11 @@ function abLetterRender(w, sc){
   abLetterCv.width = Math.max(2, Math.round(w));
   abLetterCv.height = Math.max(2, H);
   const c2 = abLetterCv.getContext('2d');
-  c2.fillStyle = "#0b0e42"; c2.fillRect(0, 0, abLetterCv.width, H);
+  if (!bare){ c2.fillStyle = "#0b0e42"; c2.fillRect(0, 0, abLetterCv.width, H); }
   c2.font = fs + "px monospace"; c2.textAlign = "left";
-  c2.shadowColor = "rgba(255,160,60,0.45)"; c2.shadowBlur = 5;
-  c2.fillStyle = "rgba(255,196,120,0.85)";
+  c2.shadowColor = bare ? "rgba(0,0,0,0.95)" : "rgba(255,160,60,0.45)";
+  c2.shadowBlur = bare ? 4 : 5;
+  c2.fillStyle = "rgba(255,196,120,0.9)";
   let y = pad + fs;
   for (const ln of lines){
     if (ln) c2.fillText(ln, pad, y);
@@ -2720,8 +2787,30 @@ function abLibRows(S, sc){
     w: cw2 - 5*sc, h: rh3 - 3*sc
   }));
 }
+function abWrapLines(txt, maxc){
+  // word-wrap that keeps the writer's own line breaks
+  const out = [];
+  for (const para of String(txt).split("\n")){
+    let ln = "";
+    for (const w of para.split(/[ \t]+/)){
+      if (!w) continue;
+      if (ln && (ln + " " + w).length > maxc){ out.push(ln); ln = w; }
+      else ln = ln ? ln + " " + w : w;
+    }
+    out.push(ln);   // an empty paragraph stands as a blank line
+  }
+  while (out.length && !out[out.length - 1]) out.pop();
+  return out;
+}
+function abTxtRows(S, sc){
+  const vr = abVolRows(S, sc);
+  const top = vr[1].y + vr[1].h + 24*sc;
+  return [0, 1, 2].map(i => ({
+    x: S.x + 14*sc, y: top + i*(32*sc), w: S.w - 28*sc, h: 26*sc
+  }));
+}
 function abVolRows(S, sc){
-  const rh = Math.min(64*sc, (S.h - 40*sc)/2);
+  const rh = Math.min(52*sc, (S.h - 40*sc)/2);
   return [0, 1].map(i => ({
     x: S.x + 14*sc, y: S.y + 12*sc + i*(rh + 10*sc),
     w: S.w - 28*sc, h: rh
@@ -7005,9 +7094,13 @@ function abDpadFire(U, ax, ay){
         abDgmWheel = [Math.floor(tv/26), tv % 26];
       }
     } else if (abLib === 0){
-      if (ax < 0){ abLib = -1; abStoryPage = 0; needsStaticRedraw = true; }
+      if (abTxtMenu >= 0){
+        if (ax < 0) abTxtMenu = -1;
+        else abTxtMenu = Math.max(0, Math.min(1, abTxtMenu + ay));
+      }
+      else if (ax < 0){ abLib = -1; abStoryPage = 0; needsStaticRedraw = true; }
       else {
-        const nv = Math.max(0, Math.min(1, abDgmWheel[1] + (ax || ay)));
+        const nv = Math.max(0, Math.min(4, abDgmWheel[1] + (ax || ay)));
         abDgmWheel = [0, nv];
       }
     } else if (abLib === 1){
@@ -7040,7 +7133,7 @@ function abDpadFire(U, ax, ay){
         abLogScroll = Math.max(0, Math.min(mxD, abLogScroll + ay));
       }
     }
-  } else if (!U.duo && abStoryPage === 1 && ay){
+  } else if (abStoryPage === 1 && ay){
     abLetterStep += ay;
   }
 }
@@ -7089,6 +7182,7 @@ canvasAnim.addEventListener("click", (e) => {
       else if (abViz === 0) abViz = -1;
       else if (abLib >= 0){
         if (abLibMenu >= 0) abLibMenu = -1;
+        else if (abTxtMenu >= 0) abTxtMenu = -1;
         else if (abLibCarry >= 0) abLibCarry = -1;
         else if (abLib >= 2) abLib = 1;
         else if (abLib === 1) abLib = 0;
@@ -7096,7 +7190,7 @@ canvasAnim.addEventListener("click", (e) => {
       }
       else if (abLog >= 1){ abLog = 0; abLogScroll = 0; }
       else if (abLog === 0) abLog = -1;
-      else if (!U.duo && abStoryPage === 1) abStoryPage = 0;
+      else if (abStoryPage === 1) abStoryPage = 0;
       abDgmGlide = null;
       needsStaticRedraw = true;
       haptic('light');
@@ -7123,14 +7217,29 @@ canvasAnim.addEventListener("click", (e) => {
           abLibCarry = -1;
           haptic('medium');
         } else if (abLib === 0){
+          if (abTxtMenu >= 0){
+            // the chooser: put the text on the air, or rewrite it
+            const ti9 = abTxtFor, op9 = abTxtMenu;
+            abTxtMenu = -1;
+            if (op9 === 0){
+              if (!running && !finished && pauseMs === 0){
+                storyTxt = ti9; abLetterPos = null;
+                try { localStorage.setItem('salvationStoryTxt', storyTxt); } catch(err) {}
+              }
+            } else if (!running) openTextEdit(ti9);
+            haptic('medium');
+          }
           // open the dialed volume; idle also makes it the session's book
-          if (biS < 2){
+          else if (biS < 2){
             abLibVol = biS;
             if (!running && !finished && pauseMs === 0){
               storyVol = biS;
               try { localStorage.setItem('salvationStoryVol', storyVol); } catch(err) {}
             }
             abLib = 1;
+            haptic('medium');
+          } else if (biS < 5){
+            abTxtMenu = 0; abTxtFor = biS - 2;
             haptic('medium');
           }
         } else if (abLib === 1){
@@ -7172,12 +7281,13 @@ canvasAnim.addEventListener("click", (e) => {
         // library stays shut - only the tale and the letter
         if (abLog >= 0){ abLog = -1; }
         else if (running){
-          if (!U.duo) abStoryPage = 1 - abStoryPage;
+          abStoryPage = 1 - abStoryPage;
         }
         else if (abLib >= 2) abLib = 1;
         else if (abLib === 1 && abLibMenu >= 0) abLibMenu = -1;
         else if (abLib === 1 && abLibCarry >= 0) abLibCarry = -1;
         else if (abLib === 1) abLib = 0;
+        else if (abLib === 0 && abTxtMenu >= 0) abTxtMenu = -1;
         else if (abLib === 0){ abLib = -1; abStoryPage = 0; abLibCarry = -1; }
         else if (U.duo) abLib = 0;
         else if (abStoryPage === 0) abStoryPage = 1;
@@ -7274,6 +7384,36 @@ canvasAnim.addEventListener("click", (e) => {
     if (abDgm < 0 && abViz < 0){
       const D = U.dgm;
       if (abLib === 0){
+        if (abTxtMenu >= 0){
+          const S8 = D.scr, sc8 = U.sc;
+          const mw8 = Math.min(200*sc8, S8.w - 40*sc8), mh8 = 90*sc8;
+          const mx8 = S8.x + S8.w/2 - mw8/2, my8 = S8.y + S8.h/2 - mh8/2;
+          for (let i = 0; i < 2; i++){
+            const orow = { x: mx8 + 8*sc8, y: my8 + 30*sc8 + i*28*sc8,
+                           w: mw8 - 16*sc8, h: 24*sc8 };
+            if (!hit(orow)) continue;
+            const ti9 = abTxtFor;
+            abTxtMenu = -1;
+            if (i === 0){
+              if (!running && !finished && pauseMs === 0){
+                storyTxt = ti9; abLetterPos = null;
+                try { localStorage.setItem('salvationStoryTxt', storyTxt); } catch(err) {}
+              }
+            } else if (!running) openTextEdit(ti9);
+            haptic('medium');
+            return;
+          }
+          abTxtMenu = -1;
+          return;
+        }
+        const trows9 = abTxtRows(D.scr, U.sc);
+        for (let i = 0; i < 3; i++){
+          if (!hit(trows9[i])) continue;
+          abDgmWheel = [0, 2 + i];
+          abTxtMenu = 0; abTxtFor = i;
+          haptic('medium');
+          return;
+        }
         const rows = abVolRows(D.scr, U.sc);
         for (let i = 0; i < 2; i++){
           if (!hit(rows[i])) continue;
@@ -7500,6 +7640,18 @@ function openStoryEdit(idx, vol){
   frameEditLabel.focus();
   haptic('light');
 }
+function openTextEdit(i){
+  frameEditMode = 'ltext';
+  ltextIdx = i;
+  frameEditLabel.style.display = "block";
+  frameEditLabel.value = longName(i);
+  frameEditText.maxLength = 100000;
+  frameEditText.value = (longMeta[i] && longMeta[i].t) ||
+    (LONG_DEFS[i].body === null ? AB_LETTER : LONG_DEFS[i].body);
+  frameEdit.style.display = "block";
+  frameEditLabel.focus();
+  haptic('light');
+}
 let markT = 0;
 function openMarkEdit(){
   if (!sessCurrent()) return;
@@ -7514,14 +7666,23 @@ function openMarkEdit(){
   haptic('light');
 }
 function closeFrameEdit(save){
-  if (save && frameEditMode === 'mark'){
+  if (save && frameEditMode === 'ltext'){
+    const M9 = longMeta[ltextIdx] || (longMeta[ltextIdx] = {});
+    const lb = frameEditLabel.value.trim().slice(0, 14);
+    const tx = frameEditText.value;
+    if (lb && lb !== LONG_DEFS[ltextIdx].n) M9.l = lb; else delete M9.l;
+    const db = LONG_DEFS[ltextIdx].body === null ? AB_LETTER : LONG_DEFS[ltextIdx].body;
+    if (tx.trim() && tx !== db) M9.t = tx; else delete M9.t;
+    if (!M9.l && !M9.t) delete longMeta[ltextIdx];
+    longSave(); longRev++;
+  } else if (save && frameEditMode === 'mark'){
     const SM = sessCurrent();
     const txM = frameEditText.value.trim().replace(/\s+/g, " ");
     if (SM && txM){ SM.marks.push({ t: Math.round(markT), x: txM, s: markScore }); sessSave(); }
   } else if (save && frameEditMode === 'story' && storyEditIdx >= 0){
     const oi = storyVolOrder[storyEditVol][Math.min(storyEditIdx, 26)];
     const lb = frameEditLabel.value.trim().slice(0, 12);
-    const tx = frameEditText.value.trim().replace(/\s+/g, " ");
+    const tx = frameEditText.value.trim().replace(/[^\S\n]+/g, " ").replace(/ *\n */g, "\n");
     const M9 = storyVolMeta[storyEditVol][oi] || (storyVolMeta[storyEditVol][oi] = {});
     if (lb && lb !== STORY_PANELS[oi]) M9.l = lb; else delete M9.l;
     const dt9 = storyEditVol === 1 ? STORY_TEXTS2[oi] : STORY_TEXTS[oi];
@@ -7533,6 +7694,7 @@ function closeFrameEdit(save){
   }
   frameEdit.style.display = "none";
   feScore.style.display = "none";
+  frameEditText.maxLength = 140;
   frameEditIdx = -1; storyEditIdx = -1; frameEditMode = 'box';
 }
 /* ---------- MENU ---------- */
