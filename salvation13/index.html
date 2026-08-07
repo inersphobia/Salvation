@@ -1220,8 +1220,9 @@ function abacusWideUnits(){
                    w: 30*sc, h: 30*sc };
   const backBtn = { x: x0 + target - 86*sc, y: monTop + monH - 74*sc,
                     w: 30*sc, h: 30*sc };
-  const markBtn = { x: bayX - 29*sc, y: By0 + 26*sc, w: 58*sc, h: 22*sc };
-  const logBtn  = { x: bayX - 29*sc, y: By0 + Bh - 46*sc, w: 58*sc, h: 22*sc };
+  const bedA = A.cols[2] + cell*0.5 + 12*sc;   // MINUTES bed right edge
+  const markBtn = { x: x0 + target - 71*sc, y: Ay0 + 23*sc, w: 58*sc, h: 22*sc };
+  const logBtn  = { x: x0 + target - 71*sc, y: Ay0 + 82*sc, w: 58*sc, h: 22*sc };
   const edit = duo
     ? { x: duo.L.x + duo.L.w/2 - 28*sc, y: duo.L.y + duo.L.h - 26*sc,
         w: 56*sc, h: 18*sc }
@@ -1229,8 +1230,9 @@ function abacusWideUnits(){
         w: 56*sc, h: 18*sc };
   return { sc, x0, R, A, B, Cd, keys, bayX, faceR, monTop, monH, mon, mon2,
            dgm, dgmBtns, selBtn, backBtn, edit, duo, markBtn, logBtn,
-           ext: { x: extX, y: A.y0 + 90*sc,
-                  w: x0 + target - 13*sc - extX, h: 24*sc } };
+           bedA,
+           ext: { x: bedA + 10*sc, y: A.y0 + 88*sc,
+                  w: 58*sc, h: 22*sc } };
 }
 function wideScrew(c, x, y, sc){
   c.fillStyle = "#313947";
@@ -1398,7 +1400,7 @@ function drawAbacusWideStatic(){
   const mwL = [], frL = [];
   for (let i = 0; i < U.R.mw; i++) mwL.push(abacusLabel(i));
   for (let i = 0; i < U.R.fr; i++) frL.push(abacusLabel(U.R.mw + i));
-  unit(U.A, "MIN", "", mwL, U.A.cols[2] + U.A.cell*0.5 + 12*sc);
+  unit(U.A, "MIN", "", mwL, U.bedA);
   c.fillStyle = "#171c26";
   c.fillRect(viewW/2 - 66*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
   c.fillRect(viewW/2 + 38*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
@@ -1435,9 +1437,9 @@ function drawAbacusWideStatic(){
   // the bay: milestone sockets and their labels
   const MODE = ["27","54","81"];
   for (let k = 0; k < 3; k++){
-    const ly = U.A.y0 + 26*sc + k*26*sc;
+    const ly = U.A.y0 + 22*sc + k*24*sc;
     // a short rectangular LED window, hi-fi 1980s: dark until its block falls
-    const lw9 = 16*sc, lh9 = 8*sc, lx9 = U.bayX - 26*sc;
+    const lw9 = 16*sc, lh9 = 8*sc, lx9 = U.bedA + 10*sc;
     c.fillStyle = "#1a0705";
     c.beginPath(); c.roundRect(lx9, ly - lh9/2, lw9, lh9, 1.5); c.fill();
     c.strokeStyle = "rgba(0,0,0,0.75)"; c.lineWidth = 1;
@@ -1449,9 +1451,9 @@ function drawAbacusWideStatic(){
     // the figure, etched into the panel as before
     c.font = Math.round(8*sc) + "px monospace"; c.textAlign = "left";
     c.fillStyle = "rgba(0,0,0,0.55)";
-    c.fillText(MODE[k], U.bayX - 1*sc + 0.8, ly + 3*sc + 0.8);
+    c.fillText(MODE[k], lx9 + 22*sc + 0.8, ly + 3*sc + 0.8);
     c.fillStyle = "rgba(168,184,205,0.62)";
-    c.fillText(MODE[k], U.bayX - 1*sc, ly + 3*sc);
+    c.fillText(MODE[k], lx9 + 22*sc, ly + 3*sc);
   }
   // ---- atmosphere ----
   for (let i = 0; i < 3; i++){
@@ -1527,8 +1529,8 @@ function drawAbacusWideDots(t){
   // milestone lamps: one per completed 27
   for (let k = 0; k < 3; k++){
     if (eNow < (k + 1)*27*60) break;
-    const ly = U.A.y0 + 26*sc + k*26*sc;
-    const lw9 = 16*sc, lh9 = 8*sc, lx9 = U.bayX - 26*sc;
+    const ly = U.A.y0 + 22*sc + k*24*sc;
+    const lw9 = 16*sc, lh9 = 8*sc, lx9 = U.bedA + 10*sc;
     const g2 = ctx.createRadialGradient(lx9 + lw9/2, ly, 0, lx9 + lw9/2, ly, 22*sc);
     g2.addColorStop(0, "rgba(255,40,24,0.5)"); g2.addColorStop(1, "rgba(255,40,24,0)");
     ctx.fillStyle = g2;
@@ -1563,7 +1565,7 @@ function drawAbacusWideDots(t){
     // the tally: a black slit of glass, red digits, base three -
     // the dashboard clock of an old sedan keeping the count
     {
-      const dx = mb.x + 4*sc, dy = mb.y + mb.h + 6*sc, dw = mb.w - 8*sc, dh = 17*sc;
+      const dx = mb.x + 4*sc, dy = mb.y + mb.h + 10*sc, dw = mb.w - 8*sc, dh = 17*sc;
       ctx.fillStyle = "#040404";
       ctx.beginPath(); ctx.roundRect(dx, dy, dw, dh, 3); ctx.fill();
       ctx.strokeStyle = "rgba(255,255,255,0.10)"; ctx.lineWidth = 1;
