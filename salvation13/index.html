@@ -250,6 +250,14 @@
     resize: none;
   }
   #frameEdit .fe-row { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; }
+  #feScore { display: none; gap: 8px; margin-top: 8px; }
+  #feScore button {
+    flex: 1; min-height: 40px; padding: 6px 0;
+    font: bold 16px monospace;
+    background: #10141c; color: rgba(168,184,205,0.55);
+    border: 1px solid rgba(0,191,255,0.25); border-radius: 8px;
+  }
+  #feScore button.on { color: #ffc478; border-color: rgba(255,170,60,0.85); background: #241d10; }
   #frameEdit button {
     border: none; border-radius: 8px; padding: 10px 18px;
     font-weight: 600; color: white; min-height: 44px; cursor: pointer;
@@ -314,6 +322,9 @@
 <div id="frameEdit">
   <input id="frameEditLabel" maxlength="12" autocomplete="off" spellcheck="false" style="display:none">
   <textarea id="frameEditText" rows="3" maxlength="140"></textarea>
+  <div id="feScore">
+    <button type="button" data-s="-1">&#8722;</button><button type="button" data-s="0">0</button><button type="button" data-s="1">+</button>
+  </div>
   <div class="fe-row">
     <button id="feCancel">CANCEL</button>
     <button id="feSave">SAVE</button>
@@ -1486,10 +1497,26 @@ function drawAbacusWideDots(t){
     ctx.font = "bold " + Math.round(9*sc) + "px monospace"; ctx.textAlign = "center";
     ctx.fillStyle = canMark ? "rgba(30,22,8,0.9)" : "rgba(150,165,185,0.35)";
     ctx.fillText("MARK", mb.x + mb.w/2, mb.y + (prM ? 1.5*sc : 0) + mb.h/2 + 3*sc);
-    ctx.font = Math.round(9*sc) + "px monospace";
-    ctx.fillStyle = S9 && S9.marks.length ? "rgba(255,190,90,0.85)" : "rgba(168,184,205,0.4)";
-    ctx.fillText(S9 ? S9.marks.length + (S9.marks.length === 1 ? " mark" : " marks") : "· · ·",
-                 mb.x + mb.w/2, mb.y + mb.h + 16*sc);
+    // the tally: a black slit of glass, red digits, base three -
+    // the dashboard clock of an old sedan keeping the count
+    {
+      const dx = mb.x + 4*sc, dy = mb.y + mb.h + 6*sc, dw = mb.w - 8*sc, dh = 17*sc;
+      ctx.fillStyle = "#040404";
+      ctx.beginPath(); ctx.roundRect(dx, dy, dw, dh, 3); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.10)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(dx, dy, dw, dh, 3); ctx.stroke();
+      ctx.font = "bold " + Math.round(11*sc) + "px monospace"; ctx.textAlign = "center";
+      if (S9){
+        const t3 = Math.min(26, S9.marks.length).toString(3).padStart(3, "0");
+        ctx.shadowColor = "rgba(255,40,30,0.9)"; ctx.shadowBlur = 6*sc;
+        ctx.fillStyle = "#ff3b30";
+        ctx.fillText(t3.split("").join("\u2009"), dx + dw/2, dy + dh/2 + 4*sc);
+        ctx.shadowBlur = 0;
+      } else {
+        ctx.fillStyle = "rgba(255,59,48,0.14)";
+        ctx.fillText("0\u20090\u20090", dx + dw/2, dy + dh/2 + 4*sc);
+      }
+    }
     const lb2b = U.logBtn;
     const logOn = abLog >= 0;
     const kgL = ctx.createLinearGradient(0, lb2b.y, 0, lb2b.y + lb2b.h);
@@ -1737,15 +1764,19 @@ function drawAbacusWideDots(t){
         }
         ctx.font = Math.round(9.5*sc) + "px monospace";
         ctx.fillStyle = i === abLogSel ? "rgba(235,240,250,0.95)" : "rgba(224,232,250,0.7)";
+        const net9 = s9.marks.reduce((a9, m9) => a9 + (m9.s || 0), 0);
         ctx.fillText(sessWhen(s9.at) + " · " + s9.dur + "m · " +
                      s9.marks.length + (s9.marks.length === 1 ? " mark" : " marks") +
+                     (net9 ? " · " + (net9 > 0 ? "+" + net9 : "\u2212" + (-net9)) : "") +
                      (s9.done ? " · FIN" : ""), S.x + 14*sc, ry);
       }
     } else {
       const s9 = sessLog[abLog - 1];
       if (s9){
-        ctx.fillText(sessWhen(s9.at) + " · " + s9.dur + "m" + (s9.done ? " · FIN" : ""),
-                     S.x + 12*sc, S.y + 18*sc);
+        const netH = s9.marks.reduce((a9, m9) => a9 + (m9.s || 0), 0);
+        ctx.fillText(sessWhen(s9.at) + " · " + s9.dur + "m" +
+                     (netH ? " · " + (netH > 0 ? "+" + netH : "\u2212" + (-netH)) : "") +
+                     (s9.done ? " · FIN" : ""), S.x + 12*sc, S.y + 18*sc);
         ctx.font = Math.round(9.5*sc) + "px monospace";
         if (!s9.marks.length){
           ctx.fillStyle = "rgba(168,184,205,0.6)";
@@ -1757,6 +1788,9 @@ function drawAbacusWideDots(t){
           const mk = s9.marks[i];
           ctx.fillStyle = "rgba(255,170,60,0.85)";
           ctx.fillText(ternMark(mk.t), S.x + 12*sc, ry);
+          ctx.fillStyle = mk.s > 0 ? "rgba(120,220,140,0.9)"
+                        : mk.s < 0 ? "rgba(255,90,80,0.9)" : "rgba(168,184,205,0.4)";
+          ctx.fillText(mk.s > 0 ? "+" : mk.s < 0 ? "\u2212" : "\u00b7", S.x + 72*sc, ry);
           ctx.fillStyle = "rgba(224,232,250,0.85)";
           const words = (mk.x || "·").split(" ");
           let ln9 = "";
@@ -7301,6 +7335,14 @@ canvasAnim.addEventListener("pointercancel", () => { clearTimeout(framePressTime
 const frameEdit = document.getElementById('frameEdit');
 const frameEditText = document.getElementById('frameEditText');
 const frameEditLabel = document.getElementById('frameEditLabel');
+const feScore = document.getElementById('feScore');
+let markScore = 0;
+function feScoreSync(){
+  for (const b of feScore.children)
+    b.classList.toggle('on', Number(b.dataset.s) === markScore);
+}
+for (const b of feScore.children)
+  b.addEventListener('click', () => { markScore = Number(b.dataset.s); feScoreSync(); });
 frameEditLabel.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowDown' || e.key === 'Enter'){ e.preventDefault(); frameEditText.focus(); }
 });
@@ -7343,6 +7385,8 @@ function openMarkEdit(){
   markT = (running ? performance.now() - startMs : pauseMs)/1000;
   frameEditLabel.style.display = "none";
   frameEditText.value = "";
+  markScore = 0; feScoreSync();
+  feScore.style.display = "flex";
   frameEdit.style.display = "block";
   frameEditText.focus();
   haptic('light');
@@ -7351,7 +7395,7 @@ function closeFrameEdit(save){
   if (save && frameEditMode === 'mark'){
     const SM = sessCurrent();
     const txM = frameEditText.value.trim().replace(/\s+/g, " ");
-    if (SM && txM){ SM.marks.push({ t: Math.round(markT), x: txM }); sessSave(); }
+    if (SM && txM){ SM.marks.push({ t: Math.round(markT), x: txM, s: markScore }); sessSave(); }
   } else if (save && frameEditMode === 'story' && storyEditIdx >= 0){
     const oi = storyVolOrder[storyEditVol][Math.min(storyEditIdx, 26)];
     const lb = frameEditLabel.value.trim().slice(0, 12);
@@ -7366,6 +7410,7 @@ function closeFrameEdit(save){
     setFrameBoxText(frameEditF, frameEditIdx, frameEditText.value, true);
   }
   frameEdit.style.display = "none";
+  feScore.style.display = "none";
   frameEditIdx = -1; storyEditIdx = -1; frameEditMode = 'box';
 }
 /* ---------- MENU ---------- */
