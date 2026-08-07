@@ -1187,12 +1187,12 @@ function abacusWideUnits(){
   dgm.w2u = { x: px5, y: dgm.pan.y + 172*pu, w: pw5, h: 36*pu };
   dgm.w2  = { x: px5, y: dgm.pan.y + 212*pu, w: pw5, h: 72*pu };
   dgm.w2d = { x: px5, y: dgm.pan.y + 288*pu, w: pw5, h: 36*pu };
-  const dcx = x0 + 62*sc, dcy = monTop + monH - 49*sc;
+  const dcx = x0 + 72*sc, dcy = monTop + monH - 49*sc;
   dgm.dpad = {
-    up:    { x: dcx - 15*sc, y: dcy - 24*sc, w: 30*sc, h: 24*sc },
-    down:  { x: dcx - 15*sc, y: dcy,         w: 30*sc, h: 24*sc },
-    left:  { x: dcx - 45*sc, y: dcy - 12*sc, w: 30*sc, h: 24*sc },
-    right: { x: dcx + 15*sc, y: dcy - 12*sc, w: 30*sc, h: 24*sc }
+    up:    { x: dcx - 20*sc, y: dcy - 30*sc, w: 40*sc, h: 30*sc },
+    down:  { x: dcx - 20*sc, y: dcy,         w: 40*sc, h: 30*sc },
+    left:  { x: dcx - 60*sc, y: dcy - 15*sc, w: 40*sc, h: 30*sc },
+    right: { x: dcx + 20*sc, y: dcy - 15*sc, w: 40*sc, h: 30*sc }
   };
   // on wide glass the tube splits: a square bay left (scene or box),
   // the working surface right (letter or chart)
@@ -1204,13 +1204,15 @@ function abacusWideUnits(){
                  w: dgm.scr.w - lw - 14*sc, h: dgm.scr.h } };
   }
   const ventEnd = x0 + 128*sc, knobStart = x0 + target - 92*sc;
-  const dbw = 50*sc, dbh = 26*sc, dbg = 7*sc;
+  const dbw = 30*sc, dbh = 30*sc, dbg = 10*sc;
   const dbx = (ventEnd + knobStart)/2 - (3*dbw + 2*dbg)/2;
   const dgmBtns = [];
   for (let i = 0; i < 3; i++)
-    dgmBtns.push({ x: dbx + i*(dbw + dbg), y: monTop + monH - 52*sc, w: dbw, h: dbh });
-  const selBtn = { x: x0 + target - 84*sc, y: monTop + monH - 52*sc,
-                   w: 68*sc, h: dbh };
+    dgmBtns.push({ x: dbx + i*(dbw + dbg), y: monTop + monH - 54*sc, w: dbw, h: dbh });
+  const selBtn = { x: x0 + target - 58*sc, y: monTop + monH - 52*sc,
+                   w: 42*sc, h: 26*sc };
+  const backBtn = { x: x0 + target - 112*sc, y: monTop + monH - 52*sc,
+                    w: 46*sc, h: 26*sc };
   const markBtn = { x: bayX - 29*sc, y: By0 + 26*sc, w: 58*sc, h: 22*sc };
   const logBtn  = { x: bayX - 29*sc, y: By0 + Bh - 46*sc, w: 58*sc, h: 22*sc };
   const edit = duo
@@ -1219,7 +1221,7 @@ function abacusWideUnits(){
     : { x: mon.x + mon.w/2 - 28*sc, y: mon.y + mon.h - 26*sc,
         w: 56*sc, h: 18*sc };
   return { sc, x0, R, A, B, Cd, keys, bayX, faceR, monTop, monH, mon, mon2,
-           dgm, dgmBtns, selBtn, edit, duo, markBtn, logBtn,
+           dgm, dgmBtns, selBtn, backBtn, edit, duo, markBtn, logBtn,
            ext: { x: extX, y: A.y0 + 106*sc,
                   w: x0 + target - 13*sc - extX, h: 26*sc } };
 }
@@ -1282,15 +1284,41 @@ function drawAbacusWideStatic(){
     c.beginPath(); c.roundRect(U.x0 + 4, My0 + 4, U.A.w - 8, Mh - 8, 7); c.stroke();
     wideScrew(c, U.x0 + 10*sc, My0 + 10*sc, sc); wideScrew(c, U.x0 + U.A.w - 10*sc, My0 + 10*sc, sc);
     wideScrew(c, U.x0 + 10*sc, My0 + Mh - 10*sc, sc); wideScrew(c, U.x0 + U.A.w - 10*sc, My0 + Mh - 10*sc, sc);
+    {
+      const ring = U.duo ? ["STORY", "LIBRARY", "SESSIONS", "DIAGRAM", "VISUALS"]
+                         : ["STORY", "LETTER", "LIBRARY", "SESSIONS", "DIAGRAM", "VISUALS"];
+      const cur = abDgm >= 0 ? "DIAGRAM"
+                : abViz >= 0 ? "VISUALS"
+                : abLib >= 0 ? "LIBRARY"
+                : abLog >= 0 ? "SESSIONS"
+                : (!U.duo && abStoryPage) ? "LETTER" : "STORY";
+      const ci = Math.max(0, ring.indexOf(cur));
+      const prv = ring[(ci + ring.length - 1) % ring.length];
+      const nxt = ring[(ci + 1) % ring.length];
+      const rx = U.x0 + 12*sc, rh = 17*sc, ry = My0 + 5*sc;
+      const rw = Math.min(260*sc, U.A.w - 180*sc);
+      c.fillStyle = "#040404";
+      c.beginPath(); c.roundRect(rx, ry, rw, rh, 3); c.fill();
+      c.strokeStyle = "rgba(255,255,255,0.10)"; c.lineWidth = 1;
+      c.beginPath(); c.roundRect(rx, ry, rw, rh, 3); c.stroke();
+      c.strokeStyle = "rgba(255,255,255,0.07)";
+      c.beginPath();
+      c.moveTo(rx + rw/3, ry + 2*sc); c.lineTo(rx + rw/3, ry + rh - 2*sc);
+      c.moveTo(rx + rw*2/3, ry + 2*sc); c.lineTo(rx + rw*2/3, ry + rh - 2*sc);
+      c.stroke();
+      c.textAlign = "center";
+      c.font = Math.round(7.5*sc) + "px monospace";
+      c.fillStyle = "rgba(255,59,48,0.38)";
+      c.fillText(prv, rx + rw/6, ry + rh/2 + 2.8*sc);
+      c.fillText(nxt, rx + rw*5/6, ry + rh/2 + 2.8*sc);
+      c.font = "bold " + Math.round(8.5*sc) + "px monospace";
+      c.shadowColor = "rgba(255,40,30,0.85)"; c.shadowBlur = 5*sc;
+      c.fillStyle = "#ff3b30";
+      c.fillText(cur, rx + rw/2, ry + rh/2 + 3*sc);
+      c.shadowBlur = 0;
+    }
     c.font = Math.round(10*sc) + "px monospace"; c.textAlign = "left";
     c.fillStyle = "rgba(168,184,205,0.8)";
-    c.fillText(U.duo && abDgm >= 0 ? "B O X"
-             : abDgm >= 0 ? "D I A G R A M"
-             : abViz >= 0 ? "V I S U A L S"
-             : abLib >= 0 ? "L I B R A R Y"
-             : abLog >= 0 ? "S E S S I O N S"
-             : (!U.duo && abStoryPage) ? "L E T T E R" : "S T O R Y",
-               U.x0 + 16*sc, My0 + 18*sc);
     if (U.duo && abViz < 0 && abLib < 0 && abLog < 0){
       c.fillStyle = "rgba(168,184,205,0.7)";
       c.fillText(abDgm >= 0 ? "D I A G R A M" : "T E X T",
@@ -2026,7 +2054,24 @@ function drawAbacusWideDots(t){
     ctx.beginPath(); ctx.roundRect(b.x, b.y + py, b.w, b.h, 4); ctx.stroke();
     ctx.font = "bold " + Math.round(9.5*sc) + "px monospace"; ctx.textAlign = "center";
     ctx.fillStyle = armed ? "rgba(30,22,8,0.9)" : "rgba(168,184,205,0.52)";
-    ctx.fillText("SELECT", b.x + b.w/2, b.y + py + b.h/2 + 3.5*sc);
+    ctx.fillText("SEL", b.x + b.w/2, b.y + py + b.h/2 + 3.5*sc);
+    // BACK: one step up, whatever the deck - the left arrow's twin
+    const bb = U.backBtn;
+    const canBack = abDgm >= 0 || abViz >= 0 || abLib >= 0 || abLog >= 0 ||
+                    (!U.duo && abStoryPage === 1);
+    const prB = abDgmFlash.k === "back" && performance.now() < abDgmFlash.until;
+    const pyB = prB ? 1.5*sc : 0;
+    const kgB = ctx.createLinearGradient(0, bb.y + pyB, 0, bb.y + bb.h + pyB);
+    kgB.addColorStop(0, canBack ? "#3d4759" : "#2a3140");
+    kgB.addColorStop(1, canBack ? "#1e242f" : "#161b23");
+    ctx.fillStyle = kgB;
+    ctx.beginPath(); ctx.roundRect(bb.x, bb.y + pyB, bb.w, bb.h, 4); ctx.fill();
+    ctx.strokeStyle = canBack ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(bb.x, bb.y + pyB, bb.w, bb.h, 4); ctx.stroke();
+    ctx.font = "bold " + Math.round(9*sc) + "px monospace";
+    ctx.fillStyle = canBack ? "rgba(200,215,235,0.9)" : "rgba(150,165,185,0.4)";
+    ctx.fillText("BACK", bb.x + bb.w/2, bb.y + pyB + bb.h/2 + 3.5*sc);
   }
   // the channel row: STORY / DIAGRAM / VISUALS - the lit key names
   // what's up; DIAGRAM pressed again flips FRAME <-> GOAL
@@ -2035,12 +2080,7 @@ function drawAbacusWideDots(t){
       const b = U.dgmBtns[i];
       const on = i === 0 ? (abDgm < 0 && abViz < 0)
                : i === 1 ? abDgm >= 0 : abViz >= 0;
-      const lb2 = i === 0
-                ? ((abDgm < 0 && abViz < 0 && abLib >= 0) ? "LIBRARY"
-                   : (abDgm < 0 && abViz < 0 && abLog >= 0) ? "LOG"
-                   : (!U.duo && abDgm < 0 && abViz < 0 && abStoryPage) ? "LETTER" : "STORY")
-                : i === 1 ? (abDgm < 0 ? "DIAGRAM" : abDgm ? "GOAL" : "FRAME")
-                : (abViz > 0 ? VIZ_DEFS[abViz - 1].n : "VISUALS");
+      const lb2 = ["S", "D", "V"][i];
       const kg2 = ctx.createLinearGradient(0, b.y, 0, b.y + b.h);
       kg2.addColorStop(0, on ? "#4c4430" : "#333d4e");
       kg2.addColorStop(1, on ? "#2f2718" : "#1c222d");
@@ -2049,9 +2089,9 @@ function drawAbacusWideDots(t){
       ctx.strokeStyle = on ? "rgba(255,170,60,0.7)" : "rgba(255,255,255,0.22)";
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.stroke();
-      ctx.font = Math.round(9.5*sc) + "px monospace"; ctx.textAlign = "center";
+      ctx.font = "bold " + Math.round(13*sc) + "px monospace"; ctx.textAlign = "center";
       ctx.fillStyle = on ? "rgba(255,190,90,0.95)" : "rgba(168,184,205,0.8)";
-      ctx.fillText(lb2, b.x + b.w/2, b.y + b.h/2 + 3.5*sc);
+      ctx.fillText(lb2, b.x + b.w/2, b.y + b.h/2 + 4.5*sc);
     }
   }
   // the DIAGRAM DECK: flowchart in phosphor, wheels, SEL, the stick
@@ -2271,7 +2311,7 @@ function drawAbacusWideDots(t){
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(r9.x, r9.y + py9, r9.w, r9.h, 5); ctx.stroke();
       ctx.fillStyle = "rgba(228,236,246,0.92)";
-      const mx9 = r9.x + r9.w/2, my9 = r9.y + py9 + r9.h/2, aw9 = 5.5*sc, ah9 = 3.8*sc;
+      const mx9 = r9.x + r9.w/2, my9 = r9.y + py9 + r9.h/2, aw9 = 7*sc, ah9 = 4.8*sc;
       ctx.beginPath();
       ctx.moveTo(mx9 + ax*ah9, my9 + ay*ah9);
       ctx.lineTo(mx9 - ax*ah9 + ay*aw9, my9 - ay*ah9 + ax*aw9);
@@ -6908,9 +6948,11 @@ canvasAnim.addEventListener("click", (e) => {
     const hit = (b) => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h;
     // the D-pad: one click, one move, context deciding what a move is
     {
-      const DP = U.dgm.dpad;
-      const dstep = hit(DP.up) ? [0, -1] : hit(DP.down) ? [0, 1]
-                  : hit(DP.left) ? [-1, 0] : hit(DP.right) ? [1, 0] : null;
+      const DP = U.dgm.dpad, sl9 = 7*U.sc;
+      const hitP = (b) => cx >= b.x - sl9 && cx <= b.x + b.w + sl9 &&
+                          cy >= b.y - sl9 && cy <= b.y + b.h + sl9;
+      const dstep = hitP(DP.up) ? [0, -1] : hitP(DP.down) ? [0, 1]
+                  : hitP(DP.left) ? [-1, 0] : hitP(DP.right) ? [1, 0] : null;
       if (dstep){
         const ax = dstep[0], ay = dstep[1];
         abDgmFlash = { k: "d" + (ay < 0 ? "up" : ay > 0 ? "down" : ax < 0 ? "left" : "right"),
@@ -6940,7 +6982,7 @@ canvasAnim.addEventListener("click", (e) => {
               abDgmWheel = [Math.floor(tv/26), tv % 26];
             }
           } else if (abLib === 0){
-            if (ax < 0){ abLib = -1; abStoryPage = 0; }    // left backs out
+            if (ax < 0){ abLib = -1; abStoryPage = 0; needsStaticRedraw = true; }
             else {
               const nv = Math.max(0, Math.min(1, abDgmWheel[1] + (ax || ay)));
               abDgmWheel = [0, nv];
@@ -6980,6 +7022,27 @@ canvasAnim.addEventListener("click", (e) => {
         }
         return;
       }
+    }
+    // BACK: the left arrow's twin - one step up, whatever the deck
+    if (hit(U.backBtn)){
+      abDgmFlash = { k: "back", until: performance.now() + 140 };
+      if (abDgm >= 0) abDgm = -1;
+      else if (abViz > 0) abViz = 0;
+      else if (abViz === 0) abViz = -1;
+      else if (abLib >= 0){
+        if (abLibMenu >= 0) abLibMenu = -1;
+        else if (abLibCarry >= 0) abLibCarry = -1;
+        else if (abLib >= 2) abLib = 1;
+        else if (abLib === 1) abLib = 0;
+        else { abLib = -1; abStoryPage = 0; }
+      }
+      else if (abLog >= 1){ abLog = 0; abLogScroll = 0; }
+      else if (abLog === 0) abLog = -1;
+      else if (!U.duo && abStoryPage === 1) abStoryPage = 0;
+      abDgmGlide = null;
+      needsStaticRedraw = true;
+      haptic('light');
+      return;
     }
     // SELECT: the brass confirm key
     const storyGate9 = abDgm < 0 && abViz < 0 && abLib < 0 && abLog < 0 && !running;
@@ -7036,6 +7099,7 @@ canvasAnim.addEventListener("click", (e) => {
       } else if (abDgm < 0 && !running){
         // at rest on the tale: SELECT steps into the library
         abLib = 0;
+        needsStaticRedraw = true;
         haptic('medium');
       } else if (abDgm >= 0 && biS < FRAME_DEFS[abDgm].boxes.length){
         // in DIAGRAM the wheels already select - SELECT opens the editor
