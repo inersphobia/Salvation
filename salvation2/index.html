@@ -1145,7 +1145,7 @@ function abacusWideUnits(){
   const gapY = 5*sc, padTop = 13*sc, padBot = 13*sc;
   const Bh = 2*cell + gapY + padTop + padBot;
   const Ah = Bh;
-  const Ch = 92*sc;
+  const Ch = 70*sc;
   const Cy0 = viewH - 6*sc - Ch;
   const By0 = Cy0 - Bh + 3;
   const Ay0 = By0 - Ah + 3;
@@ -1164,7 +1164,7 @@ function abacusWideUnits(){
   const kw = (target - 48*sc - 24*sc)/3, kh = 42*sc;
   const keys = [];
   for (let i = 0; i < 3; i++)
-    keys.push({ x: x0 + 24*sc + i*(kw + 12*sc), y: Cd.y0 + 34*sc, w: kw, h: kh });
+    keys.push({ x: x0 + 24*sc + i*(kw + 12*sc), y: Cd.y0 + 14*sc, w: kw, h: kh });
   const tallForm = target < 700;
   const monH = Math.max(170*sc, Math.min((tallForm ? 720 : 480)*sc,
                                           Ay0 - (tallForm ? 18 : 44)));
@@ -1194,12 +1194,17 @@ function abacusWideUnits(){
   dgm.w2u = { x: px5, y: dgm.pan.y + 172*pu, w: pw5, h: 36*pu };
   dgm.w2  = { x: px5, y: dgm.pan.y + 212*pu, w: pw5, h: 72*pu };
   dgm.w2d = { x: px5, y: dgm.pan.y + 288*pu, w: pw5, h: 36*pu };
-  const dcx = x0 + 87*sc, dcy = monTop + monH - 59*sc;
+  // up/down: two squares filling the foot, glass to bezel, a hair shy
+  // of each; left/right: the same squares beside them, their vertical
+  // center riding the up/down junction
+  const gBot = (monTop + 30*sc) + monIH;
+  const dS = ((monTop + monH - 4*sc) - (gBot + 9*sc))/2;
+  const dX0 = x0 + 16*sc, dJy = gBot + 9*sc + dS;
   dgm.dpad = {
-    up:    { x: dcx - 23*sc, y: dcy - 36*sc, w: 46*sc, h: 36*sc },
-    down:  { x: dcx - 23*sc, y: dcy,         w: 46*sc, h: 36*sc },
-    left:  { x: dcx - 73*sc, y: dcy - 18*sc, w: 46*sc, h: 36*sc },
-    right: { x: dcx + 27*sc, y: dcy - 18*sc, w: 46*sc, h: 36*sc }
+    up:    { x: dX0 + dS + 20*sc, y: gBot + 9*sc, w: dS, h: dS },
+    down:  { x: dX0 + dS + 20*sc, y: dJy,         w: dS, h: dS },
+    left:  { x: dX0,              y: dJy - dS/2, w: dS, h: dS },
+    right: { x: dX0 + 2*dS + 40*sc, y: dJy - dS/2, w: dS, h: dS }
   };
   // on wide glass the tube splits: a square bay left (scene or box),
   // the working surface right (letter or chart)
@@ -1210,16 +1215,15 @@ function abacusWideUnits(){
             R: { x: dgm.scr.x + lw + 14*sc, y: dgm.scr.y,
                  w: dgm.scr.w - lw - 14*sc, h: dgm.scr.h } };
   }
-  const ventEnd = x0 + 178*sc, knobStart = x0 + target - 92*sc;
-  const dbw = 30*sc, dbh = 30*sc, dbg = 10*sc;
-  const dbx = (ventEnd + knobStart)/2 - (3*dbw + 2*dbg)/2;
-  const dgmBtns = [];
-  for (let i = 0; i < 3; i++)
-    dgmBtns.push({ x: dbx + i*(dbw + dbg), y: monTop + monH - 74*sc, w: dbw, h: dbh });
-  const selBtn = { x: x0 + target - 46*sc, y: monTop + monH - 74*sc,
-                   w: 30*sc, h: 30*sc };
-  const backBtn = { x: x0 + target - 86*sc, y: monTop + monH - 74*sc,
-                    w: 30*sc, h: 30*sc };
+  const navEnd = dX0 + 3*dS + 40*sc;
+  const rGap = ((x0 + target - 16*sc - navEnd) - 60*sc)/3;
+  const sdX = navEnd + rGap, xvX = sdX + 30*sc + rGap;
+  const dgmBtns = [
+    { x: sdX, y: dJy - 34*sc, w: 30*sc, h: 30*sc },
+    { x: sdX, y: dJy + 4*sc,  w: 30*sc, h: 30*sc }
+  ];
+  const backBtn = { x: xvX, y: dJy - 34*sc, w: 30*sc, h: 30*sc };
+  const selBtn  = { x: xvX, y: dJy + 4*sc,  w: 30*sc, h: 30*sc };
   const bedA = A.cols[2] + cell*0.5 + 12*sc;   // MINUTES bed right edge
   const markBtn = { x: x0 + target - 71*sc, y: Ay0 + 23*sc, w: 58*sc, h: 22*sc };
   const logBtn  = { x: x0 + target - 71*sc, y: Ay0 + 82*sc, w: 58*sc, h: 22*sc };
@@ -1423,12 +1427,6 @@ function drawAbacusWideStatic(){
     c.beginPath(); c.roundRect(D.x0 + 4, D.y0 + 4, D.w - 8, D.h - 8, 7); c.stroke();
     wideScrew(c, D.x0 + 10*sc, D.y0 + 10*sc, sc); wideScrew(c, D.x0 + D.w - 10*sc, D.y0 + 10*sc, sc);
     wideScrew(c, D.x0 + 10*sc, D.y0 + D.h - 10*sc, sc); wideScrew(c, D.x0 + D.w - 10*sc, D.y0 + D.h - 10*sc, sc);
-    c.font = Math.round(10*sc) + "px monospace"; c.textAlign = "left";
-    c.fillStyle = "rgba(168,184,205,0.75)";
-    c.fillText("C O N T R O L", D.x0 + 16*sc, D.y0 + 18*sc);
-    c.textAlign = "right";
-    c.fillStyle = "rgba(168,184,205,0.46)";
-    c.fillText("REG · C", D.x0 + D.w - 16*sc, D.y0 + 18*sc);
     const dsh = c.createRadialGradient(D.x0 + D.w/2, D.y0 + D.h + 6, 10, D.x0 + D.w/2, D.y0 + D.h + 6, D.w*0.6);
     dsh.addColorStop(0, "rgba(0,0,0,0.5)"); dsh.addColorStop(1, "rgba(0,0,0,0)");
     c.fillStyle = dsh;
@@ -1723,8 +1721,14 @@ function drawAbacusWideDots(t){
   };
   if (abDgm < 0 && abViz < 0 && abLib < 0 && abLog < 0){
     const MS9 = U.duo ? U.duo.L : U.dgm.scr;
-    abMonStory(MS9);
-    if (!U.duo && abStoryPage === 0){
+    if (storyViz > 0 && storyViz <= VIZ_DEFS.length){
+      abVizFrame(MS9, t, sc, storyViz);
+      ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
+      ctx.fillStyle = "rgba(255,170,60,0.5)";
+      ctx.fillText("VIZ · " + VIZ_DEFS[storyViz - 1].n + " · ON THE CLOCK",
+                   MS9.x + 8*sc, MS9.y + MS9.h - 8*sc);
+    } else abMonStory(MS9);
+    if (!U.duo && abStoryPage === 0 && storyViz === 0){
       const idle3 = !running && !finished && pauseMs === 0;
       const mi9 = finished ? 26 : idle3 ? 0 : Math.floor(t/60) % 27;
       abSceneWords(MS9, mi9, storyVol);
@@ -1939,6 +1943,37 @@ function drawAbacusWideDots(t){
           ctx.textAlign = "left";
         }
       });
+      // the feeds: one shelf row that opens the coded list
+      {
+        const vrow = abVizShelfRow(S, sc);
+        ctx.font = "bold " + Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
+        ctx.fillStyle = "rgba(255,170,60,0.55)";
+        ctx.fillText("V I S U A L S", vrow.x, vrow.y - 8*sc);
+        const dialed = bi3 === 5, active = storyViz > 0;
+        if (active){
+          ctx.fillStyle = "rgba(255,170,60,0.1)";
+          ctx.beginPath(); ctx.roundRect(vrow.x, vrow.y, vrow.w, vrow.h, 5); ctx.fill();
+        }
+        ctx.strokeStyle = dialed ? "rgba(255,170,60,0.7)" : "rgba(160,190,235,0.18)";
+        ctx.lineWidth = dialed ? 1.6 : 1;
+        if (dialed) ctx.setLineDash([4, 5]);
+        ctx.beginPath(); ctx.roundRect(vrow.x, vrow.y, vrow.w, vrow.h, 5); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.font = "bold " + Math.round(10*sc) + "px monospace";
+        ctx.fillStyle = "rgba(255,170,60,0.85)";
+        ctx.fillText(abDgmCode(0, 5), vrow.x + 10*sc, vrow.y + vrow.h/2 + 3.5*sc);
+        ctx.font = "bold " + Math.round(11*sc) + "px monospace";
+        ctx.fillStyle = active ? "rgba(255,190,90,0.95)" : "rgba(224,232,250,0.8)";
+        ctx.fillText("THE FEEDS · " + VIZ_DEFS.length, vrow.x + 44*sc, vrow.y + vrow.h/2 + 3.5*sc);
+        if (active){
+          ctx.textAlign = "right";
+          ctx.font = Math.round(8*sc) + "px monospace";
+          ctx.fillStyle = "rgba(255,170,60,0.75)";
+          ctx.fillText(VIZ_DEFS[storyViz - 1].n + " · ON THE CLOCK",
+                       vrow.x + vrow.w - 8*sc, vrow.y + vrow.h/2 + 3*sc);
+          ctx.textAlign = "left";
+        }
+      }
       if (abTxtMenu >= 0){
         const mw8 = Math.min(200*sc, S.w - 40*sc), mh8 = 90*sc;
         const mx8 = S.x + S.w/2 - mw8/2, my8 = S.y + S.h/2 - mh8/2;
@@ -2172,11 +2207,10 @@ function drawAbacusWideDots(t){
   // the channel row: STORY / DIAGRAM / VISUALS - the lit key names
   // what's up; DIAGRAM pressed again flips FRAME <-> GOAL
   {
-    for (let i = 0; i < 3; i++){
+    for (let i = 0; i < 2; i++){
       const b = U.dgmBtns[i];
-      const on = i === 0 ? (abDgm < 0 && abViz < 0)
-               : i === 1 ? abDgm >= 0 : abViz >= 0;
-      const lb2 = ["S", "D", "V"][i];
+      const on = i === 0 ? abDgm < 0 : abDgm >= 0;
+      const lb2 = ["S", "D"][i];
       const kg2 = ctx.createLinearGradient(0, b.y, 0, b.y + b.h);
       kg2.addColorStop(0, on ? "#4c4430" : "#333d4e");
       kg2.addColorStop(1, on ? "#2f2718" : "#1c222d");
@@ -2294,6 +2328,27 @@ function drawAbacusWideDots(t){
         ctx.fillStyle = on ? "rgba(235,240,250,0.95)" : "rgba(224,232,250,0.7)";
         ctx.fillText(VIZ_DEFS[i].n, r.x + 34*sc, r.y + r.h/2 + 3*sc);
       });
+      if (abVizMenu >= 0){
+        const mw8 = Math.min(200*sc, S.w - 40*sc), mh8 = 90*sc;
+        const mx8 = S.x + S.w/2 - mw8/2, my8 = S.y + S.h/2 - mh8/2;
+        ctx.fillStyle = "rgba(4,6,16,0.94)";
+        ctx.beginPath(); ctx.roundRect(mx8, my8, mw8, mh8, 8); ctx.fill();
+        ctx.strokeStyle = "rgba(255,170,60,0.5)"; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.roundRect(mx8, my8, mw8, mh8, 8); ctx.stroke();
+        ctx.font = "bold " + Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
+        ctx.fillStyle = "rgba(255,190,90,0.9)";
+        ctx.fillText(VIZ_DEFS[abVizFor].n, mx8 + 12*sc, my8 + 17*sc);
+        ["VIEW", "PUT ON THE CLOCK"].forEach((op, i) => {
+          const oy = my8 + 30*sc + i*28*sc;
+          if (i === abVizMenu){
+            ctx.fillStyle = "rgba(255,170,60,0.16)";
+            ctx.beginPath(); ctx.roundRect(mx8 + 8*sc, oy, mw8 - 16*sc, 24*sc, 5); ctx.fill();
+          }
+          ctx.fillStyle = i === abVizMenu ? "rgba(255,190,90,0.95)" : "rgba(224,232,250,0.7)";
+          ctx.font = Math.round(10*sc) + "px monospace";
+          ctx.fillText(op, mx8 + 16*sc, oy + 16*sc);
+        });
+      }
       ctx.drawImage(abMonEOverlay(S.w, S.h), S.x, S.y);
       ctx.restore();
       ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
@@ -2364,20 +2419,6 @@ function drawAbacusWideDots(t){
     arrow(D.w1u, "w0u", true); arrow(D.w1d, "w0d", false);
     arrow(D.w2u, "w1u", true); arrow(D.w2d, "w1d", false);
     const DP = D.dpad;
-    // the plinth: one mounting plate, the cross recessed into it
-    {
-      const px0 = DP.left.x - 4*sc, py0 = DP.up.y - 4*sc;
-      const pw0 = (DP.right.x + DP.right.w + 4*sc) - px0;
-      const ph0 = (DP.down.y + DP.down.h + 4*sc) - py0;
-      const pg9 = ctx.createLinearGradient(0, py0, 0, py0 + ph0);
-      pg9.addColorStop(0, "#0d1119"); pg9.addColorStop(1, "#161b26");
-      ctx.fillStyle = pg9;
-      ctx.beginPath(); ctx.roundRect(px0, py0, pw0, ph0, 12); ctx.fill();
-      ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.roundRect(px0, py0, pw0, ph0, 12); ctx.stroke();
-      ctx.strokeStyle = "rgba(160,190,235,0.12)"; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.roundRect(px0 - 1, py0 - 1, pw0 + 2, ph0 + 2, 13); ctx.stroke();
-    }
     const dkeys = [["up", DP.up, 0, -1], ["down", DP.down, 0, 1],
                    ["left", DP.left, -1, 0], ["right", DP.right, 1, 0]];
     for (const dk of dkeys){
@@ -2407,7 +2448,7 @@ function drawAbacusWideDots(t){
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(r9.x, r9.y + py9, r9.w, r9.h, 5); ctx.stroke();
       ctx.fillStyle = "rgba(228,236,246,0.92)";
-      const mx9 = r9.x + r9.w/2, my9 = r9.y + py9 + r9.h/2, aw9 = 7*sc, ah9 = 4.8*sc;
+      const mx9 = r9.x + r9.w/2, my9 = r9.y + py9 + r9.h/2, aw9 = 9*sc, ah9 = 6*sc;
       ctx.beginPath();
       ctx.moveTo(mx9 + ax*ah9, my9 + ay*ah9);
       ctx.lineTo(mx9 - ax*ah9 + ay*aw9, my9 - ay*ah9 + ax*aw9);
@@ -2534,6 +2575,9 @@ let longRev = 0, ltextIdx = 0;
 let storyTxt = 0;
 try { storyTxt = Math.min(2, Math.max(0, parseInt(localStorage.getItem('salvationStoryTxt') || "0", 10) || 0)); } catch(e) {}
 let abTxtMenu = -1, abTxtFor = 0;
+let storyViz = 0;   // 0 the scenes; n = feed n on the clock
+try { storyViz = Math.max(0, parseInt(localStorage.getItem('salvationStoryViz') || "0", 10) || 0); } catch(e) {}
+let abVizFromLib = false, abVizMenu = -1, abVizFor = 0;
 function longName(i){ return (longMeta[i] && longMeta[i].l) || LONG_DEFS[i].n; }
 function longBody(i){
   if (longMeta[i] && longMeta[i].t) return longMeta[i].t;
@@ -2758,9 +2802,10 @@ function abVizStatic(vi){
   return abVizStaticCv;
 }
 let abVizLive = { cv: null, key: "", at: 0 };
-function abVizFrame(S, t, sc){
-  const def = VIZ_DEFS[abViz - 1];
-  const key = abViz + ":" + Math.round(S.w) + ":" + Math.round(S.h);
+function abVizFrame(S, t, sc, vi){
+  vi = vi || abViz;
+  const def = VIZ_DEFS[vi - 1];
+  const key = vi + ":" + Math.round(S.w) + ":" + Math.round(S.h);
   const nw3 = performance.now();
   const dpr3 = Math.min(window.devicePixelRatio || 1, 2);
   ctx.save();
@@ -2773,7 +2818,7 @@ function abVizFrame(S, t, sc){
   } else {
     const k = Math.min(S.w/AB_VIZ_W, S.h/AB_VIZ_H);
     const tx = S.x + (S.w - AB_VIZ_W*k)/2, ty = S.y + (S.h - AB_VIZ_H*k)/2;
-    ctx.drawImage(abVizStatic(abViz - 1), tx, ty, AB_VIZ_W*k, AB_VIZ_H*k);
+    ctx.drawImage(abVizStatic(vi - 1), tx, ty, AB_VIZ_W*k, AB_VIZ_H*k);
     ctx.save();
     ctx.translate(tx, ty); ctx.scale(k, k);
     ctx.beginPath(); ctx.rect(0, 0, AB_VIZ_W, AB_VIZ_H); ctx.clip();
@@ -2826,6 +2871,10 @@ function abTxtRows(S, sc){
   return [0, 1, 2].map(i => ({
     x: S.x + 14*sc, y: top + i*(32*sc), w: S.w - 28*sc, h: 26*sc
   }));
+}
+function abVizShelfRow(S, sc){
+  const tr = abTxtRows(S, sc);
+  return { x: S.x + 14*sc, y: tr[2].y + tr[2].h + 26*sc, w: S.w - 28*sc, h: 26*sc };
 }
 function abVolRows(S, sc){
   const rh = Math.min(52*sc, (S.h - 40*sc)/2);
@@ -7076,13 +7125,17 @@ function draw(now){
 // nearest arrow by dominant axis; holding a direction repeats it
 function abDpadResolve(U, cx, cy){
   const DP = U.dgm.dpad, sl9 = 8*U.sc;
-  const px9 = DP.left.x - 4*U.sc - sl9, py9 = DP.up.y - 4*U.sc - sl9;
-  const pw9 = (DP.right.x + DP.right.w + 4*U.sc + sl9) - px9;
-  const ph9 = (DP.down.y + DP.down.h + 4*U.sc + sl9) - py9;
-  if (cx < px9 || cx > px9 + pw9 || cy < py9 || cy > py9 + ph9) return null;
-  const ddx = cx - (DP.up.x + DP.up.w/2), ddy = cy - (DP.left.y + DP.left.h/2);
-  if (Math.abs(ddx) > Math.abs(ddy)) return [Math.sign(ddx) || 1, 0];
-  return [0, Math.sign(ddy) || 1];
+  const x0b = DP.left.x - sl9, x1b = DP.right.x + DP.right.w + sl9;
+  const y0b = DP.up.y - sl9, y1b = DP.down.y + DP.down.h + sl9;
+  if (cx < x0b || cx > x1b || cy < y0b || cy > y1b) return null;
+  let best = null, bd = Infinity;
+  for (const k of [[DP.up, 0, -1], [DP.down, 0, 1],
+                   [DP.left, -1, 0], [DP.right, 1, 0]]){
+    const dx9 = cx - (k[0].x + k[0].w/2), dy9 = cy - (k[0].y + k[0].h/2);
+    const d9 = dx9*dx9 + dy9*dy9;
+    if (d9 < bd){ bd = d9; best = [k[1], k[2]]; }
+  }
+  return best;
 }
 function abDpadFire(U, ax, ay){
   abDgmFlash = { k: "d" + (ay < 0 ? "up" : ay > 0 ? "down" : ax < 0 ? "left" : "right"),
@@ -7093,11 +7146,19 @@ function abDpadFire(U, ax, ay){
     camD.x += ax*120; camD.y += ay*120;
     abDgmGlide = null;
   } else if (abViz >= 0){
-    const colsV = U.dgm.scr.w >= 420 ? 3 : 2;
-    let nv = abDgmWheel[0]*26 + abDgmWheel[1] + ax + ay*colsV;
-    nv = Math.max(0, Math.min(VIZ_DEFS.length - 1, nv));
-    abDgmWheel = [Math.floor(nv/26), nv % 26];
-    if (abViz > 0) abViz = nv + 1;
+    if (abVizMenu >= 0){
+      if (ax < 0) abVizMenu = -1;
+      else abVizMenu = Math.max(0, Math.min(1, abVizMenu + ay));
+    } else if (ax < 0){
+      if (abViz > 0) abViz = 0;
+      else { abViz = -1; if (abVizFromLib) abLib = 0; needsStaticRedraw = true; }
+    } else {
+      const colsV = U.dgm.scr.w >= 420 ? 3 : 2;
+      let nv = abDgmWheel[0]*26 + abDgmWheel[1] + ax + ay*colsV;
+      nv = Math.max(0, Math.min(VIZ_DEFS.length - 1, nv));
+      abDgmWheel = [Math.floor(nv/26), nv % 26];
+      if (abViz > 0) abViz = nv + 1;
+    }
   } else if (abLib >= 0){
     if (abLibMenu >= 0){
       if (ax < 0) abLibMenu = -1;                    // left backs out
@@ -7118,7 +7179,7 @@ function abDpadFire(U, ax, ay){
       }
       else if (ax < 0){ abLib = -1; abStoryPage = 0; needsStaticRedraw = true; }
       else {
-        const nv = Math.max(0, Math.min(4, abDgmWheel[1] + (ax || ay)));
+        const nv = Math.max(0, Math.min(5, abDgmWheel[1] + (ax || ay)));
         abDgmWheel = [0, nv];
       }
     } else if (abLib === 1){
@@ -7197,7 +7258,10 @@ canvasAnim.addEventListener("click", (e) => {
       abDgmFlash = { k: "back", until: performance.now() + 140 };
       if (abDgm >= 0) abDgm = -1;
       else if (abViz > 0) abViz = 0;
-      else if (abViz === 0) abViz = -1;
+      else if (abViz === 0){
+        if (abVizMenu >= 0) abVizMenu = -1;
+        else { abViz = -1; if (abVizFromLib) abLib = 0; }
+      }
       else if (abLib >= 0){
         if (abLibMenu >= 0) abLibMenu = -1;
         else if (abTxtMenu >= 0) abTxtMenu = -1;
@@ -7226,9 +7290,29 @@ canvasAnim.addEventListener("click", (e) => {
           abLogScroll = 0;
           haptic('medium');
         } else haptic('light');
-      } else if (abViz >= 0){
-        // commit the dialed feed (the VISUALS key brings the list back)
-        if (biS < VIZ_DEFS.length){ abViz = biS + 1; haptic('medium'); }
+      } else if (abViz === 0){
+        if (abVizMenu >= 0){
+          // the chooser: look now, or program the session
+          const vi9 = abVizFor, op9 = abVizMenu;
+          abVizMenu = -1;
+          if (op9 === 0){ abViz = vi9 + 1; }
+          else {
+            if (!running && !finished && pauseMs === 0){
+              storyViz = vi9 + 1;
+              try { localStorage.setItem('salvationStoryViz', storyViz); } catch(err) {}
+            }
+            abViz = -1;
+            if (abVizFromLib) abLib = 0;
+            needsStaticRedraw = true;
+          }
+          haptic('medium');
+        } else if (biS < VIZ_DEFS.length){
+          abVizMenu = 0; abVizFor = biS;
+          haptic('medium');
+        }
+      } else if (abViz > 0){
+        // watching a feed: SELECT steps back to the list
+        abViz = 0; haptic('light');
       } else if (abLib >= 0){
         if (abLibCarry >= 0 && abLibMenu < 0){
           // carrying: SELECT sets the image down, wherever you stand
@@ -7252,12 +7336,18 @@ canvasAnim.addEventListener("click", (e) => {
             abLibVol = biS;
             if (!running && !finished && pauseMs === 0){
               storyVol = biS;
-              try { localStorage.setItem('salvationStoryVol', storyVol); } catch(err) {}
+              storyViz = 0;
+              try { localStorage.setItem('salvationStoryVol', storyVol);
+                    localStorage.setItem('salvationStoryViz', "0"); } catch(err) {}
             }
             abLib = 1;
             haptic('medium');
           } else if (biS < 5){
             abTxtMenu = 0; abTxtFor = biS - 2;
+            haptic('medium');
+          } else if (biS === 5){
+            abViz = 0; abVizFromLib = true;
+            needsStaticRedraw = true;
             haptic('medium');
           }
         } else if (abLib === 1){
@@ -7325,13 +7415,6 @@ canvasAnim.addEventListener("click", (e) => {
       haptic('light');
       return;
     }
-    if (hit(U.dgmBtns[2])){
-      abDgm = -1; abViz = 0; abLog = -1;
-      abDgmGlide = null;
-      needsStaticRedraw = true;
-      haptic('light');
-      return;
-    }
     if (abViz >= 0){
       const D = U.dgm;
       const vBump = (wi, dir) => {
@@ -7347,11 +7430,37 @@ canvasAnim.addEventListener("click", (e) => {
       if (hit(D.w1)){ vBump(0, cy < D.w1.y + D.w1.h/2 ? -1 : 1); return; }
       if (hit(D.w2)){ vBump(1, cy < D.w2.y + D.w2.h/2 ? -1 : 1); return; }
       if (abViz === 0){
+        if (abVizMenu >= 0){
+          const S8 = D.scr, sc8 = U.sc;
+          const mw8 = Math.min(200*sc8, S8.w - 40*sc8), mh8 = 90*sc8;
+          const mx8 = S8.x + S8.w/2 - mw8/2, my8 = S8.y + S8.h/2 - mh8/2;
+          for (let i = 0; i < 2; i++){
+            const orow = { x: mx8 + 8*sc8, y: my8 + 30*sc8 + i*28*sc8,
+                           w: mw8 - 16*sc8, h: 24*sc8 };
+            if (!hit(orow)) continue;
+            const vi9 = abVizFor;
+            abVizMenu = -1;
+            if (i === 0){ abViz = vi9 + 1; }
+            else {
+              if (!running && !finished && pauseMs === 0){
+                storyViz = vi9 + 1;
+                try { localStorage.setItem('salvationStoryViz', storyViz); } catch(err) {}
+              }
+              abViz = -1;
+              if (abVizFromLib) abLib = 0;
+              needsStaticRedraw = true;
+            }
+            haptic('medium');
+            return;
+          }
+          abVizMenu = -1;
+          return;
+        }
         const rows = abVizRows(D.scr, U.sc);
         for (let i = 0; i < rows.length; i++){
           if (!hit(rows[i])) continue;
           abDgmWheel = [Math.floor(i/26), i % 26];
-          abViz = i + 1;
+          abVizMenu = 0; abVizFor = i;
           haptic('medium');
           return;
         }
@@ -7432,6 +7541,14 @@ canvasAnim.addEventListener("click", (e) => {
           haptic('medium');
           return;
         }
+        const vrow9 = abVizShelfRow(D.scr, U.sc);
+        if (hit(vrow9)){
+          abDgmWheel = [0, 5];
+          abViz = 0; abVizFromLib = true;
+          needsStaticRedraw = true;
+          haptic('medium');
+          return;
+        }
         const rows = abVolRows(D.scr, U.sc);
         for (let i = 0; i < 2; i++){
           if (!hit(rows[i])) continue;
@@ -7439,7 +7556,9 @@ canvasAnim.addEventListener("click", (e) => {
           abLibVol = i;
           if (!running && !finished && pauseMs === 0){
             storyVol = i;
-            try { localStorage.setItem('salvationStoryVol', storyVol); } catch(err) {}
+            storyViz = 0;
+            try { localStorage.setItem('salvationStoryVol', storyVol);
+                  localStorage.setItem('salvationStoryViz', "0"); } catch(err) {}
           }
           abLib = 1;
           haptic('medium');
