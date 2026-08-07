@@ -1,4 +1,4 @@
-const CACHE_NAME = 'salvation14-v5';
+const CACHE_NAME = 'salvation14-v6';
 const urlsToCache = [
   './',
   './index.html',
@@ -38,8 +38,15 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request);
+        // Return cached version or fetch from network; triptych plates
+        // cache themselves the first time they are seen
+        return response || fetch(event.request).then(resp => {
+          if (/TRIPTYCH\d+\.png$/.test(event.request.url) && resp.ok){
+            const cl = resp.clone();
+            caches.open(CACHE_NAME).then(c => c.put(event.request, cl));
+          }
+          return resp;
+        });
       })
   );
 });

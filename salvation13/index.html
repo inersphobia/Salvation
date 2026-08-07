@@ -1134,14 +1134,14 @@ function abacusWideUnits(){
   };
   // the wheel column owns the whole side panel now - the stick moved
   // to the bezel foot; pu compresses on unusually short glass
-  const pu = sc*Math.min(1, dgm.pan.h/(284*sc));
+  const pu = sc*Math.min(1, dgm.pan.h/(334*sc));
   const px5 = dgm.pan.x + 5*sc, pw5 = panW - 10*sc;
-  dgm.w1u = { x: px5, y: dgm.pan.y + 16*pu,  w: pw5, h: 26*pu };
-  dgm.w1  = { x: px5, y: dgm.pan.y + 46*pu,  w: pw5, h: 66*pu };
-  dgm.w1d = { x: px5, y: dgm.pan.y + 116*pu, w: pw5, h: 26*pu };
-  dgm.w2u = { x: px5, y: dgm.pan.y + 156*pu, w: pw5, h: 26*pu };
-  dgm.w2  = { x: px5, y: dgm.pan.y + 186*pu, w: pw5, h: 66*pu };
-  dgm.w2d = { x: px5, y: dgm.pan.y + 256*pu, w: pw5, h: 26*pu };
+  dgm.w1u = { x: px5, y: dgm.pan.y + 12*pu,  w: pw5, h: 36*pu };
+  dgm.w1  = { x: px5, y: dgm.pan.y + 52*pu,  w: pw5, h: 72*pu };
+  dgm.w1d = { x: px5, y: dgm.pan.y + 128*pu, w: pw5, h: 36*pu };
+  dgm.w2u = { x: px5, y: dgm.pan.y + 172*pu, w: pw5, h: 36*pu };
+  dgm.w2  = { x: px5, y: dgm.pan.y + 212*pu, w: pw5, h: 72*pu };
+  dgm.w2d = { x: px5, y: dgm.pan.y + 288*pu, w: pw5, h: 36*pu };
   dgm.joy = { cx: x0 + 52*sc, cy: monTop + monH - 39*sc, r: 20*sc };
   // on wide glass the tube splits: a square bay left (scene or box),
   // the working surface right (letter or chart)
@@ -1580,6 +1580,19 @@ function drawAbacusWideDots(t){
       ctx.save();
       ctx.beginPath(); ctx.roundRect(S.x, S.y, S.w, S.h, 14); ctx.clip();
       ctx.fillStyle = "#0b0e42"; ctx.fillRect(S.x, S.y, S.w, S.h);
+      // the volume header: tap to swap books while the clock is idle
+      const vb = abLibVolBtn(S, sc);
+      const idle9 = !running && !finished && pauseMs === 0;
+      ctx.font = "bold " + Math.round(10*sc) + "px monospace"; ctx.textAlign = "left";
+      ctx.fillStyle = storyVol === 0 ? "rgba(255,190,90,0.95)" : "rgba(168,184,205,0.5)";
+      ctx.fillText("VOL·I  THE SHEET", vb.x + 4*sc, vb.y + 14*sc);
+      ctx.textAlign = "right";
+      ctx.fillStyle = storyVol === 1 ? "rgba(255,190,90,0.95)" : "rgba(168,184,205,0.5)";
+      ctx.fillText("VOL·II  THE TRIPTYCHS", vb.x + vb.w - 4*sc, vb.y + 14*sc);
+      ctx.textAlign = "center";
+      ctx.font = Math.round(8*sc) + "px monospace";
+      ctx.fillStyle = idle9 ? "rgba(168,184,205,0.45)" : "rgba(255,149,0,0.55)";
+      ctx.fillText(idle9 ? "· tap to swap ·" : "· locked ·", vb.x + vb.w/2, vb.y + 14*sc);
       const rows = abLibRows(S, sc);
       const bi3 = abDgmWheel[0]*26 + abDgmWheel[1];
       rows.forEach((r, i) => {
@@ -1622,7 +1635,7 @@ function drawAbacusWideDots(t){
         ctx.fillRect(Mi.x, Mi.y + Mi.h - 64*sc, Mi.w, 64*sc);
         ctx.font = Math.round(10*sc) + "px monospace"; ctx.textAlign = "left";
         ctx.fillStyle = "rgba(255,196,120,0.9)";
-        const words9 = STORY_TEXTS[li].split(" ");
+        const words9 = storyTextFor(li).split(" ");
         let ln9 = "", yy9 = Mi.y + Mi.h - 48*sc;
         const maxc = Math.floor((Mi.w - 24*sc)/(6*sc));
         for (const w9 of words9){
@@ -1648,7 +1661,7 @@ function drawAbacusWideDots(t){
         ctx.fillText("SCN " + STORY_PANELS[li], E9.x + 20*sc, E9.y + 34*sc);
         ctx.font = Math.round(12*sc) + "px monospace";
         ctx.fillStyle = "rgba(255,196,120,0.9)";
-        const words8 = STORY_TEXTS[li].split(" ");
+        const words8 = storyTextFor(li).split(" ");
         let ln8 = "", yy8 = E9.y + 62*sc;
         const maxc8 = Math.floor((E9.w - 40*sc)/(7.2*sc));
         for (const w8 of words8){
@@ -1668,7 +1681,9 @@ function drawAbacusWideDots(t){
   // in VISUALS; in DIAGRAM it opens the dialed box's text editor
   {
     const b = U.selBtn;
-    const armed = abDgm >= 0 || abViz >= 0 || abLib >= 0;
+    const storyPausedEdit = abDgm < 0 && abViz < 0 && abLib < 0 &&
+      storyVol === 1 && !running && pauseMs > 0 && !finished;
+    const armed = abDgm >= 0 || abViz >= 0 || abLib >= 0 || storyPausedEdit;
     const pr = abDgmFlash.k === "sel" && performance.now() < abDgmFlash.until;
     const py = pr ? 1.5*sc : 0;
     const kg3 = ctx.createLinearGradient(0, b.y + py, 0, b.y + b.h + py);
@@ -1876,7 +1891,7 @@ function drawAbacusWideDots(t){
       ctx.strokeStyle = "rgba(255,255,255,0.18)";
       ctx.beginPath(); ctx.roundRect(ar.x, ar.y, ar.w, ar.h, 3); ctx.stroke();
       ctx.fillStyle = "rgba(200,215,235,0.88)";
-      const mx = ar.x + ar.w/2, my = ar.y + ar.h/2, aw = 5.5*sc, ah = 3.6*sc;
+      const mx = ar.x + ar.w/2, my = ar.y + ar.h/2, aw = 7*sc, ah = 4.6*sc;
       ctx.beginPath();
       if (up2){ ctx.moveTo(mx, my - ah); ctx.lineTo(mx - aw, my + ah); ctx.lineTo(mx + aw, my + ah); }
       else { ctx.moveTo(mx, my + ah); ctx.lineTo(mx - aw, my - ah); ctx.lineTo(mx + aw, my - ah); }
@@ -2256,12 +2271,15 @@ function abLibRows(S, sc){
   const cols = S.w >= 420 ? 4 : 3;
   const n = STORY_PANELS.length - 1;   // 27 plates; the bell repeats
   const rws = Math.ceil(n/cols);
-  const cw2 = (S.w - 14*sc)/cols, rh3 = Math.min(24*sc, (S.h - 30*sc)/rws);
+  const cw2 = (S.w - 14*sc)/cols, rh3 = Math.min(24*sc, (S.h - 56*sc)/rws);
   return Array.from({ length: n }, (_, i) => ({
     x: S.x + 7*sc + (i % cols)*cw2,
-    y: S.y + 10*sc + Math.floor(i/cols)*rh3,
+    y: S.y + 34*sc + Math.floor(i/cols)*rh3,
     w: cw2 - 5*sc, h: rh3 - 3*sc
   }));
+}
+function abLibVolBtn(S, sc){
+  return { x: S.x + 8*sc, y: S.y + 8*sc, w: S.w - 16*sc, h: 20*sc };
 }
 function abVizRows(S, sc){
   const cols = S.w >= 420 ? 3 : 2;
@@ -3181,8 +3199,38 @@ let abLib = -1;   // the LIBRARY: -1 live story, 0 the index, n>0 plate n-1
 // repainted plates: index -> standalone file, overriding the sheet
 const STORY_ALT = { 2: "epimetheus.png" };
 const storyAltImgs = {};
+// VOL-II: nine triptychs, three plates each, cut on fixed thirds.
+// Chosen while the clock is idle; latched the moment START is pressed.
+let storyVol = 0;
+try { storyVol = +(localStorage.getItem('salvationStoryVol') || 0) ? 1 : 0; } catch(e) {}
+const storyVol2Imgs = {};
+let storyVol2Texts = {};
+try { storyVol2Texts = JSON.parse(localStorage.getItem('salvationStory2Texts') || "{}"); } catch(e) {}
+function vol2Img(fi){
+  if (!storyVol2Imgs[fi]){
+    const pfx = (/\/salvation\d/i.test(location.pathname) ? "../" : "./");
+    const im = new Image();
+    im.onload = () => { im._ready = true; };
+    im.onerror = () => {};
+    im.src = pfx + "TRIPTYCH" + (fi + 1) + ".png";
+    storyVol2Imgs[fi] = im;
+  }
+  return storyVol2Imgs[fi];
+}
+function storyTextFor(idx){
+  const i2 = Math.min(idx, STORY_TEXTS.length - 1);
+  if (storyVol === 1 && storyVol2Texts[i2]) return storyVol2Texts[i2];
+  return STORY_TEXTS[i2];
+}
 function storySrc(idx){
   const i2 = Math.min(idx, STORY_CROPS.length - 1);
+  if (storyVol === 1){
+    const im = vol2Img(Math.floor(i2/3));
+    if (im._ready){
+      const pi = i2 % 3;
+      return { img: im, r: [pi/3 + 0.012, 0.02, 1/3 - 0.024, 0.96], k: "v" };
+    }
+  }
   const alt = storyAltImgs[i2];
   if (alt && alt._ready)
     return { img: alt, r: [0.015, 0.015, 0.97, 0.97], k: "a" };
@@ -6401,7 +6449,9 @@ canvasAnim.addEventListener("click", (e) => {
     const hit = (b) => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h;
     if (performance.now() < abDgmJoyUntil) return;
     // SELECT: the brass confirm key
-    if ((abDgm >= 0 || abViz >= 0 || abLib >= 0) && hit(U.selBtn)){
+    const storyEdit9 = abDgm < 0 && abViz < 0 && abLib < 0 &&
+      storyVol === 1 && !running && pauseMs > 0 && !finished;
+    if ((abDgm >= 0 || abViz >= 0 || abLib >= 0 || storyEdit9) && hit(U.selBtn)){
       abDgmFlash = { k: "sel", until: performance.now() + 140 };
       const biS = abDgmWheel[0]*26 + abDgmWheel[1];
       if (abViz >= 0){
@@ -6410,7 +6460,10 @@ canvasAnim.addEventListener("click", (e) => {
       } else if (abLib >= 0){
         // commit the dialed plate (the STORY key returns to the tale)
         if (biS < STORY_PANELS.length - 1){ abLib = biS + 1; haptic('medium'); }
-      } else if (biS < FRAME_DEFS[abDgm].boxes.length){
+      } else if (abDgm < 0 && storyVol === 1 && !running && pauseMs > 0 && !finished){
+        // time is stopped: SELECT opens the editor on this minute's text
+        openStoryEdit(Math.floor(pauseMs/60000) % 27);
+      } else if (abDgm >= 0 && biS < FRAME_DEFS[abDgm].boxes.length){
         // in DIAGRAM the wheels already select - SELECT opens the editor
         openFrameEdit(abDgm, biS);
       }
@@ -6516,6 +6569,17 @@ canvasAnim.addEventListener("click", (e) => {
     }
     if (abDgm < 0 && abViz < 0){
       const D = U.dgm;
+      if (abLib === 0){
+        const vb = abLibVolBtn(D.scr, U.sc);
+        if (hit(vb)){
+          if (!running && !finished && pauseMs === 0){
+            storyVol = 1 - storyVol;
+            try { localStorage.setItem('salvationStoryVol', storyVol); } catch(err) {}
+            haptic('medium');
+          } else haptic('light');
+          return;
+        }
+      }
       const hBump = (wi, dir) => {
         abDgmWheel[wi] = (abDgmWheel[wi] + (dir < 0 ? 25 : 1)) % 26;
         abDgmFlash = { k: "w" + wi + (dir < 0 ? "u" : "d"),
@@ -6652,7 +6716,9 @@ let frameEditIdx = -1;
 let frameEditF = 0;
 let framePressTimer = null;
 
+let frameEditMode = 'box', storyEditIdx = -1;
 function openFrameEdit(fi, idx){
+  frameEditMode = 'box';
   frameEditF = fi;
   frameEditIdx = idx;
   frameEditText.value = FRAME_DEFS[fi].boxes[idx].lines.join(" ");
@@ -6660,10 +6726,25 @@ function openFrameEdit(fi, idx){
   frameEditText.focus();
   haptic('light');
 }
+function openStoryEdit(idx){
+  frameEditMode = 'story';
+  storyEditIdx = idx;
+  frameEditText.value = storyTextFor(idx);
+  frameEdit.style.display = "block";
+  frameEditText.focus();
+  haptic('light');
+}
 function closeFrameEdit(save){
-  if (save && frameEditIdx >= 0) setFrameBoxText(frameEditF, frameEditIdx, frameEditText.value, true);
+  if (save && frameEditMode === 'story' && storyEditIdx >= 0){
+    const tx = frameEditText.value.trim().replace(/\s+/g, " ");
+    if (tx) storyVol2Texts[storyEditIdx] = tx;
+    else delete storyVol2Texts[storyEditIdx];
+    try { localStorage.setItem('salvationStory2Texts', JSON.stringify(storyVol2Texts)); } catch(err) {}
+  } else if (save && frameEditMode === 'box' && frameEditIdx >= 0){
+    setFrameBoxText(frameEditF, frameEditIdx, frameEditText.value, true);
+  }
   frameEdit.style.display = "none";
-  frameEditIdx = -1;
+  frameEditIdx = -1; storyEditIdx = -1; frameEditMode = 'box';
 }
 /* ---------- MENU ---------- */
 const menuEl = document.getElementById('menu');
