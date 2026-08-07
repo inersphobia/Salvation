@@ -876,6 +876,14 @@ function startClock(){
     try { localStorage.setItem('salvationSaga', String(sagaIdx)); } catch(e) {}
     triadKey = ""; needsStaticRedraw = true;
   }
+  if (abLib === 0 && !running && pauseMs === 0){
+    // starting straight from the shelf: the dialed book is the choice
+    const b9 = abDgmWheel[0]*26 + abDgmWheel[1];
+    if (b9 < 2 && b9 !== storyVol){
+      storyVol = b9;
+      try { localStorage.setItem('salvationStoryVol', storyVol); } catch(e) {}
+    }
+  }
   abLib = -1; abLibCarry = -1;   // the tale resumes; library shut
   startMs = pauseMs>0 ? performance.now()-pauseMs : performance.now();
   startWall = Date.now() - (performance.now() - startMs);
@@ -1096,7 +1104,7 @@ function abacusWideUnits(){
   const padX = 22*sc, gap0 = 11*sc;
   const slots = Math.max(R.mw, R.fr) + 1;   // columns + the bay
   const cell = Math.min((target - 2*padX - (slots - 1)*gap0)/slots, 48*sc);
-  const gap = Math.min(26*sc,
+  const gap = Math.min(cell*1.05,
     (target - 2*padX - slots*cell)/Math.max(1, slots - 1));
   const slotX = i => (i < slots - 1)
     ? x0 + padX + i*(cell + gap) + cell/2
@@ -1123,9 +1131,11 @@ function abacusWideUnits(){
   const mkAt = (y0v, n, h) => {
     const cols = [];
     for (let i = 0; i < n; i++) cols.push(slotX(i));
+    // the rows sit dead-center in the recessed bed (top 25, bottom 9)
+    const yOff = 25*sc + ((h - 34*sc) - (2*cell + gapY))/2;
     return { x0, y0: y0v, w: target, h, cols, cell,
-             yTop: y0v + padTop + cell/2 - 8*sc,
-             yBot: y0v + padTop + cell + gapY + cell/2 - 8*sc };
+             yTop: y0v + yOff + cell/2,
+             yBot: y0v + yOff + cell + gapY + cell/2 };
   };
   const A = mkAt(Ay0, R.mw, Ah);
   const B = mkAt(By0, R.fr, Bh);
@@ -1161,12 +1171,12 @@ function abacusWideUnits(){
   dgm.w2u = { x: px5, y: dgm.pan.y + 172*pu, w: pw5, h: 36*pu };
   dgm.w2  = { x: px5, y: dgm.pan.y + 212*pu, w: pw5, h: 72*pu };
   dgm.w2d = { x: px5, y: dgm.pan.y + 288*pu, w: pw5, h: 36*pu };
-  const dcx = x0 + 64*sc, dcy = monTop + monH - 52*sc;
+  const dcx = x0 + 62*sc, dcy = monTop + monH - 46*sc;
   dgm.dpad = {
-    up:    { x: dcx - 15*sc, y: dcy - 36*sc, w: 30*sc, h: 24*sc },
-    down:  { x: dcx - 15*sc, y: dcy + 12*sc, w: 30*sc, h: 24*sc },
-    left:  { x: dcx - 45*sc, y: dcy - 12*sc, w: 30*sc, h: 24*sc },
-    right: { x: dcx + 15*sc, y: dcy - 12*sc, w: 30*sc, h: 24*sc }
+    up:    { x: dcx - 14*sc, y: dcy - 33*sc, w: 28*sc, h: 22*sc },
+    down:  { x: dcx - 14*sc, y: dcy + 11*sc, w: 28*sc, h: 22*sc },
+    left:  { x: dcx - 42*sc, y: dcy - 11*sc, w: 28*sc, h: 22*sc },
+    right: { x: dcx + 14*sc, y: dcy - 11*sc, w: 28*sc, h: 22*sc }
   };
   // on wide glass the tube splits: a square bay left (scene or box),
   // the working surface right (letter or chart)
@@ -1313,9 +1323,6 @@ function drawAbacusWideStatic(){
         c.fillStyle = "rgba(140,170,220,0.05)";
         c.beginPath(); c.ellipse(u.cols[i] - u.cell*0.1, yy - u.cell*0.14, u.cell*0.16, u.cell*0.08, -0.5, 0, 2*Math.PI); c.fill();
       }
-      c.font = Math.round(9*sc) + "px monospace"; c.textAlign = "left";
-      c.fillStyle = "rgba(168,184,205,0.7)";
-      c.fillText(labels[i], u.cols[i] + u.cell*0.55, (u.yTop + u.yBot)/2 + 3*sc);
     }
     const sh = c.createLinearGradient(u.x0, u.y0, u.x0 + u.w*0.9, u.y0 + u.h);
     sh.addColorStop(0, "rgba(190,215,255,0.1)"); sh.addColorStop(0.35, "rgba(255,255,255,0)");
@@ -1701,6 +1708,11 @@ function drawAbacusWideDots(t){
         ctx.fillStyle = "rgba(255,149,0,0.6)";
         ctx.fillText("the session's book is locked · browsing stays open",
                      S.x + S.w/2, S.y + S.h - 24*sc);
+      } else if (bi3 < 2 && bi3 !== storyVol){
+        ctx.textAlign = "center"; ctx.font = Math.round(8.5*sc) + "px monospace";
+        ctx.fillStyle = "rgba(255,190,90,0.85)";
+        ctx.fillText("SELECT — or START — puts " + STORY_VOLS[bi3][0] + " on the clock",
+                     S.x + S.w/2, S.y + S.h - 24*sc);
       }
       ctx.drawImage(abMonEOverlay(S.w, S.h), S.x, S.y);
       ctx.restore();
@@ -2070,9 +2082,9 @@ function drawAbacusWideDots(t){
     const DP = D.dpad;
     // the plinth: one mounting plate, the cross recessed into it
     {
-      const px0 = DP.left.x - 5*sc, py0 = DP.up.y - 5*sc;
-      const pw0 = (DP.right.x + DP.right.w + 5*sc) - px0;
-      const ph0 = (DP.down.y + DP.down.h + 5*sc) - py0;
+      const px0 = DP.left.x - 4*sc, py0 = DP.up.y - 4*sc;
+      const pw0 = (DP.right.x + DP.right.w + 4*sc) - px0;
+      const ph0 = (DP.down.y + DP.down.h + 4*sc) - py0;
       const pg9 = ctx.createLinearGradient(0, py0, 0, py0 + ph0);
       pg9.addColorStop(0, "#0d1119"); pg9.addColorStop(1, "#161b26");
       ctx.fillStyle = pg9;
@@ -2082,6 +2094,9 @@ function drawAbacusWideDots(t){
       ctx.strokeStyle = "rgba(160,190,235,0.12)"; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(px0 - 1, py0 - 1, pw0 + 2, ph0 + 2, 13); ctx.stroke();
     }
+    // the plus is one solid body: fill the heart between the keys
+    ctx.fillStyle = "#2a3240";
+    ctx.fillRect(DP.up.x, DP.left.y, DP.up.w, DP.left.h);
     const dkeys = [["up", DP.up, 0, -1], ["down", DP.down, 0, 1],
                    ["left", DP.left, -1, 0], ["right", DP.right, 1, 0]];
     for (const dk of dkeys){
@@ -2094,7 +2109,7 @@ function drawAbacusWideDots(t){
       else { kg9.addColorStop(0, "#414d63"); kg9.addColorStop(0.45, "#2a3240");
              kg9.addColorStop(1, "#171c25"); }
       ctx.fillStyle = kg9;
-      ctx.beginPath(); ctx.roundRect(r9.x, r9.y + py9, r9.w, r9.h, 5); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(r9.x, r9.y + py9, r9.w, r9.h, 4); ctx.fill();
       if (!pr9){
         const sh9 = ctx.createLinearGradient(0, r9.y, 0, r9.y + r9.h*0.55);
         sh9.addColorStop(0, "rgba(220,235,255,0.22)");
