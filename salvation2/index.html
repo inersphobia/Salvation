@@ -1120,11 +1120,13 @@ function abacusWideUnits(){
   const R = abacusRows();
   const target = Math.min(viewW - 24, 860);
   const x0 = viewW/2 - target/2;
-  const padX = 22*sc, gap0 = 11*sc;
+  const padXL = 44*sc, padXR = 22*sc, gap0 = 11*sc;
   const slots = Math.max(R.mw, R.fr) + 1;   // columns + the bay
-  const cell = Math.min((target - 2*padX - (slots - 1)*gap0)/slots, 48*sc);
-  const gap = (target - 2*padX - slots*cell)/Math.max(1, slots - 1);
-  const slotX = i => x0 + padX + i*(cell + gap) + cell/2;
+  const bedW = target - padXL - padXR;
+  const cell = Math.min((bedW - (slots - 1)*gap0)/slots, 48*sc);
+  const gap = ((bedW - slots*cell)/Math.max(1, slots - 1))*0.82;
+  const rowW = slots*cell + (slots - 1)*gap;
+  const slotX = i => x0 + padXL + (bedW - rowW)/2 + i*(cell + gap) + cell/2;
   const mk = (cy, n, extra) => {
     const gapY = 5*sc, padTop = 31*sc, padBot = 13*sc;
     const h = 2*cell + gapY + padTop + padBot + (extra || 0);
@@ -1137,7 +1139,7 @@ function abacusWideUnits(){
   };
   // the tower is rooted at the bottom of the screen and grows upward:
   // CONTROL, FRACTIONS, MINUTES, and the STORY monitor crowning it
-  const gapY = 5*sc, padTop = 31*sc, padBot = 13*sc;
+  const gapY = 5*sc, padTop = 13*sc, padBot = 13*sc;
   const Bh = 2*cell + gapY + padTop + padBot;
   const Ah = Bh;
   const Ch = 92*sc;
@@ -1148,7 +1150,7 @@ function abacusWideUnits(){
     const cols = [];
     for (let i = 0; i < n; i++) cols.push(slotX(i));
     // the rows sit dead-center in the recessed bed (top 25, bottom 9)
-    const yOff = 25*sc + ((h - 34*sc) - (2*cell + gapY))/2;
+    const yOff = 13*sc + ((h - 26*sc) - (2*cell + gapY))/2;
     return { x0, y0: y0v, w: target, h, cols, cell,
              yTop: y0v + yOff + cell/2,
              yBot: y0v + yOff + cell + gapY + cell/2 };
@@ -1160,13 +1162,13 @@ function abacusWideUnits(){
   const keys = [];
   for (let i = 0; i < 3; i++)
     keys.push({ x: x0 + 24*sc + i*(kw + 12*sc), y: Cd.y0 + 34*sc, w: kw, h: kh });
-  const monH = Math.max(170*sc, Math.min(460*sc, Ay0 - 44));
+  const monH = Math.max(170*sc, Math.min(480*sc, Ay0 - 44));
   const monTop = Ay0 - monH + 3;
   const bayX = slotX(slots - 1);
   const faceR = bayX - cell/2 - 12*sc;
   const extX = faceR + 8*sc;
   // one monitor, always - on wide glass its interior splits instead
-  const monW = target - 52*sc, monIH = monH - 128*sc;
+  const monW = target - 52*sc, monIH = monH - 148*sc;
   const mon = { x: x0 + 26*sc, y: monTop + 30*sc, w: monW, h: monIH };
   const mon2 = null;
   // the diagram deck: FRAME/GOAL keycaps on the bezel foot, and - when
@@ -1187,12 +1189,12 @@ function abacusWideUnits(){
   dgm.w2u = { x: px5, y: dgm.pan.y + 172*pu, w: pw5, h: 36*pu };
   dgm.w2  = { x: px5, y: dgm.pan.y + 212*pu, w: pw5, h: 72*pu };
   dgm.w2d = { x: px5, y: dgm.pan.y + 288*pu, w: pw5, h: 36*pu };
-  const dcx = x0 + 72*sc, dcy = monTop + monH - 49*sc;
+  const dcx = x0 + 87*sc, dcy = monTop + monH - 59*sc;
   dgm.dpad = {
-    up:    { x: dcx - 20*sc, y: dcy - 30*sc, w: 40*sc, h: 30*sc },
-    down:  { x: dcx - 20*sc, y: dcy,         w: 40*sc, h: 30*sc },
-    left:  { x: dcx - 60*sc, y: dcy - 15*sc, w: 40*sc, h: 30*sc },
-    right: { x: dcx + 20*sc, y: dcy - 15*sc, w: 40*sc, h: 30*sc }
+    up:    { x: dcx - 23*sc, y: dcy - 36*sc, w: 46*sc, h: 36*sc },
+    down:  { x: dcx - 23*sc, y: dcy,         w: 46*sc, h: 36*sc },
+    left:  { x: dcx - 73*sc, y: dcy - 18*sc, w: 46*sc, h: 36*sc },
+    right: { x: dcx + 27*sc, y: dcy - 18*sc, w: 46*sc, h: 36*sc }
   };
   // on wide glass the tube splits: a square bay left (scene or box),
   // the working surface right (letter or chart)
@@ -1203,16 +1205,16 @@ function abacusWideUnits(){
             R: { x: dgm.scr.x + lw + 14*sc, y: dgm.scr.y,
                  w: dgm.scr.w - lw - 14*sc, h: dgm.scr.h } };
   }
-  const ventEnd = x0 + 128*sc, knobStart = x0 + target - 92*sc;
+  const ventEnd = x0 + 178*sc, knobStart = x0 + target - 92*sc;
   const dbw = 30*sc, dbh = 30*sc, dbg = 10*sc;
   const dbx = (ventEnd + knobStart)/2 - (3*dbw + 2*dbg)/2;
   const dgmBtns = [];
   for (let i = 0; i < 3; i++)
-    dgmBtns.push({ x: dbx + i*(dbw + dbg), y: monTop + monH - 54*sc, w: dbw, h: dbh });
-  const selBtn = { x: x0 + target - 58*sc, y: monTop + monH - 52*sc,
-                   w: 42*sc, h: 26*sc };
-  const backBtn = { x: x0 + target - 112*sc, y: monTop + monH - 52*sc,
-                    w: 46*sc, h: 26*sc };
+    dgmBtns.push({ x: dbx + i*(dbw + dbg), y: monTop + monH - 74*sc, w: dbw, h: dbh });
+  const selBtn = { x: x0 + target - 46*sc, y: monTop + monH - 74*sc,
+                   w: 30*sc, h: 30*sc };
+  const backBtn = { x: x0 + target - 86*sc, y: monTop + monH - 74*sc,
+                    w: 30*sc, h: 30*sc };
   const markBtn = { x: bayX - 29*sc, y: By0 + 26*sc, w: 58*sc, h: 22*sc };
   const logBtn  = { x: bayX - 29*sc, y: By0 + Bh - 46*sc, w: 58*sc, h: 22*sc };
   const edit = duo
@@ -1222,8 +1224,8 @@ function abacusWideUnits(){
         w: 56*sc, h: 18*sc };
   return { sc, x0, R, A, B, Cd, keys, bayX, faceR, monTop, monH, mon, mon2,
            dgm, dgmBtns, selBtn, backBtn, edit, duo, markBtn, logBtn,
-           ext: { x: extX, y: A.y0 + 106*sc,
-                  w: x0 + target - 13*sc - extX, h: 26*sc } };
+           ext: { x: extX, y: A.y0 + 90*sc,
+                  w: x0 + target - 13*sc - extX, h: 24*sc } };
 }
 function wideScrew(c, x, y, sc){
   c.fillStyle = "#313947";
@@ -1307,13 +1309,12 @@ function drawAbacusWideStatic(){
       c.moveTo(rx + rw*2/3, ry + 2*sc); c.lineTo(rx + rw*2/3, ry + rh - 2*sc);
       c.stroke();
       c.textAlign = "center";
+      c.shadowColor = "rgba(255,40,30,0.85)"; c.shadowBlur = 5*sc;
+      c.fillStyle = "#ff3b30";
       c.font = Math.round(7.5*sc) + "px monospace";
-      c.fillStyle = "rgba(255,59,48,0.38)";
       c.fillText(prv, rx + rw/6, ry + rh/2 + 2.8*sc);
       c.fillText(nxt, rx + rw*5/6, ry + rh/2 + 2.8*sc);
       c.font = "bold " + Math.round(8.5*sc) + "px monospace";
-      c.shadowColor = "rgba(255,40,30,0.85)"; c.shadowBlur = 5*sc;
-      c.fillStyle = "#ff3b30";
       c.fillText(cur, rx + rw/2, ry + rh/2 + 3*sc);
       c.shadowBlur = 0;
     }
@@ -1352,15 +1353,16 @@ function drawAbacusWideStatic(){
     c.strokeStyle = "rgba(0,0,0,0.6)";
     c.beginPath(); c.roundRect(u.x0 + 4, u.y0 + 4, u.w - 8, u.h - 8, 7); c.stroke();
     c.fillStyle = "#10141c";
-    c.beginPath(); c.roundRect(u.x0 + 13*sc, u.y0 + 25*sc, faceR - u.x0 - 13*sc, u.h - 34*sc, 5); c.fill();
+    c.beginPath(); c.roundRect(u.x0 + 34*sc, u.y0 + 13*sc, faceR - u.x0 - 34*sc, u.h - 26*sc, 5); c.fill();
     wideScrew(c, u.x0 + 10*sc, u.y0 + 10*sc, sc); wideScrew(c, u.x0 + u.w - 10*sc, u.y0 + 10*sc, sc);
     wideScrew(c, u.x0 + 10*sc, u.y0 + u.h - 10*sc, sc); wideScrew(c, u.x0 + u.w - 10*sc, u.y0 + u.h - 10*sc, sc);
-    c.font = Math.round(10*sc) + "px monospace"; c.textAlign = "left";
-    c.fillStyle = "rgba(168,184,205,0.8)";
-    c.fillText(title, u.x0 + 16*sc, u.y0 + 18*sc);
-    c.textAlign = "right";
-    c.fillStyle = "rgba(168,184,205,0.52)";
-    c.fillText(sub, u.x0 + u.w - 16*sc, u.y0 + 18*sc);
+    c.font = "bold " + Math.round(10*sc) + "px monospace"; c.textAlign = "center";
+    c.fillStyle = "rgba(168,184,205,0.75)";
+    {
+      const vh9 = title.length*11*sc;
+      let vy9 = u.y0 + u.h/2 - vh9/2 + 8*sc;
+      for (const ch9 of title){ c.fillText(ch9, u.x0 + 23*sc, vy9); vy9 += 11*sc; }
+    }
     for (let i = 0; i < u.cols.length; i++){
       for (const yy of [u.yTop, u.yBot]){
         c.fillStyle = "#141922";
@@ -1374,12 +1376,12 @@ function drawAbacusWideStatic(){
     const sh = c.createLinearGradient(u.x0, u.y0, u.x0 + u.w*0.9, u.y0 + u.h);
     sh.addColorStop(0, "rgba(190,215,255,0.1)"); sh.addColorStop(0.35, "rgba(255,255,255,0)");
     c.fillStyle = sh;
-    c.beginPath(); c.roundRect(u.x0 + 13*sc, u.y0 + 25*sc, u.w - 26*sc, u.h - 34*sc, 5); c.fill();
+    c.beginPath(); c.roundRect(u.x0 + 13*sc, u.y0 + 13*sc, u.w - 26*sc, u.h - 26*sc, 5); c.fill();
   };
   const mwL = [], frL = [];
   for (let i = 0; i < U.R.mw; i++) mwL.push(abacusLabel(i));
   for (let i = 0; i < U.R.fr; i++) frL.push(abacusLabel(U.R.mw + i));
-  unit(U.A, "M I N U T E S", "REG · A", mwL, U.faceR);
+  unit(U.A, "MIN", "", mwL, U.faceR);
   c.fillStyle = "#171c26";
   c.fillRect(viewW/2 - 66*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
   c.fillRect(viewW/2 + 38*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
@@ -1388,7 +1390,7 @@ function drawAbacusWideStatic(){
   c.strokeRect(viewW/2 + 38*sc, U.A.y0 + U.A.h - 3, 28*sc, 20*sc);
   wideScrew(c, viewW/2 - 52*sc, U.A.y0 + U.A.h + 7*sc, sc);
   wideScrew(c, viewW/2 + 52*sc, U.A.y0 + U.A.h + 7*sc, sc);
-  unit(U.B, "F R A C T I O N S", "REG · B", frL, U.faceR);
+  unit(U.B, "FRAC", "", frL, U.faceR);
   // REG-C: the control deck, stacked flush beneath
   {
     const D = U.Cd;
@@ -1416,7 +1418,7 @@ function drawAbacusWideStatic(){
   // the bay: milestone sockets and their labels
   const MODE = ["27","54","81"];
   for (let k = 0; k < 3; k++){
-    const ly = U.A.y0 + 33*sc + k*31*sc;
+    const ly = U.A.y0 + 26*sc + k*26*sc;
     c.fillStyle = "#141922";
     c.beginPath(); c.arc(U.bayX, ly, 6*sc, 0, 2*Math.PI); c.fill();
     c.strokeStyle = "rgba(255,255,255,0.15)"; c.lineWidth = 1;
@@ -1499,7 +1501,7 @@ function drawAbacusWideDots(t){
   // milestone lamps: one per completed 27
   for (let k = 0; k < 3; k++){
     if (eNow < (k + 1)*27*60) break;
-    const ly = U.A.y0 + 33*sc + k*31*sc;
+    const ly = U.A.y0 + 26*sc + k*26*sc;
     const g2 = ctx.createRadialGradient(U.bayX, ly, 0, U.bayX, ly, 18*sc);
     g2.addColorStop(0, "rgba(255,149,0,0.55)"); g2.addColorStop(1, "rgba(255,149,0,0)");
     ctx.fillStyle = g2;
@@ -2052,9 +2054,17 @@ function drawAbacusWideDots(t){
     ctx.strokeStyle = armed ? "rgba(0,0,0,0.65)" : "rgba(255,255,255,0.15)";
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.roundRect(b.x, b.y + py, b.w, b.h, 4); ctx.stroke();
-    ctx.font = "bold " + Math.round(9.5*sc) + "px monospace"; ctx.textAlign = "center";
-    ctx.fillStyle = armed ? "rgba(30,22,8,0.9)" : "rgba(168,184,205,0.52)";
-    ctx.fillText("SEL", b.x + b.w/2, b.y + py + b.h/2 + 3.5*sc);
+    ctx.strokeStyle = armed ? "rgba(30,22,8,0.9)" : "rgba(168,184,205,0.52)";
+    ctx.lineWidth = 2.4*sc; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    {
+      const cxk = b.x + b.w/2, cyk = b.y + py + b.h/2;
+      ctx.beginPath();
+      ctx.moveTo(cxk - 6*sc, cyk + 0.5*sc);
+      ctx.lineTo(cxk - 1.5*sc, cyk + 5*sc);
+      ctx.lineTo(cxk + 6.5*sc, cyk - 4.5*sc);
+      ctx.stroke();
+    }
+    ctx.lineCap = "butt"; ctx.lineJoin = "miter";
     // BACK: one step up, whatever the deck - the left arrow's twin
     const bb = U.backBtn;
     const canBack = abDgm >= 0 || abViz >= 0 || abLib >= 0 || abLog >= 0 ||
@@ -2069,9 +2079,16 @@ function drawAbacusWideDots(t){
     ctx.strokeStyle = canBack ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.12)";
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.roundRect(bb.x, bb.y + pyB, bb.w, bb.h, 4); ctx.stroke();
-    ctx.font = "bold " + Math.round(9*sc) + "px monospace";
-    ctx.fillStyle = canBack ? "rgba(200,215,235,0.9)" : "rgba(150,165,185,0.4)";
-    ctx.fillText("BACK", bb.x + bb.w/2, bb.y + pyB + bb.h/2 + 3.5*sc);
+    ctx.strokeStyle = canBack ? "rgba(200,215,235,0.9)" : "rgba(150,165,185,0.4)";
+    ctx.lineWidth = 2.4*sc; ctx.lineCap = "round";
+    {
+      const cxb = bb.x + bb.w/2, cyb = bb.y + pyB + bb.h/2;
+      ctx.beginPath();
+      ctx.moveTo(cxb - 4.5*sc, cyb - 4.5*sc); ctx.lineTo(cxb + 4.5*sc, cyb + 4.5*sc);
+      ctx.moveTo(cxb + 4.5*sc, cyb - 4.5*sc); ctx.lineTo(cxb - 4.5*sc, cyb + 4.5*sc);
+      ctx.stroke();
+    }
+    ctx.lineCap = "butt";
   }
   // the channel row: STORY / DIAGRAM / VISUALS - the lit key names
   // what's up; DIAGRAM pressed again flips FRAME <-> GOAL
@@ -6930,6 +6947,104 @@ function draw(now){
   requestAnimationFrame(draw);
 }
 
+/* ---------- THE D-PAD: the whole plate is the pad ---------- */
+// any press on the plinth (plus a forgiving margin) resolves to the
+// nearest arrow by dominant axis; holding a direction repeats it
+function abDpadResolve(U, cx, cy){
+  const DP = U.dgm.dpad, sl9 = 8*U.sc;
+  const px9 = DP.left.x - 4*U.sc - sl9, py9 = DP.up.y - 4*U.sc - sl9;
+  const pw9 = (DP.right.x + DP.right.w + 4*U.sc + sl9) - px9;
+  const ph9 = (DP.down.y + DP.down.h + 4*U.sc + sl9) - py9;
+  if (cx < px9 || cx > px9 + pw9 || cy < py9 || cy > py9 + ph9) return null;
+  const ddx = cx - (DP.up.x + DP.up.w/2), ddy = cy - (DP.left.y + DP.left.h/2);
+  if (Math.abs(ddx) > Math.abs(ddy)) return [Math.sign(ddx) || 1, 0];
+  return [0, Math.sign(ddy) || 1];
+}
+function abDpadFire(U, ax, ay){
+  abDgmFlash = { k: "d" + (ay < 0 ? "up" : ay > 0 ? "down" : ax < 0 ? "left" : "right"),
+                 until: performance.now() + 140 };
+  haptic('light');
+  if (abDgm >= 0){
+    const camD = abDgmCam[abDgm];
+    camD.x += ax*120; camD.y += ay*120;
+    abDgmGlide = null;
+  } else if (abViz >= 0){
+    const colsV = U.dgm.scr.w >= 420 ? 3 : 2;
+    let nv = abDgmWheel[0]*26 + abDgmWheel[1] + ax + ay*colsV;
+    nv = Math.max(0, Math.min(VIZ_DEFS.length - 1, nv));
+    abDgmWheel = [Math.floor(nv/26), nv % 26];
+    if (abViz > 0) abViz = nv + 1;
+  } else if (abLib >= 0){
+    if (abLibMenu >= 0){
+      if (ax < 0) abLibMenu = -1;                    // left backs out
+      else abLibMenu = Math.max(0, Math.min(2, abLibMenu + ay));
+    } else if (abLibCarry >= 0 && abLib === 1){
+      // moving an image: all four arrows carry it
+      const colsL = U.dgm.scr.w >= 420 ? 4 : 3;
+      const tv = Math.max(0, Math.min(26, abLibCarry + ax + ay*colsL));
+      if (tv !== abLibCarry){
+        storyMoveOrder(abLibVol, abLibCarry, tv);
+        abLibCarry = tv;
+        abDgmWheel = [Math.floor(tv/26), tv % 26];
+      }
+    } else if (abLib === 0){
+      if (ax < 0){ abLib = -1; abStoryPage = 0; needsStaticRedraw = true; }
+      else {
+        const nv = Math.max(0, Math.min(1, abDgmWheel[1] + (ax || ay)));
+        abDgmWheel = [0, nv];
+      }
+    } else if (abLib === 1){
+      if (ax < 0){ abLib = 0; }                      // left backs out
+      else {
+        const colsL = U.dgm.scr.w >= 420 ? 4 : 3;
+        let nv = abDgmWheel[0]*26 + abDgmWheel[1] + ax + ay*colsL;
+        nv = Math.max(0, Math.min(26, nv));
+        abDgmWheel = [Math.floor(nv/26), nv % 26];
+      }
+    } else {
+      // a plate is open: up/down turn the pages, left backs out
+      if (ax < 0){ abLib = 1; }
+      else if (ay){
+        const np = Math.max(0, Math.min(26, (abLib - 2) + ay));
+        abLib = 2 + np;
+        abDgmWheel = [Math.floor(np/26), np % 26];
+      }
+    }
+  } else if (abLog >= 0){
+    if (abLog === 0){
+      if (ax < 0){ abLog = -1; needsStaticRedraw = true; }
+      else if (ay && sessLog.length)
+        abLogSel = Math.max(0, Math.min(sessLog.length - 1, abLogSel + ay));
+    } else {
+      if (ax < 0){ abLog = 0; abLogScroll = 0; }
+      else if (ay){
+        const sD = sessLog[abLog - 1];
+        const mxD = sD ? Math.max(0, sD.marks.length - 1) : 0;
+        abLogScroll = Math.max(0, Math.min(mxD, abLogScroll + ay));
+      }
+    }
+  } else if (!U.duo && abStoryPage === 1 && ay){
+    abLetterStep += ay;
+  }
+}
+let dpadHold = null;
+canvasAnim.addEventListener("pointerdown", (e) => {
+  if (viewMode !== 2) return;
+  const rect9 = canvasAnim.getBoundingClientRect();
+  const cx9 = e.clientX - rect9.left, cy9 = e.clientY - rect9.top;
+  const U9 = abacusWideUnits();
+  const step9 = abDpadResolve(U9, cx9, cy9);
+  if (!step9) return;
+  abDpadFire(U9, step9[0], step9[1]);
+  const rep9 = () => { abDpadFire(abacusWideUnits(), step9[0], step9[1]);
+                       dpadHold = setTimeout(rep9, 170); };
+  dpadHold = setTimeout(rep9, 420);
+});
+for (const ev9 of ["pointerup", "pointercancel", "pointerleave"])
+  canvasAnim.addEventListener(ev9, () => {
+    if (dpadHold){ clearTimeout(dpadHold); dpadHold = null; }
+  });
+
 /* ---------- TAP THE CLOCK: start -> pause -> resume ---------- */
 function toggleClock(){
   if (running){ pauseClock(); }
@@ -6946,83 +7061,9 @@ canvasAnim.addEventListener("click", (e) => {
   if (viewMode === 2){
     const U = abacusWideUnits();
     const hit = (b) => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h;
-    // the D-pad: one click, one move, context deciding what a move is
-    {
-      const DP = U.dgm.dpad, sl9 = 7*U.sc;
-      const hitP = (b) => cx >= b.x - sl9 && cx <= b.x + b.w + sl9 &&
-                          cy >= b.y - sl9 && cy <= b.y + b.h + sl9;
-      const dstep = hitP(DP.up) ? [0, -1] : hitP(DP.down) ? [0, 1]
-                  : hitP(DP.left) ? [-1, 0] : hitP(DP.right) ? [1, 0] : null;
-      if (dstep){
-        const ax = dstep[0], ay = dstep[1];
-        abDgmFlash = { k: "d" + (ay < 0 ? "up" : ay > 0 ? "down" : ax < 0 ? "left" : "right"),
-                       until: performance.now() + 140 };
-        haptic('light');
-        if (abDgm >= 0){
-          const camD = abDgmCam[abDgm];
-          camD.x += ax*120; camD.y += ay*120;
-          abDgmGlide = null;
-        } else if (abViz >= 0){
-          const colsV = U.dgm.scr.w >= 420 ? 3 : 2;
-          let nv = abDgmWheel[0]*26 + abDgmWheel[1] + ax + ay*colsV;
-          nv = Math.max(0, Math.min(VIZ_DEFS.length - 1, nv));
-          abDgmWheel = [Math.floor(nv/26), nv % 26];
-          if (abViz > 0) abViz = nv + 1;
-        } else if (abLib >= 0){
-          if (abLibMenu >= 0){
-            if (ax < 0) abLibMenu = -1;                    // left backs out
-            else abLibMenu = Math.max(0, Math.min(2, abLibMenu + ay));
-          } else if (abLibCarry >= 0 && abLib === 1){
-            // moving an image: all four arrows carry it
-            const colsL = U.dgm.scr.w >= 420 ? 4 : 3;
-            const tv = Math.max(0, Math.min(26, abLibCarry + ax + ay*colsL));
-            if (tv !== abLibCarry){
-              storyMoveOrder(abLibVol, abLibCarry, tv);
-              abLibCarry = tv;
-              abDgmWheel = [Math.floor(tv/26), tv % 26];
-            }
-          } else if (abLib === 0){
-            if (ax < 0){ abLib = -1; abStoryPage = 0; needsStaticRedraw = true; }
-            else {
-              const nv = Math.max(0, Math.min(1, abDgmWheel[1] + (ax || ay)));
-              abDgmWheel = [0, nv];
-            }
-          } else if (abLib === 1){
-            if (ax < 0){ abLib = 0; }                      // left backs out
-            else {
-              const colsL = U.dgm.scr.w >= 420 ? 4 : 3;
-              let nv = abDgmWheel[0]*26 + abDgmWheel[1] + ax + ay*colsL;
-              nv = Math.max(0, Math.min(26, nv));
-              abDgmWheel = [Math.floor(nv/26), nv % 26];
-            }
-          } else {
-            // a plate is open: up/down turn the pages, left backs out
-            if (ax < 0){ abLib = 1; }
-            else if (ay){
-              const np = Math.max(0, Math.min(26, (abLib - 2) + ay));
-              abLib = 2 + np;
-              abDgmWheel = [Math.floor(np/26), np % 26];
-            }
-          }
-        } else if (abLog >= 0){
-          if (abLog === 0){
-            if (ax < 0){ abLog = -1; needsStaticRedraw = true; }
-            else if (ay && sessLog.length)
-              abLogSel = Math.max(0, Math.min(sessLog.length - 1, abLogSel + ay));
-          } else {
-            if (ax < 0){ abLog = 0; abLogScroll = 0; }
-            else if (ay){
-              const sD = sessLog[abLog - 1];
-              const mxD = sD ? Math.max(0, sD.marks.length - 1) : 0;
-              abLogScroll = Math.max(0, Math.min(mxD, abLogScroll + ay));
-            }
-          }
-        } else if (!U.duo && abStoryPage === 1 && ay){
-          abLetterStep += ay;
-        }
-        return;
-      }
-    }
+    // the D-pad fires at pointerdown (with hold-to-repeat); the click
+    // that follows the release must not fire it twice
+    if (abDpadResolve(U, cx, cy)) return;
     // BACK: the left arrow's twin - one step up, whatever the deck
     if (hit(U.backBtn)){
       abDgmFlash = { k: "back", until: performance.now() + 140 };
