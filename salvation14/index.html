@@ -8307,10 +8307,31 @@ if (screen.orientation && screen.orientation.lock) {
   screen.orientation.lock('portrait').catch(() => {});
 }
 
+/* ---------- TRAVEL LIGHT WHEN THE LID CLOSES ---------- */
+// Every cache here rebuilds itself in a frame or two. While the phone
+// is locked they are only weight - and resident weight is what gets a
+// background page killed. Drop them the moment the screen goes dark.
+function abDropCaches(){
+  try {
+    abMonCache.clear(); abMonCanvas = null; abMonKey = "";
+    abLetterCv = null; abLetterKey = "";
+    abMonEOvCv = null; abMonEOvKey = "";
+    abVizStaticCv = null; abVizStaticKey = "";
+    abVizLive.cv = null; abVizLive.key = "";
+    abDgmCvs = [null, null];
+  } catch(e) {}
+}
+window.addEventListener('pagehide', abDropCaches);
+
 /* ---------- WAKE LOCK RE-ACQUIRE ON VISIBILITY CHANGE ---------- */
 document.addEventListener('visibilitychange', async () => {
-  if (document.visibilityState === 'visible' && running) {
-    await requestWakeLock();
+  if (document.visibilityState === 'hidden'){
+    abDropCaches();
+    return;
+  }
+  if (document.visibilityState === 'visible'){
+    needsStaticRedraw = true;
+    if (running) await requestWakeLock();
   }
 });
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'salvation-v199';
+const CACHE_NAME = 'salvation-v200';
 const urlsToCache = [
   './',
   './index.html',
