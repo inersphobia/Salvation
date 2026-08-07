@@ -224,6 +224,19 @@
     display: none;
     font-family: monospace;
   }
+  #frameEdit input {
+    width: 100%;
+    box-sizing: border-box;
+    background: #0a0d16;
+    color: #ffc478;
+    border: 1px solid rgba(255,170,60,0.4);
+    border-radius: 6px;
+    font: bold 15px monospace;
+    letter-spacing: 2px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    outline: none;
+  }
   #frameEdit textarea {
     width: 100%;
     box-sizing: border-box;
@@ -299,6 +312,7 @@
 </div>
 
 <div id="frameEdit">
+  <input id="frameEditLabel" maxlength="12" autocomplete="off" spellcheck="false" style="display:none">
   <textarea id="frameEditText" rows="3" maxlength="140"></textarea>
   <div class="fe-row">
     <button id="feCancel">CANCEL</button>
@@ -1088,7 +1102,7 @@ function abacusWideUnits(){
     ? x0 + padX + i*(cell + gap) + cell/2
     : x0 + target - padX - cell/2;
   const mk = (cy, n, extra) => {
-    const gapY = 5*sc, padTop = 24*sc, padBot = 10*sc;
+    const gapY = 5*sc, padTop = 31*sc, padBot = 13*sc;
     const h = 2*cell + gapY + padTop + padBot + (extra || 0);
     const uy = cy*sc - h/2;
     const cols = [];
@@ -1099,7 +1113,7 @@ function abacusWideUnits(){
   };
   // the tower is rooted at the bottom of the screen and grows upward:
   // CONTROL, FRACTIONS, MINUTES, and the STORY monitor crowning it
-  const gapY = 5*sc, padTop = 24*sc, padBot = 10*sc;
+  const gapY = 5*sc, padTop = 31*sc, padBot = 13*sc;
   const Bh = 2*cell + gapY + padTop + padBot;
   const Ah = Bh;
   const Ch = 92*sc;
@@ -1147,12 +1161,12 @@ function abacusWideUnits(){
   dgm.w2u = { x: px5, y: dgm.pan.y + 172*pu, w: pw5, h: 36*pu };
   dgm.w2  = { x: px5, y: dgm.pan.y + 212*pu, w: pw5, h: 72*pu };
   dgm.w2d = { x: px5, y: dgm.pan.y + 288*pu, w: pw5, h: 36*pu };
-  const dcx = x0 + 58*sc, dcy = monTop + monH - 49*sc;
+  const dcx = x0 + 64*sc, dcy = monTop + monH - 52*sc;
   dgm.dpad = {
-    up:    { x: dcx - 15*sc, y: dcy - 42*sc, w: 30*sc, h: 26*sc },
-    down:  { x: dcx - 15*sc, y: dcy + 16*sc, w: 30*sc, h: 26*sc },
-    left:  { x: dcx - 49*sc, y: dcy - 13*sc, w: 30*sc, h: 26*sc },
-    right: { x: dcx + 19*sc, y: dcy - 13*sc, w: 30*sc, h: 26*sc }
+    up:    { x: dcx - 15*sc, y: dcy - 36*sc, w: 30*sc, h: 24*sc },
+    down:  { x: dcx - 15*sc, y: dcy + 12*sc, w: 30*sc, h: 24*sc },
+    left:  { x: dcx - 45*sc, y: dcy - 12*sc, w: 30*sc, h: 24*sc },
+    right: { x: dcx + 15*sc, y: dcy - 12*sc, w: 30*sc, h: 24*sc }
   };
   // on wide glass the tube splits: a square bay left (scene or box),
   // the working surface right (letter or chart)
@@ -1163,7 +1177,7 @@ function abacusWideUnits(){
             R: { x: dgm.scr.x + lw + 14*sc, y: dgm.scr.y,
                  w: dgm.scr.w - lw - 14*sc, h: dgm.scr.h } };
   }
-  const ventEnd = x0 + 92*sc, knobStart = x0 + target - 92*sc;
+  const ventEnd = x0 + 128*sc, knobStart = x0 + target - 92*sc;
   const dbw = 50*sc, dbh = 26*sc, dbg = 7*sc;
   const dbx = (ventEnd + knobStart)/2 - (3*dbw + 2*dbg)/2;
   const dgmBtns = [];
@@ -1538,8 +1552,8 @@ function drawAbacusWideDots(t){
     // burned-in tags, live
     ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
     ctx.fillStyle = "rgba(255,170,60,0.5)";
-    ctx.fillText(finished ? "SCN 1000 · FIN"
-                          : "SCN " + STORY_PANELS[idx] + " · " + (idx % 27 + 1) + "/27",
+    ctx.fillText(finished ? "SCN " + storyLabelFor(26) + " · FIN"
+                          : "SCN " + storyLabelFor(idx) + " · " + (idx % 27 + 1) + "/27",
                  M.x + 8*sc, M.y + M.h - 8*sc);
     ctx.textAlign = "right";
     ctx.fillText("CYCLE " + timerStr + (finished && overtimeStr ? "  " + overtimeStr : ""),
@@ -1628,7 +1642,7 @@ function drawAbacusWideDots(t){
     ctx.fillStyle = "#0b0e42"; ctx.fillRect(E.x, E.y, E.w, E.h);
     ctx.font = "bold " + Math.round(15*sc) + "px monospace"; ctx.textAlign = "left";
     ctx.fillStyle = "rgba(255,170,60,0.9)";
-    ctx.fillText("SCN " + STORY_PANELS[Math.min(mi9, 26)], E.x + 20*sc, E.y + 34*sc);
+    ctx.fillText("SCN " + storyLabelFor(mi9), E.x + 20*sc, E.y + 34*sc);
     ctx.font = Math.round(12*sc) + "px monospace";
     ctx.fillStyle = "rgba(255,196,120,0.9)";
     const wordsT = storyTextFor(mi9).split(" ");
@@ -1643,7 +1657,7 @@ function drawAbacusWideDots(t){
     ctx.restore();
     ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
     ctx.fillStyle = "rgba(255,170,60,0.5)";
-    ctx.fillText("TXT · " + STORY_PANELS[Math.min(mi9, 26)], E.x + 8*sc, E.y + E.h - 8*sc);
+    ctx.fillText("TXT · " + storyLabelFor(mi9), E.x + 8*sc, E.y + E.h - 8*sc);
   }
   // the LIBRARY: a shelf of collections; a volume opens to its 27
   // plates; a plate opens to its art and text. The session's book is
@@ -1725,7 +1739,7 @@ function drawAbacusWideDots(t){
         ctx.fillText(abDgmCode(Math.floor(i/26), i % 26), r.x + 6*sc, r.y + r.h/2 + 3*sc);
         ctx.font = Math.round(9.5*sc) + "px monospace";
         ctx.fillStyle = on ? "rgba(235,240,250,0.95)" : "rgba(224,232,250,0.7)";
-        ctx.fillText(STORY_PANELS[i], r.x + 28*sc, r.y + r.h/2 + 3*sc);
+        ctx.fillText(storyLabelFor(i, abLibVol), r.x + 28*sc, r.y + r.h/2 + 3*sc);
       });
       if (abLibCarry >= 0){
         const rc = abLibRows(S, sc)[abLibCarry];
@@ -1749,7 +1763,7 @@ function drawAbacusWideDots(t){
         ctx.beginPath(); ctx.roundRect(mx0, my0, mw9, mh9, 8); ctx.stroke();
         ctx.font = "bold " + Math.round(10*sc) + "px monospace"; ctx.textAlign = "left";
         ctx.fillStyle = "rgba(255,170,60,0.9)";
-        ctx.fillText("SCN " + STORY_PANELS[abLibMenuFor], mx0 + 12*sc, my0 + 18*sc);
+        ctx.fillText("SCN " + storyLabelFor(abLibMenuFor, abLibVol), mx0 + 12*sc, my0 + 18*sc);
         ["VIEW", "EDIT TEXT", "MOVE"].forEach((op, i) => {
           const oy = my0 + 30*sc + i*28*sc;
           if (i === abLibMenu){
@@ -1797,7 +1811,7 @@ function drawAbacusWideDots(t){
       ctx.restore();
       ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
       ctx.fillStyle = "rgba(255,170,60,0.5)";
-      ctx.fillText("PLT " + STORY_PANELS[li] + " · " + STORY_VOLS[abLibVol][0],
+      ctx.fillText("PLT " + storyLabelFor(li, abLibVol) + " · " + STORY_VOLS[abLibVol][0],
                    Mi.x + 8*sc, Mi.y + Mi.h - 8*sc);
       ctx.textAlign = "right";
       ctx.fillStyle = !running ? "rgba(255,190,90,0.9)" : "rgba(255,170,60,0.5)";
@@ -1811,7 +1825,7 @@ function drawAbacusWideDots(t){
         ctx.fillStyle = "#0b0e42"; ctx.fillRect(E9.x, E9.y, E9.w, E9.h);
         ctx.font = "bold " + Math.round(15*sc) + "px monospace"; ctx.textAlign = "left";
         ctx.fillStyle = "rgba(255,170,60,0.9)";
-        ctx.fillText("SCN " + STORY_PANELS[li], E9.x + 20*sc, E9.y + 34*sc);
+        ctx.fillText("SCN " + storyLabelFor(li, abLibVol), E9.x + 20*sc, E9.y + 34*sc);
         ctx.font = Math.round(12*sc) + "px monospace";
         ctx.fillStyle = "rgba(255,196,120,0.9)";
         const words8 = storyTextFor(li, abLibVol).split(" ");
@@ -1831,7 +1845,7 @@ function drawAbacusWideDots(t){
         ctx.restore();
         ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
         ctx.fillStyle = "rgba(255,170,60,0.5)";
-        ctx.fillText("TXT · " + STORY_PANELS[li], E9.x + 8*sc, E9.y + E9.h - 8*sc);
+        ctx.fillText("TXT · " + storyLabelFor(li, abLibVol), E9.x + 8*sc, E9.y + E9.h - 8*sc);
       }
     }
   }
@@ -2054,35 +2068,50 @@ function drawAbacusWideDots(t){
     arrow(D.w1u, "w0u", true); arrow(D.w1d, "w0d", false);
     arrow(D.w2u, "w1u", true); arrow(D.w2d, "w1d", false);
     const DP = D.dpad;
-    // the plinth: one mounting plate under the four keys
+    // the plinth: one mounting plate, the cross recessed into it
     {
-      const px0 = DP.left.x - 6*sc, py0 = DP.up.y - 6*sc;
-      const pw0 = (DP.right.x + DP.right.w + 6*sc) - px0;
-      const ph0 = (DP.down.y + DP.down.h + 6*sc) - py0;
-      ctx.fillStyle = "#12161f";
-      ctx.beginPath(); ctx.roundRect(px0, py0, pw0, ph0, 10); ctx.fill();
-      ctx.strokeStyle = "rgba(160,190,235,0.14)"; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.roundRect(px0, py0, pw0, ph0, 10); ctx.stroke();
+      const px0 = DP.left.x - 5*sc, py0 = DP.up.y - 5*sc;
+      const pw0 = (DP.right.x + DP.right.w + 5*sc) - px0;
+      const ph0 = (DP.down.y + DP.down.h + 5*sc) - py0;
+      const pg9 = ctx.createLinearGradient(0, py0, 0, py0 + ph0);
+      pg9.addColorStop(0, "#0d1119"); pg9.addColorStop(1, "#161b26");
+      ctx.fillStyle = pg9;
+      ctx.beginPath(); ctx.roundRect(px0, py0, pw0, ph0, 12); ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.roundRect(px0, py0, pw0, ph0, 12); ctx.stroke();
+      ctx.strokeStyle = "rgba(160,190,235,0.12)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(px0 - 1, py0 - 1, pw0 + 2, ph0 + 2, 13); ctx.stroke();
     }
     const dkeys = [["up", DP.up, 0, -1], ["down", DP.down, 0, 1],
                    ["left", DP.left, -1, 0], ["right", DP.right, 1, 0]];
     for (const dk of dkeys){
       const nm = dk[0], r9 = dk[1], ax = dk[2], ay = dk[3];
       const pr9 = abDgmFlash.k === "d" + nm && performance.now() < abDgmFlash.until;
-      const py9 = pr9 ? 1.5*sc : 0;
-      // a real keycap, kin to the REG-C keys: gradient face, inset ring
+      const py9 = pr9 ? 1.2*sc : 0;
+      // contoured cap: domed face, lit crown, seated shadow
       const kg9 = ctx.createLinearGradient(0, r9.y + py9, 0, r9.y + r9.h + py9);
-      if (pr9){ kg9.addColorStop(0, "#242b38"); kg9.addColorStop(1, "#171c26"); }
-      else { kg9.addColorStop(0, "#38445a"); kg9.addColorStop(0.5, "#262e3c"); kg9.addColorStop(1, "#1a2029"); }
+      if (pr9){ kg9.addColorStop(0, "#20262f"); kg9.addColorStop(1, "#151a22"); }
+      else { kg9.addColorStop(0, "#414d63"); kg9.addColorStop(0.45, "#2a3240");
+             kg9.addColorStop(1, "#171c25"); }
       ctx.fillStyle = kg9;
-      ctx.beginPath(); ctx.roundRect(r9.x, r9.y + py9, r9.w, r9.h, 6); ctx.fill();
-      ctx.strokeStyle = pr9 ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)";
+      ctx.beginPath(); ctx.roundRect(r9.x, r9.y + py9, r9.w, r9.h, 5); ctx.fill();
+      if (!pr9){
+        const sh9 = ctx.createLinearGradient(0, r9.y, 0, r9.y + r9.h*0.55);
+        sh9.addColorStop(0, "rgba(220,235,255,0.22)");
+        sh9.addColorStop(1, "rgba(220,235,255,0)");
+        ctx.fillStyle = sh9;
+        ctx.beginPath(); ctx.roundRect(r9.x + 1.5, r9.y + 1.5, r9.w - 3, r9.h*0.55, 4); ctx.fill();
+      }
+      ctx.strokeStyle = "rgba(0,0,0,0.75)"; ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(r9.x + 2, r9.y + py9 + r9.h - 0.5);
+      ctx.lineTo(r9.x + r9.w - 2, r9.y + py9 + r9.h - 0.5);
+      ctx.stroke();
+      ctx.strokeStyle = pr9 ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.12)";
       ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.roundRect(r9.x, r9.y + py9, r9.w, r9.h, 6); ctx.stroke();
-      ctx.strokeStyle = "rgba(0,0,0,0.7)";
-      ctx.beginPath(); ctx.roundRect(r9.x + 2, r9.y + py9 + 2, r9.w - 4, r9.h - 4, 5); ctx.stroke();
-      ctx.fillStyle = "rgba(225,232,240,0.9)";
-      const mx9 = r9.x + r9.w/2, my9 = r9.y + py9 + r9.h/2, aw9 = 6*sc, ah9 = 4*sc;
+      ctx.beginPath(); ctx.roundRect(r9.x, r9.y + py9, r9.w, r9.h, 5); ctx.stroke();
+      ctx.fillStyle = "rgba(228,236,246,0.92)";
+      const mx9 = r9.x + r9.w/2, my9 = r9.y + py9 + r9.h/2, aw9 = 5.5*sc, ah9 = 3.8*sc;
       ctx.beginPath();
       ctx.moveTo(mx9 + ax*ah9, my9 + ay*ah9);
       ctx.lineTo(mx9 - ax*ah9 + ay*aw9, my9 - ay*ah9 + ax*aw9);
@@ -3405,7 +3434,21 @@ const storyAltImgs = {};
 let storyVol = 0;
 try { storyVol = +(localStorage.getItem('salvationStoryVol') || 0) ? 1 : 0; } catch(e) {}
 const storyVol2Imgs = {};
-const storyVolTexts = [{}, {}];
+const storyVolMeta = [{}, {}];   // per-image: { l: label, t: ekphrasis }
+for (let v8 = 0; v8 < 2; v8++){
+  try { storyVolMeta[v8] = JSON.parse(localStorage.getItem('salvationStory' + (v8 + 1) + 'Meta') || "{}") || {}; } catch(e) {}
+  // older builds kept plain texts; fold them in as image ekphrases
+  try {
+    const oldT = JSON.parse(localStorage.getItem('salvationStory' + (v8 + 1) + 'Texts') || "{}");
+    for (const k in oldT){
+      if (!storyVolMeta[v8][k]) storyVolMeta[v8][k] = {};
+      if (!storyVolMeta[v8][k].t) storyVolMeta[v8][k].t = oldT[k];
+    }
+  } catch(e) {}
+}
+function storySaveMeta(v8){
+  try { localStorage.setItem('salvationStory' + (v8 + 1) + 'Meta', JSON.stringify(storyVolMeta[v8])); } catch(e) {}
+}
 const storyVolOrder = [null, null];
 for (let v9 = 0; v9 < 2; v9++){
   let o9 = null;
@@ -3421,8 +3464,6 @@ function storyMoveOrder(v9, from, to){
   O.splice(to, 0, it);
   try { localStorage.setItem('salvationStory' + (v9 + 1) + 'Order', JSON.stringify(O)); } catch(e) {}
 }
-try { storyVolTexts[0] = JSON.parse(localStorage.getItem('salvationStory1Texts') || "{}"); } catch(e) {}
-try { storyVolTexts[1] = JSON.parse(localStorage.getItem('salvationStory2Texts') || "{}"); } catch(e) {}
 function vol2Img(fi){
   if (!storyVol2Imgs[fi]){
     const pfx = (/\/salvation\d/i.test(location.pathname) ? "../" : "./");
@@ -3436,8 +3477,15 @@ function vol2Img(fi){
 }
 function storyTextFor(idx, vol){
   const v = vol === undefined ? storyVol : vol;
-  const i2 = Math.min(idx, STORY_TEXTS.length - 1);
-  return storyVolTexts[v][i2] || (v === 1 ? STORY_TEXTS2[i2] : STORY_TEXTS[i2]);
+  const oi = storyVolOrder[v][Math.min(idx, 26)];
+  const m9 = storyVolMeta[v][oi];
+  return (m9 && m9.t) || (v === 1 ? STORY_TEXTS2[oi] : STORY_TEXTS[oi]);
+}
+function storyLabelFor(idx, vol){
+  const v = vol === undefined ? storyVol : vol;
+  const oi = storyVolOrder[v][Math.min(idx, 26)];
+  const m9 = storyVolMeta[v][oi];
+  return (m9 && m9.l) || STORY_PANELS[oi];
 }
 function storySrc(idx, vol){
   const v = vol === undefined ? storyVol : vol;
@@ -3553,7 +3601,7 @@ function drawTriadStory(L, t, idle){
   ctx.font = Math.round(11*L.k) + "px monospace";
   ctx.textAlign = "right";
   ctx.fillStyle = "rgba(190,200,255,0.6)";
-  ctx.fillText((isSaga ? "SAGA" : "STORY") + " · " + STORY_PANELS[k],
+  ctx.fillText((isSaga ? "SAGA" : "STORY") + " · " + storyLabelFor(k),
                L.px0 + L.fieldW + 6*L.k, L.py0 - 22*L.k);
   return { k, isSaga };
 }
@@ -6696,8 +6744,10 @@ canvasAnim.addEventListener("click", (e) => {
           if (abViz > 0) abViz = nv + 1;
         } else if (abLib >= 0){
           if (abLibMenu >= 0){
-            abLibMenu = Math.max(0, Math.min(2, abLibMenu + ay));
+            if (ax < 0) abLibMenu = -1;                    // left backs out
+            else abLibMenu = Math.max(0, Math.min(2, abLibMenu + ay));
           } else if (abLibCarry >= 0 && abLib === 1){
+            // moving an image: all four arrows carry it
             const colsL = U.dgm.scr.w >= 420 ? 4 : 3;
             const tv = Math.max(0, Math.min(26, abLibCarry + ax + ay*colsL));
             if (tv !== abLibCarry){
@@ -6706,17 +6756,27 @@ canvasAnim.addEventListener("click", (e) => {
               abDgmWheel = [Math.floor(tv/26), tv % 26];
             }
           } else if (abLib === 0){
-            const nv = Math.max(0, Math.min(1, abDgmWheel[1] + (ax || ay)));
-            abDgmWheel = [0, nv];
+            if (ax < 0){ abLib = -1; abStoryPage = 0; }    // left backs out
+            else {
+              const nv = Math.max(0, Math.min(1, abDgmWheel[1] + (ax || ay)));
+              abDgmWheel = [0, nv];
+            }
           } else if (abLib === 1){
-            const colsL = U.dgm.scr.w >= 420 ? 4 : 3;
-            let nv = abDgmWheel[0]*26 + abDgmWheel[1] + ax + ay*colsL;
-            nv = Math.max(0, Math.min(26, nv));
-            abDgmWheel = [Math.floor(nv/26), nv % 26];
-          } else if (ax){
-            const np = Math.max(0, Math.min(26, (abLib - 2) + ax));
-            abLib = 2 + np;
-            abDgmWheel = [Math.floor(np/26), np % 26];
+            if (ax < 0){ abLib = 0; }                      // left backs out
+            else {
+              const colsL = U.dgm.scr.w >= 420 ? 4 : 3;
+              let nv = abDgmWheel[0]*26 + abDgmWheel[1] + ax + ay*colsL;
+              nv = Math.max(0, Math.min(26, nv));
+              abDgmWheel = [Math.floor(nv/26), nv % 26];
+            }
+          } else {
+            // a plate is open: up/down turn the pages, left backs out
+            if (ax < 0){ abLib = 1; }
+            else if (ay){
+              const np = Math.max(0, Math.min(26, (abLib - 2) + ay));
+              abLib = 2 + np;
+              abDgmWheel = [Math.floor(np/26), np % 26];
+            }
           }
         } else if (!U.duo && abStoryPage === 1 && ay){
           abLetterStep += ay;
@@ -7050,6 +7110,15 @@ canvasAnim.addEventListener("pointercancel", () => { clearTimeout(framePressTime
 
 const frameEdit = document.getElementById('frameEdit');
 const frameEditText = document.getElementById('frameEditText');
+const frameEditLabel = document.getElementById('frameEditLabel');
+frameEditLabel.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown' || e.key === 'Enter'){ e.preventDefault(); frameEditText.focus(); }
+});
+frameEditText.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowUp' && frameEditText.selectionStart === 0){
+    e.preventDefault(); frameEditLabel.focus();
+  }
+});
 let frameEditIdx = -1;
 let frameEditF = 0;
 let framePressTimer = null;
@@ -7057,6 +7126,7 @@ let framePressTimer = null;
 let frameEditMode = 'box', storyEditIdx = -1;
 function openFrameEdit(fi, idx){
   frameEditMode = 'box';
+  frameEditLabel.style.display = "none";
   frameEditF = fi;
   frameEditIdx = idx;
   frameEditText.value = FRAME_DEFS[fi].boxes[idx].lines.join(" ");
@@ -7069,20 +7139,24 @@ function openStoryEdit(idx, vol){
   frameEditMode = 'story';
   storyEditIdx = idx;
   storyEditVol = vol === undefined ? storyVol : vol;
+  frameEditLabel.style.display = "block";
+  frameEditLabel.value = storyLabelFor(idx, storyEditVol);
   frameEditText.value = storyTextFor(idx, storyEditVol);
   frameEdit.style.display = "block";
-  frameEditText.focus();
+  frameEditLabel.focus();
   haptic('light');
 }
 function closeFrameEdit(save){
   if (save && frameEditMode === 'story' && storyEditIdx >= 0){
+    const oi = storyVolOrder[storyEditVol][Math.min(storyEditIdx, 26)];
+    const lb = frameEditLabel.value.trim().slice(0, 12);
     const tx = frameEditText.value.trim().replace(/\s+/g, " ");
-    if (tx) storyVolTexts[storyEditVol][storyEditIdx] = tx;
-    else delete storyVolTexts[storyEditVol][storyEditIdx];
-    try {
-      localStorage.setItem('salvationStory' + (storyEditVol + 1) + 'Texts',
-                           JSON.stringify(storyVolTexts[storyEditVol]));
-    } catch(err) {}
+    const M9 = storyVolMeta[storyEditVol][oi] || (storyVolMeta[storyEditVol][oi] = {});
+    if (lb && lb !== STORY_PANELS[oi]) M9.l = lb; else delete M9.l;
+    const dt9 = storyEditVol === 1 ? STORY_TEXTS2[oi] : STORY_TEXTS[oi];
+    if (tx && tx !== dt9) M9.t = tx; else delete M9.t;
+    if (!M9.l && !M9.t) delete storyVolMeta[storyEditVol][oi];
+    storySaveMeta(storyEditVol);
   } else if (save && frameEditMode === 'box' && frameEditIdx >= 0){
     setFrameBoxText(frameEditF, frameEditIdx, frameEditText.value, true);
   }
