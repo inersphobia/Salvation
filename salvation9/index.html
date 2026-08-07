@@ -1144,7 +1144,13 @@ function abacusWideUnits(){
   dgm.w2u = { x: px5, y: dgm.pan.y + 172*pu, w: pw5, h: 36*pu };
   dgm.w2  = { x: px5, y: dgm.pan.y + 212*pu, w: pw5, h: 72*pu };
   dgm.w2d = { x: px5, y: dgm.pan.y + 288*pu, w: pw5, h: 36*pu };
-  dgm.joy = { cx: x0 + 52*sc, cy: monTop + monH - 39*sc, r: 20*sc };
+  const dcx = x0 + 56*sc, dcy = monTop + monH - 46*sc;
+  dgm.dpad = {
+    up:    { x: dcx - 13*sc, y: dcy - 30*sc,  w: 26*sc, h: 19*sc },
+    down:  { x: dcx - 13*sc, y: dcy + 11*sc,  w: 26*sc, h: 19*sc },
+    left:  { x: dcx - 44*sc, y: dcy - 9.5*sc, w: 26*sc, h: 19*sc },
+    right: { x: dcx + 18*sc, y: dcy - 9.5*sc, w: 26*sc, h: 19*sc }
+  };
   // on wide glass the tube splits: a square bay left (scene or box),
   // the working surface right (letter or chart)
   let duo = null;
@@ -1585,12 +1591,11 @@ function drawAbacusWideDots(t){
     const nw4 = performance.now();
     const dt4 = Math.min(0.1, Math.max(0, (nw4 - abLetterT)/1000));
     abLetterT = nw4;
-    if (idle3) abLetterPos = null;
-    else if (abDgmJoy && Math.abs(abDgmJoy.dy) > 0.08){
+    if (idle3){ abLetterPos = null; abLetterStep = 0; }
+    else if (abLetterStep){
       if (abLetterPos === null) abLetterPos = span*(local/per);
-      const eff = abDgmJoy.dy*Math.abs(abDgmJoy.dy);
-      abLetterPos += (span/per)*(1 + eff*40)*dt4;
-      abLetterPos = Math.max(0, Math.min(span, abLetterPos));
+      abLetterPos = Math.max(0, Math.min(span, abLetterPos + abLetterStep*70));
+      abLetterStep = 0;
     } else if (abLetterPos !== null){
       abLetterPos = Math.max(0, Math.min(span, abLetterPos + (span/per)*dt4));
     }
@@ -1643,34 +1648,6 @@ function drawAbacusWideDots(t){
     const D = U.dgm, S = D.scr;
     storyBoot();
     const idle9 = !running && !finished && pauseMs === 0;
-    // the stick is the librarian: push to move the mark, hold to walk;
-    // the drums spin along so the dialed code always agrees
-    if (abDgmJoy && (Math.abs(abDgmJoy.dx) > 0.45 || Math.abs(abDgmJoy.dy) > 0.45)){
-      const nvw = performance.now();
-      if (nvw - abLibNavT > 240){
-        abLibNavT = nvw;
-        const bi0 = abDgmWheel[0]*26 + abDgmWheel[1];
-        const sx9 = Math.abs(abDgmJoy.dx) > Math.abs(abDgmJoy.dy)
-          ? (abDgmJoy.dx > 0 ? 1 : -1) : 0;
-        const sy9 = sx9 === 0 ? (abDgmJoy.dy > 0 ? 1 : -1) : 0;
-        let ni = bi0;
-        if (abLib === 0) ni = bi0 + (sx9 || sy9);
-        else if (abLib === 1){
-          const cols9 = S.w >= 420 ? 4 : 3;
-          ni = bi0 + sx9 + sy9*cols9;
-        } else if (sx9){
-          const np = Math.max(0, Math.min(STORY_PANELS.length - 2, (abLib - 2) + sx9));
-          abLib = 2 + np;
-          ni = np;
-        }
-        const max9 = abLib === 0 ? 1 : STORY_PANELS.length - 2;
-        ni = Math.max(0, Math.min(max9, ni));
-        if (ni !== bi0){
-          abDgmWheel = [Math.floor(ni/26), ni % 26];
-          haptic('light');
-        }
-      }
-    } else abLibNavT = 0;
     const bi3 = abDgmWheel[0]*26 + abDgmWheel[1];
     if (abLib === 0){
       ctx.save();
@@ -1746,6 +1723,44 @@ function drawAbacusWideDots(t){
         ctx.fillStyle = on ? "rgba(235,240,250,0.95)" : "rgba(224,232,250,0.7)";
         ctx.fillText(STORY_PANELS[i], r.x + 28*sc, r.y + r.h/2 + 3*sc);
       });
+      if (abLibCarry >= 0){
+        const rc = abLibRows(S, sc)[abLibCarry];
+        if (rc){
+          const pu9 = 0.5 + 0.4*Math.sin(performance.now()/240);
+          ctx.strokeStyle = "rgba(255,190,90," + pu9.toFixed(2) + ")";
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.roundRect(rc.x - 2, rc.y - 2, rc.w + 4, rc.h + 4, 5); ctx.stroke();
+        }
+        ctx.font = Math.round(8.5*sc) + "px monospace"; ctx.textAlign = "center";
+        ctx.fillStyle = "rgba(255,190,90,0.85)";
+        ctx.fillText("moving · arrows walk it · dials seat it · SELECT sets it down",
+                     S.x + S.w/2, S.y + S.h - 22*sc);
+      }
+      if (abLibMenu >= 0){
+        const mw9 = Math.min(220*sc, S.w - 40*sc), mh9 = 118*sc;
+        const mx0 = S.x + S.w/2 - mw9/2, my0 = S.y + S.h/2 - mh9/2;
+        ctx.fillStyle = "rgba(6,9,34,0.94)";
+        ctx.beginPath(); ctx.roundRect(mx0, my0, mw9, mh9, 8); ctx.fill();
+        ctx.strokeStyle = "rgba(255,170,60,0.6)"; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.roundRect(mx0, my0, mw9, mh9, 8); ctx.stroke();
+        ctx.font = "bold " + Math.round(10*sc) + "px monospace"; ctx.textAlign = "left";
+        ctx.fillStyle = "rgba(255,170,60,0.9)";
+        ctx.fillText("SCN " + STORY_PANELS[abLibMenuFor], mx0 + 12*sc, my0 + 18*sc);
+        ["VIEW", "EDIT TEXT", "MOVE"].forEach((op, i) => {
+          const oy = my0 + 30*sc + i*28*sc;
+          if (i === abLibMenu){
+            ctx.fillStyle = "rgba(255,170,60,0.15)";
+            ctx.beginPath(); ctx.roundRect(mx0 + 8*sc, oy, mw9 - 16*sc, 24*sc, 4); ctx.fill();
+            ctx.strokeStyle = "rgba(255,170,60,0.7)";
+            ctx.setLineDash([3, 4]);
+            ctx.beginPath(); ctx.roundRect(mx0 + 8*sc, oy, mw9 - 16*sc, 24*sc, 4); ctx.stroke();
+            ctx.setLineDash([]);
+          }
+          ctx.font = Math.round(10.5*sc) + "px monospace";
+          ctx.fillStyle = i === abLibMenu ? "rgba(255,190,90,0.95)" : "rgba(224,232,250,0.75)";
+          ctx.fillText(op, mx0 + 20*sc, oy + 16*sc);
+        });
+      }
       ctx.drawImage(abMonEOverlay(S.w, S.h), S.x, S.y);
       ctx.restore();
       ctx.font = Math.round(9*sc) + "px monospace"; ctx.textAlign = "left";
@@ -1782,26 +1797,9 @@ function drawAbacusWideDots(t){
                    Mi.x + 8*sc, Mi.y + Mi.h - 8*sc);
       ctx.textAlign = "right";
       ctx.fillStyle = !running ? "rgba(255,190,90,0.9)" : "rgba(255,170,60,0.5)";
-      ctx.fillText(!running ? (abLibCarry >= 0 ? "SELECT · SWAP HERE" : "SELECT · EDIT TEXT")
+      ctx.fillText(!running ? "SELECT · EDIT TEXT"
                             : "LIB " + abDgmCode(Math.floor(li/26), li % 26),
                    Mi.x + Mi.w - 8*sc, Mi.y + Mi.h - 8*sc);
-      if (!running){
-        // MOVE: pick this image up, walk to its true place, swap
-        const mv = { x: Mi.x + Mi.w - 62*sc, y: Mi.y + 10*sc, w: 52*sc, h: 18*sc };
-        ctx.fillStyle = abLibCarry === li ? "rgba(255,150,40,0.25)" : "rgba(255,150,40,0.1)";
-        ctx.beginPath(); ctx.roundRect(mv.x, mv.y, mv.w, mv.h, 4); ctx.fill();
-        ctx.strokeStyle = "rgba(255,170,60,0.7)"; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.roundRect(mv.x, mv.y, mv.w, mv.h, 4); ctx.stroke();
-        ctx.font = Math.round(8.5*sc) + "px monospace"; ctx.textAlign = "center";
-        ctx.fillStyle = "rgba(255,190,90,0.95)";
-        ctx.fillText(abLibCarry === li ? "DROP" : "MOVE", mv.x + mv.w/2, mv.y + mv.h/2 + 3*sc);
-        if (abLibCarry >= 0 && abLibCarry !== li){
-          ctx.textAlign = "left"; ctx.font = Math.round(9*sc) + "px monospace";
-          ctx.fillStyle = "rgba(255,190,90,0.9)";
-          ctx.fillText("carrying the image of SCN " + STORY_PANELS[abLibCarry] +
-                       " · SELECT swaps it with this one", Mi.x + 10*sc, Mi.y + 22*sc);
-        }
-      }
       if (U.duo){
         const E9 = U.duo.R;
         ctx.save();
@@ -1921,10 +1919,7 @@ function drawAbacusWideDots(t){
       }
     }
     const cam = abDgmCam[abDgm];
-    if (abDgmJoy && (abDgmJoy.dx || abDgmJoy.dy)){
-      cam.x += abDgmJoy.dx*10; cam.y += abDgmJoy.dy*10;
-      abDgmGlide = null;
-    } else if (abDgmGlide){
+    if (abDgmGlide){
       cam.x += (abDgmGlide.x - cam.x)*0.09;
       cam.y += (abDgmGlide.y - cam.y)*0.09;
       if (Math.abs(abDgmGlide.x - cam.x) + Math.abs(abDgmGlide.y - cam.y) < 1) abDgmGlide = null;
@@ -2054,19 +2049,24 @@ function drawAbacusWideDots(t){
     };
     arrow(D.w1u, "w0u", true); arrow(D.w1d, "w0d", false);
     arrow(D.w2u, "w1u", true); arrow(D.w2d, "w1d", false);
-    const J = D.joy;
-    ctx.fillStyle = "#0a0d15";
-    ctx.beginPath(); ctx.arc(J.cx, J.cy, J.r, 0, 2*Math.PI); ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.18)";
-    ctx.beginPath(); ctx.arc(J.cx, J.cy, J.r, 0, 2*Math.PI); ctx.stroke();
-    const jx = J.cx + (abDgmJoy ? abDgmJoy.dx : 0)*J.r*0.45;
-    const jy = J.cy + (abDgmJoy ? abDgmJoy.dy : 0)*J.r*0.45;
-    const jg = ctx.createRadialGradient(jx - 2, jy - 2, 0, jx, jy, J.r*0.55);
-    jg.addColorStop(0, "#5d6880"); jg.addColorStop(1, "#242b37");
-    ctx.fillStyle = jg;
-    ctx.beginPath(); ctx.arc(jx, jy, J.r*0.55, 0, 2*Math.PI); ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,0.6)";
-    ctx.beginPath(); ctx.arc(jx, jy, J.r*0.55, 0, 2*Math.PI); ctx.stroke();
+    const DP = D.dpad;
+    const dkeys = [["up", DP.up, 0, -1], ["down", DP.down, 0, 1],
+                   ["left", DP.left, -1, 0], ["right", DP.right, 1, 0]];
+    for (const dk of dkeys){
+      const nm = dk[0], r9 = dk[1], ax = dk[2], ay = dk[3];
+      const pr9 = abDgmFlash.k === "d" + nm && performance.now() < abDgmFlash.until;
+      ctx.fillStyle = pr9 ? "#1d2431" : "#2e3a4d";
+      ctx.beginPath(); ctx.roundRect(r9.x, r9.y, r9.w, r9.h, 4); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(r9.x, r9.y, r9.w, r9.h, 4); ctx.stroke();
+      ctx.fillStyle = "rgba(200,215,235,0.88)";
+      const mx9 = r9.x + r9.w/2, my9 = r9.y + r9.h/2, aw9 = 5*sc, ah9 = 3.4*sc;
+      ctx.beginPath();
+      ctx.moveTo(mx9 + ax*ah9, my9 + ay*ah9);
+      ctx.lineTo(mx9 - ax*ah9 + ay*aw9, my9 - ay*ah9 + ax*aw9);
+      ctx.lineTo(mx9 - ax*ah9 - ay*aw9, my9 - ay*ah9 - ax*aw9);
+      ctx.closePath(); ctx.fill();
+    }
   }
 }
 // the tube's picture, cached per scene and size
@@ -2172,7 +2172,7 @@ Others believed that three was sacred because it is the first number that is tri
 
 Are some constellations circles?`;
 let abLetterCv = null, abLetterKey = "", abLetterLH = 16, abLetterN = 1;
-let abLetterPos = null, abLetterT = 0;   // the stick-bent crawl
+let abLetterPos = null, abLetterT = 0, abLetterStep = 0;   // arrow-nudged crawl
 let abRoll = { t0: 0, dur: 6500, amp: 0.08, ghost: 0 }, abRollUntil = 0;
 let abStoryPage = 0;   // one-tube STORY: 0 the scenes, 1 the letter
 function abLetterRender(w, sc){
@@ -2248,7 +2248,7 @@ let abDgm = -1;
 let abDgmLastD = 0;   // which chart the DIAGRAM key returns to
 const abDgmCam = [{ x: 0, y: 500 }, { x: 0, y: 340 }];
 let abDgmWheel = [0, 0];
-let abDgmGlide = null, abDgmJoy = null, abDgmJoyPtr = null, abDgmJoyUntil = 0;
+let abDgmGlide = null;
 let abDgmFlash = { k: "", until: 0 };
 const AB_DGM_S = 0.75;
 let abDgmCvs = [null, null];
@@ -3372,7 +3372,9 @@ const STORY_TEXTS2 = STORY_TEXTS.map((t, i) => ({
 let abLib = -1;   // -1 live · 0 collections · 1 plate index · 2+n plate n
 let abLibVol = 0; // which volume the library is browsing
 let abLibNavT = 0; // stick-step repeat clock
-let abLibCarry = -1; // the place whose image is being carried to a new seat
+let abLibCarry = -1;   // the place whose image is being moved
+let abLibMenu = -1;    // View|Edit|Move chooser: -1 closed, else option
+let abLibMenuFor = 0;  // which plate the chooser is about
 // repainted plates: index -> standalone file, overriding the sheet
 const STORY_ALT = { 2: "epimetheus.png" };
 const storyAltImgs = {};
@@ -3389,9 +3391,12 @@ for (let v9 = 0; v9 < 2; v9++){
   storyVolOrder[v9] = Array.isArray(o9) && o9.length === 27
     ? o9 : Array.from({ length: 27 }, (_, i) => i);
 }
-function storySwapOrder(v9, a, b){
+function storyMoveOrder(v9, from, to){
+  // pull the image out of its seat and slide it in at the target;
+  // whoever sat there is pushed one place along
   const O = storyVolOrder[v9];
-  const t9 = O[a]; O[a] = O[b]; O[b] = t9;
+  const it = O.splice(from, 1)[0];
+  O.splice(to, 0, it);
   try { localStorage.setItem('salvationStory' + (v9 + 1) + 'Order', JSON.stringify(O)); } catch(e) {}
 }
 try { storyVolTexts[0] = JSON.parse(localStorage.getItem('salvationStory1Texts') || "{}"); } catch(e) {}
@@ -6642,7 +6647,56 @@ canvasAnim.addEventListener("click", (e) => {
   if (viewMode === 2){
     const U = abacusWideUnits();
     const hit = (b) => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h;
-    if (performance.now() < abDgmJoyUntil) return;
+    // the D-pad: one click, one move, context deciding what a move is
+    {
+      const DP = U.dgm.dpad;
+      const dstep = hit(DP.up) ? [0, -1] : hit(DP.down) ? [0, 1]
+                  : hit(DP.left) ? [-1, 0] : hit(DP.right) ? [1, 0] : null;
+      if (dstep){
+        const ax = dstep[0], ay = dstep[1];
+        abDgmFlash = { k: "d" + (ay < 0 ? "up" : ay > 0 ? "down" : ax < 0 ? "left" : "right"),
+                       until: performance.now() + 140 };
+        haptic('light');
+        if (abDgm >= 0){
+          const camD = abDgmCam[abDgm];
+          camD.x += ax*120; camD.y += ay*120;
+          abDgmGlide = null;
+        } else if (abViz >= 0){
+          const colsV = U.dgm.scr.w >= 420 ? 3 : 2;
+          let nv = abDgmWheel[0]*26 + abDgmWheel[1] + ax + ay*colsV;
+          nv = Math.max(0, Math.min(VIZ_DEFS.length - 1, nv));
+          abDgmWheel = [Math.floor(nv/26), nv % 26];
+          if (abViz > 0) abViz = nv + 1;
+        } else if (abLib >= 0){
+          if (abLibMenu >= 0){
+            abLibMenu = Math.max(0, Math.min(2, abLibMenu + ay));
+          } else if (abLibCarry >= 0 && abLib === 1){
+            const colsL = U.dgm.scr.w >= 420 ? 4 : 3;
+            const tv = Math.max(0, Math.min(26, abLibCarry + ax + ay*colsL));
+            if (tv !== abLibCarry){
+              storyMoveOrder(abLibVol, abLibCarry, tv);
+              abLibCarry = tv;
+              abDgmWheel = [Math.floor(tv/26), tv % 26];
+            }
+          } else if (abLib === 0){
+            const nv = Math.max(0, Math.min(1, abDgmWheel[1] + (ax || ay)));
+            abDgmWheel = [0, nv];
+          } else if (abLib === 1){
+            const colsL = U.dgm.scr.w >= 420 ? 4 : 3;
+            let nv = abDgmWheel[0]*26 + abDgmWheel[1] + ax + ay*colsL;
+            nv = Math.max(0, Math.min(26, nv));
+            abDgmWheel = [Math.floor(nv/26), nv % 26];
+          } else if (ax){
+            const np = Math.max(0, Math.min(26, (abLib - 2) + ax));
+            abLib = 2 + np;
+            abDgmWheel = [Math.floor(np/26), np % 26];
+          }
+        } else if (!U.duo && abStoryPage === 1 && ay){
+          abLetterStep += ay;
+        }
+        return;
+      }
+    }
     // SELECT: the brass confirm key
     const storyGate9 = abDgm < 0 && abViz < 0 && abLib < 0 && !running;
     if ((abDgm >= 0 || abViz >= 0 || abLib >= 0 || storyGate9) && hit(U.selBtn)){
@@ -6664,18 +6718,26 @@ canvasAnim.addEventListener("click", (e) => {
             haptic('medium');
           }
         } else if (abLib === 1){
-          if (biS < STORY_PANELS.length - 1){ abLib = 2 + biS; haptic('medium'); }
-        } else if (!running){
-          if (abLibCarry >= 0){
-            // set the carried image down here: the two places trade art
-            if (abLibCarry !== abLib - 2)
-              storySwapOrder(abLibVol, abLibCarry, abLib - 2);
+          if (abLibMenu >= 0){
+            // commit the chooser: View | Edit | Move
+            const pi9 = abLibMenuFor;
+            const op9 = abLibMenu;
+            abLibMenu = -1;
+            if (op9 === 0) abLib = 2 + pi9;
+            else if (op9 === 1) openStoryEdit(pi9, abLibVol);
+            else { abLibCarry = pi9; abDgmWheel = [Math.floor(pi9/26), pi9 % 26]; }
+            haptic('medium');
+          } else if (abLibCarry >= 0){
+            // the image is seated where it stands: done moving
             abLibCarry = -1;
             haptic('medium');
-          } else {
-            // a plate is open and time is stopped: SELECT rewrites its text
-            openStoryEdit(abLib - 2, abLibVol);
+          } else if (biS < STORY_PANELS.length - 1){
+            abLibMenu = 0; abLibMenuFor = biS;
+            haptic('medium');
           }
+        } else if (!running){
+          // a plate is open and time is stopped: SELECT rewrites its text
+          openStoryEdit(abLib - 2, abLibVol);
         } else haptic('light');
       } else if (abDgm < 0 && !running && pauseMs > 0 && !finished){
         // paused mid-tale: SELECT opens the editor on this minute's text
@@ -6699,7 +6761,9 @@ canvasAnim.addEventListener("click", (e) => {
           if (!U.duo) abStoryPage = 1 - abStoryPage;
         }
         else if (abLib >= 2) abLib = 1;
-        else if (abLib === 1){ abLib = 0; abLibCarry = -1; }
+        else if (abLib === 1 && abLibMenu >= 0) abLibMenu = -1;
+        else if (abLib === 1 && abLibCarry >= 0) abLibCarry = -1;
+        else if (abLib === 1) abLib = 0;
         else if (abLib === 0){ abLib = -1; abStoryPage = 0; abLibCarry = -1; }
         else if (U.duo) abLib = 0;
         else if (abStoryPage === 0) abStoryPage = 1;
@@ -6759,8 +6823,7 @@ canvasAnim.addEventListener("click", (e) => {
       return;
     }
     if (abDgm >= 0){
-      if (performance.now() < abDgmJoyUntil) return;
-      const D = U.dgm;
+        const D = U.dgm;
       const bump = (wi, dir) => {
         abDgmWheel[wi] = (abDgmWheel[wi] + (dir < 0 ? 25 : 1)) % 26;
         abDgmFlash = { k: "w" + wi + (dir < 0 ? "u" : "d"),
@@ -6811,21 +6874,40 @@ canvasAnim.addEventListener("click", (e) => {
           return;
         }
       } else if (abLib === 1){
-        const rows = abLibRows(D.scr, U.sc);
-        for (let i = 0; i < rows.length; i++){
-          if (!hit(rows[i])) continue;
-          abDgmWheel = [Math.floor(i/26), i % 26];
-          abLib = 2 + i;
-          haptic('medium');
+        const S9 = D.scr, sc9 = U.sc;
+        if (abLibMenu >= 0){
+          // taps on the chooser's three rows
+          const mw9 = Math.min(220*sc9, S9.w - 40*sc9), mh9 = 118*sc9;
+          const mx0 = S9.x + S9.w/2 - mw9/2, my0 = S9.y + S9.h/2 - mh9/2;
+          for (let i = 0; i < 3; i++){
+            const orow = { x: mx0 + 8*sc9, y: my0 + 30*sc9 + i*28*sc9, w: mw9 - 16*sc9, h: 24*sc9 };
+            if (!hit(orow)) continue;
+            abLibMenu = i;
+            const pi9 = abLibMenuFor;
+            abLibMenu = -1;
+            if (i === 0) abLib = 2 + pi9;
+            else if (i === 1) openStoryEdit(pi9, abLibVol);
+            else { abLibCarry = pi9; abDgmWheel = [Math.floor(pi9/26), pi9 % 26]; }
+            haptic('medium');
+            return;
+          }
+          abLibMenu = -1;   // tapping elsewhere closes the chooser
           return;
         }
-      } else if (abLib >= 2 && !running){
-        // the MOVE key on the plate glass
-        const sc9 = U.sc;
-        const Mi = U.duo ? U.duo.L : U.dgm.scr;
-        const mv = { x: Mi.x + Mi.w - 62*sc9, y: Mi.y + 10*sc9, w: 52*sc9, h: 18*sc9 };
-        if (hit(mv)){
-          abLibCarry = abLibCarry === abLib - 2 ? -1 : abLib - 2;
+        const rows = abLibRows(S9, sc9);
+        for (let i = 0; i < rows.length; i++){
+          if (!hit(rows[i])) continue;
+          if (abLibCarry >= 0){
+            // tapping a seat while moving: the image goes there
+            if (i !== abLibCarry){
+              storyMoveOrder(abLibVol, abLibCarry, i);
+              abLibCarry = i;
+              abDgmWheel = [Math.floor(i/26), i % 26];
+            }
+          } else {
+            abDgmWheel = [Math.floor(i/26), i % 26];
+            abLibMenu = 0; abLibMenuFor = i;
+          }
           haptic('medium');
           return;
         }
@@ -6834,6 +6916,13 @@ canvasAnim.addEventListener("click", (e) => {
         abDgmWheel[wi] = (abDgmWheel[wi] + (dir < 0 ? 25 : 1)) % 26;
         abDgmFlash = { k: "w" + wi + (dir < 0 ? "u" : "d"),
                        until: performance.now() + 140 };
+        if (abLib === 1 && abLibCarry >= 0){
+          const dst = abDgmWheel[0]*26 + abDgmWheel[1];
+          if (dst <= 26 && dst !== abLibCarry){
+            storyMoveOrder(abLibVol, abLibCarry, dst);
+            abLibCarry = dst;
+          }
+        }
         haptic('light');
       };
       if (hit(D.w1u)){ hBump(0, -1); return; }
@@ -6872,35 +6961,7 @@ canvasAnim.addEventListener("click", (e) => {
   if (dx*dx + dy*dy <= r*r) toggleClock();
 });
 
-/* ---- the diagram deck stick: hold and push to pan the tube camera ---- */
-canvasAnim.addEventListener("pointerdown", (e) => {
-  if (viewMode !== 2) return;
-  const rect = canvasAnim.getBoundingClientRect();
-  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
-  const J = abacusWideUnits().dgm.joy;
-  if (Math.hypot(cx - J.cx, cy - J.cy) > J.r + 6) return;
-  abDgmJoyPtr = e.pointerId;
-  abDgmJoy = { dx: 0, dy: 0 };
-  try { canvasAnim.setPointerCapture(e.pointerId); } catch(err) {}
-  haptic('light');
-});
-canvasAnim.addEventListener("pointermove", (e) => {
-  if (abDgmJoyPtr === null || e.pointerId !== abDgmJoyPtr || !abDgmJoy) return;
-  const rect = canvasAnim.getBoundingClientRect();
-  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
-  const J = abacusWideUnits().dgm.joy;
-  let dx = (cx - J.cx)/J.r, dy = (cy - J.cy)/J.r;
-  const m = Math.hypot(dx, dy);
-  if (m > 1){ dx /= m; dy /= m; }
-  abDgmJoy.dx = dx; abDgmJoy.dy = dy;
-});
-const abDgmJoyEnd = () => {
-  if (abDgmJoyPtr === null) return;
-  abDgmJoyPtr = null; abDgmJoy = null;
-  abDgmJoyUntil = performance.now() + 250;
-};
-canvasAnim.addEventListener("pointerup", (e) => { if (e.pointerId === abDgmJoyPtr) abDgmJoyEnd(); });
-canvasAnim.addEventListener("pointercancel", (e) => { if (e.pointerId === abDgmJoyPtr) abDgmJoyEnd(); });
+/* the stick retired in favor of the D-pad: one click, one move */
 /* ---------- FRAME VIEW: pan (drag dark space) + select (tap a box) ---------- */
 let framePtr = null;
 canvasAnim.addEventListener("pointerdown", (e) => {
