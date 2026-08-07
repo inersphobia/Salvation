@@ -1,4 +1,4 @@
-const CACHE_NAME = 'salvation1-v3';
+const CACHE_NAME = 'salvation1-v4';
 const urlsToCache = [
   './',
   './index.html',
@@ -12,7 +12,7 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache)
-        .then(() => cache.add('../brothers-sheet.webp').catch(() => {})))
+        .then(() => cache.add('../27.png').catch(() => {}).then(() => cache.add('../epimetheus.png').catch(() => {}))))
   );
   self.skipWaiting();
 });
