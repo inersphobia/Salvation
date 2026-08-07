@@ -907,6 +907,8 @@ function startClock(){
   startMs = pauseMs>0 ? performance.now()-pauseMs : performance.now();
   startWall = Date.now() - (performance.now() - startMs);
   running=true;
+  try { localStorage.setItem('salvationRun',
+    JSON.stringify({ w: startWall, tc: totalCycle, tm: timeMode, p: 0 })); } catch(e) {}
   getAudio(); // unlock audio within the user gesture
   requestWakeLock();
   showTimerNotification(
@@ -920,6 +922,9 @@ function pauseClock(){
   running=false;
   pauseMs=performance.now()-startMs;
   needsStaticRedraw = true;
+  if (sessCurrent()){ curSess.sec = Math.round(pauseMs/1000); sessSave(); }
+  try { localStorage.setItem('salvationRun',
+    JSON.stringify({ w: startWall, tc: totalCycle, tm: timeMode, p: pauseMs })); } catch(e) {}
   releaseWakeLock();
   showTimerNotification(
     'Salvation timer paused',
@@ -928,6 +933,17 @@ function pauseClock(){
   );
 }
 function resetClock(){
+  // RESET closes the account: the true length goes on the record
+  const S9c = sessCurrent();
+  if (S9c){
+    if (finished) S9c.sec = Math.round(totalCycle + Math.max(0, (Date.now() - finishWall)/1000));
+    else if (running) S9c.sec = Math.round((performance.now() - startMs)/1000);
+    else if (pauseMs > 0) S9c.sec = Math.round(pauseMs/1000);
+    S9c.done = true;
+    sessSave();
+  }
+  curSess = null;
+  try { localStorage.removeItem('salvationRun'); } catch(e) {}
   abLib = -1; abLibCarry = -1; abLog = -1;
   running=false; finished=false;
   pauseMs=0; startMs=performance.now(); startWall=Date.now(); finishWall=0;
@@ -944,7 +960,8 @@ function resetClock(){
 function finishClock(){
   needsStaticRedraw = true;
   finished=true;
-  if (sessCurrent()){ curSess.done = true; curSess.dur = Math.round(totalCycle/60); sessSave(); }
+  if (sessCurrent()){ curSess.done = true; curSess.dur = Math.round(totalCycle/60);
+    curSess.sec = Math.round(totalCycle); sessSave(); }
   running=false;
   overtimeStart = startMs + totalCycle * 1000;
   finishWall = Date.now() - (performance.now() - overtimeStart);
@@ -1826,7 +1843,7 @@ function drawAbacusWideDots(t){
         ctx.font = Math.round(9.5*sc) + "px monospace";
         ctx.fillStyle = i === abLogSel ? "rgba(235,240,250,0.95)" : "rgba(224,232,250,0.7)";
         const net9 = s9.marks.reduce((a9, m9) => a9 + (m9.s || 0), 0);
-        ctx.fillText(sessWhen(s9.at) + " · " + s9.dur + "m · " +
+        ctx.fillText(sessWhen(s9.at) + " · " + sessMins(s9) + "m · " +
                      s9.marks.length + (s9.marks.length === 1 ? " mark" : " marks") +
                      (net9 ? " · " + (net9 > 0 ? "+" + net9 : "\u2212" + (-net9)) : "") +
                      (s9.done ? " · FIN" : ""), S.x + 14*sc, ry);
@@ -1835,7 +1852,7 @@ function drawAbacusWideDots(t){
       const s9 = sessLog[abLog - 1];
       if (s9){
         const netH = s9.marks.reduce((a9, m9) => a9 + (m9.s || 0), 0);
-        ctx.fillText(sessWhen(s9.at) + " · " + s9.dur + "m" +
+        ctx.fillText(sessWhen(s9.at) + " · " + sessMins(s9) + "m" +
                      (netH ? " · " + (netH > 0 ? "+" + netH : "\u2212" + (-netH)) : "") +
                      (s9.done ? " · FIN" : ""), S.x + 12*sc, S.y + 18*sc);
         ctx.font = Math.round(9.5*sc) + "px monospace";
@@ -2923,6 +2940,8 @@ function abacusExtend(){
   if ((m !== 27 && m !== 54) || timeMode === 3) return;
   timeMode = m === 27 ? 1 : 2;
   if (sessCurrent()){ curSess.done = false; curSess.dur = m === 27 ? 54 : 81; sessSave(); }
+  try { localStorage.setItem('salvationRun',
+    JSON.stringify({ w: startWall, tc: totalCycle, tm: timeMode, p: 0 })); } catch(e) {}
   updateTables();
   finished = false;
   running = true;
@@ -3852,6 +3871,8 @@ function sessWhen(ms){
   return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }) + " " +
          d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
 }
+function sessMins(s9){ return s9.sec > 0 ? Math.max(1, Math.round(s9.sec/60)) : s9.dur; }
+let sessSecAt = 0;
 function ternMark(t){
   const m = Math.floor(t/60), f = Math.max(0, Math.floor(((t % 60)/60)*27));
   return m.toString(3).padStart(4, "0") + ":" + f.toString(3).padStart(3, "0");
@@ -7050,6 +7071,11 @@ function draw(now){
 
     if (running){
       updateTimerText(pElapsed);
+      if (sessCurrent() && now - sessSecAt > 30000){
+        sessSecAt = now;
+        curSess.sec = Math.round(elapsed);
+        sessSave();
+      }
 
       for (const d of TONE_DEFS){
         const idx = Math.floor(elapsed / d.interval);
@@ -8281,10 +8307,31 @@ if (screen.orientation && screen.orientation.lock) {
   screen.orientation.lock('portrait').catch(() => {});
 }
 
+/* ---------- TRAVEL LIGHT WHEN THE LID CLOSES ---------- */
+// Every cache here rebuilds itself in a frame or two. While the phone
+// is locked they are only weight - and resident weight is what gets a
+// background page killed. Drop them the moment the screen goes dark.
+function abDropCaches(){
+  try {
+    abMonCache.clear(); abMonCanvas = null; abMonKey = "";
+    abLetterCv = null; abLetterKey = "";
+    abMonEOvCv = null; abMonEOvKey = "";
+    abVizStaticCv = null; abVizStaticKey = "";
+    abVizLive.cv = null; abVizLive.key = "";
+    abDgmCvs = [null, null];
+  } catch(e) {}
+}
+window.addEventListener('pagehide', abDropCaches);
+
 /* ---------- WAKE LOCK RE-ACQUIRE ON VISIBILITY CHANGE ---------- */
 document.addEventListener('visibilitychange', async () => {
-  if (document.visibilityState === 'visible' && running) {
-    await requestWakeLock();
+  if (document.visibilityState === 'hidden'){
+    abDropCaches();
+    return;
+  }
+  if (document.visibilityState === 'visible'){
+    needsStaticRedraw = true;
+    if (running) await requestWakeLock();
   }
 });
 
@@ -8318,6 +8365,35 @@ try {
       if (i >= 0 && i < FRAME_DEFS[f].boxes.length) setFrameBoxText(f, i, map[k], false);
     }
   }
+} catch(e) {}
+
+// THE SESSION SURVIVES THE PAGE: Android may kill a locked PWA to
+// reclaim memory; the page dies but the wall clock does not. If a
+// run is on record, pick the session up exactly where the wall says.
+try {
+  const R9 = JSON.parse(localStorage.getItem('salvationRun') || "null");
+  if (R9 && R9.w > 0 && (Date.now() - R9.w) < 12*3600*1000){
+    totalCycle = R9.tc || 27*60;
+    timeMode = R9.tm || 0;
+    if (R9.p > 0){
+      pauseMs = R9.p;
+      startMs = performance.now() - pauseMs;
+      startWall = Date.now() - pauseMs;
+      running = false;
+    } else {
+      const el9 = (Date.now() - R9.w)/1000;
+      startWall = R9.w;
+      startMs = performance.now() - el9*1000;
+      pauseMs = 0;
+      running = true;
+      // swallow the bells that rang while the page was dead
+      for (const d of TONE_DEFS) lastToneIdx[d.id] = Math.floor(el9 / d.interval);
+      lastBeepMinute = Math.floor(el9/60);
+      requestWakeLock();
+    }
+    finished = false;
+    needsStaticRedraw = true;
+  } else if (R9){ localStorage.removeItem('salvationRun'); }
 } catch(e) {}
 
 // Restore last-used view and selected status
