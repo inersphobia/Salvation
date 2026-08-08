@@ -258,6 +258,80 @@
     border: 1px solid rgba(0,191,255,0.25); border-radius: 8px;
   }
   #feScore button.on { color: #ffc478; border-color: rgba(255,170,60,0.85); background: #241d10; }
+  #startCard {
+    position: fixed; top: 36%; left: 50%; transform: translate(-50%, -50%);
+    width: min(330px, 88vw); background: #0a0f14;
+    border: 1.5px solid rgba(255,170,60,0.55); border-radius: 12px;
+    padding: 14px; z-index: 40; display: none; font-family: monospace;
+  }
+  #startCard .sci {
+    width: 100%; box-sizing: border-box; background: #0a0d16;
+    color: #ffc478; border: 1px solid rgba(255,170,60,0.35);
+    border-radius: 6px; font: 13px monospace; padding: 8px 10px;
+    margin-bottom: 7px; outline: none;
+  }
+  #startCard .sc-top { display: flex; gap: 8px; margin-bottom: 10px; }
+  #startCard .sc-top button {
+    border: 1px solid rgba(160,190,235,0.3); border-radius: 6px;
+    background: #10141c; color: rgba(200,215,235,0.8);
+    font: bold 12px monospace; min-height: 40px; padding: 4px 10px; cursor: pointer;
+  }
+  #scPre.on { color: #ffc478; border-color: rgba(255,170,60,0.8); background: #241d10; }
+  #startCard .sc-dial { display: flex; gap: 26px; margin: 0 auto; }
+  #startCard .sc-place { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  #startCard .sc-digit {
+    min-width: 48px; text-align: center; font: bold 22px monospace;
+    color: #ff5b4d; background: #050505; text-shadow: 0 0 7px rgba(255,40,30,0.75);
+    border: 1px solid rgba(255,255,255,0.12); border-radius: 6px;
+    padding: 7px 0; cursor: pointer;
+  }
+  #scT1, #scT2 {
+    width: 48px; min-height: 36px !important; font-size: 13px !important;
+    color: #dce4f2 !important;
+    background: linear-gradient(#414d63, #2a3240 55%, #1c222d) !important;
+    border: 1px solid rgba(0,0,0,0.7) !important;
+  }
+  #startCard .sc-dial.dim { opacity: 0.32; pointer-events: none; }
+  #scSet { margin-left: auto; }
+  #scSet.arm { color: #ff5b4d !important; border-color: rgba(255,60,40,0.8) !important; }
+  #startCard .sc-top button:disabled { opacity: 0.3; }
+  #startCard .sc-w { display: flex; gap: 10px; align-items: center;
+    color: rgba(200,215,235,0.85); font: 13px monospace; margin: 4px 0 12px; }
+  #startCard .sc-w b { color: #ffc478; font-size: 15px; }
+  #startCard .sc-w input {
+    width: 22px; height: 22px; accent-color: #a9843e; cursor: pointer;
+  }
+  #startCard .dim { opacity: 0.32; pointer-events: none; }
+  #startCard .fe-row { display: flex; gap: 8px; justify-content: flex-end; }
+  #startCard .fe-row button { border: none; border-radius: 8px; padding: 10px 18px;
+    font-weight: 600; color: white; min-height: 44px; cursor: pointer; }
+  #scCancel { background: #555; }
+  #scGo { background: #a9843e; color: #1d1608 !important; }
+  #verdictCard {
+    position: fixed; top: 36%; left: 50%; transform: translate(-50%, -50%);
+    width: min(320px, 86vw); background: #0a0f14;
+    border: 1.5px solid rgba(255,170,60,0.55); border-radius: 12px;
+    padding: 14px; z-index: 40; display: none; font-family: monospace;
+  }
+  #verdictCard .vc-title { color: rgba(255,190,90,0.9); font: bold 12px monospace;
+    letter-spacing: 2px; margin-bottom: 12px; text-align: center; }
+  #verdictCard .vc-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  #verdictCard .vc-row > span { color: #ffc478; font: bold 16px monospace; width: 18px; }
+  #verdictCard .vc-tern { display: flex; gap: 8px; flex: 1; }
+  #verdictCard .vc-tern button {
+    flex: 1; min-height: 40px; font: bold 16px monospace;
+    background: #10141c; color: rgba(168,184,205,0.55);
+    border: 1px solid rgba(0,191,255,0.25); border-radius: 8px; cursor: pointer;
+  }
+  #verdictCard .vc-tern button.on { color: #ffc478; border-color: rgba(255,170,60,0.85); background: #241d10; }
+  #vcNote { width: 100%; box-sizing: border-box; background: black; color: #c7d3da;
+    border: 1px solid rgba(0,191,255,0.35); border-radius: 8px;
+    font: 13px monospace; padding: 8px; resize: none; margin: 4px 0 10px; }
+  #verdictCard .fe-row { display: flex; gap: 8px; justify-content: flex-end; }
+  #verdictCard .fe-row button { border: none; border-radius: 8px; padding: 10px 18px;
+    font-weight: 600; color: white; min-height: 44px; cursor: pointer; }
+  #vcSkip { background: #555; }
+  #vcSave { background: #a9843e; color: #1d1608; }
   #frameEdit button {
     border: none; border-radius: 8px; padding: 10px 18px;
     font-weight: 600; color: white; min-height: 44px; cursor: pointer;
@@ -328,6 +402,48 @@
   <div class="fe-row">
     <button id="feCancel">CANCEL</button>
     <button id="feSave">SAVE</button>
+  </div>
+</div>
+
+<div id="startCard">
+  <div class="sc-top" id="scTop">
+    <button id="scPre" type="button">PRESET</button>
+    <div class="sc-dial" id="scDialBox">
+      <div class="sc-place">
+        <div class="sc-digit" id="scD1">0</div>
+        <button id="scT1" type="button">&#9650;</button>
+      </div>
+      <div class="sc-place">
+        <div class="sc-digit" id="scD2">0</div>
+        <button id="scT2" type="button">&#9650;</button>
+      </div>
+    </div>
+    <button id="scSet" type="button">SET</button>
+  </div>
+  <div id="scFields">
+    <input class="sci" id="scName" maxlength="14" placeholder="Name" autocomplete="off" spellcheck="false">
+    <input class="sci" id="scTask" maxlength="90" placeholder="T &#183; the task" autocomplete="off" spellcheck="false">
+    <input class="sci" id="scPrac" maxlength="90" placeholder="P &#183; the practice" autocomplete="off" spellcheck="false">
+  </div>
+  <label class="sc-w"><input type="checkbox" id="scW"> <b>W</b> &#183; NO T OR P</label>
+  <div class="fe-row">
+    <button id="scCancel" type="button">CANCEL</button>
+    <button id="scGo" type="button">GO</button>
+  </div>
+</div>
+
+<div id="verdictCard">
+  <div class="vc-title" id="vcTitle">THE SESSION CLOSES</div>
+  <div class="vc-row" id="vcRowT"><span>T</span>
+    <div class="vc-tern" id="vcT"><button data-s="-1">&#8722;</button><button data-s="0" class="on">0</button><button data-s="1">+</button></div></div>
+  <div class="vc-row" id="vcRowP"><span>P</span>
+    <div class="vc-tern" id="vcP"><button data-s="-1">&#8722;</button><button data-s="0" class="on">0</button><button data-s="1">+</button></div></div>
+  <div class="vc-row" id="vcRowW"><span>W</span>
+    <div class="vc-tern" id="vcW"><button data-s="-1">&#8722;</button><button data-s="0" class="on">0</button><button data-s="1">+</button></div></div>
+  <textarea id="vcNote" rows="2" maxlength="200" placeholder="a note, if you want one"></textarea>
+  <div class="fe-row">
+    <button id="vcSkip" type="button">SKIP</button>
+    <button id="vcSave" type="button">SAVE</button>
   </div>
 </div>
 
@@ -898,6 +1014,16 @@ function startClock(){
   if (!running && pauseMs === 0){
     curSess = { at: Date.now(), dur: Math.round(totalCycle/60),
                 vol: storyVol, marks: [], done: false };
+    if (pendProg){
+      if (pendProg.w) curSess.w = 1;
+      else {
+        if (pendProg.n) curSess.n = pendProg.n;
+        if (pendProg.t) curSess.tx = pendProg.t;
+        if (pendProg.p) curSess.px = pendProg.p;
+        if (pendProg.code) curSess.pc = pendProg.code;
+      }
+      pendProg = null;
+    }
     sessLog.unshift(curSess);
     if (sessLog.length > 100) sessLog.length = 100;   // a century, then it rolls
     sessSave();
@@ -1191,7 +1317,7 @@ function abacusWideUnits(){
   const extX = faceR + 8*sc;
   // one monitor, always - on wide glass its interior splits instead
   const monW = target - 52*sc, monIH = monH - 158*sc;
-  const otWin = { x: x0 + 160*sc, y: monTop + 9*sc, w: 84*sc, h: 22*sc };
+  const otWin = { x: x0 + 118*sc, y: monTop + 9*sc, w: 126*sc, h: 22*sc };
   const mon = { x: x0 + 26*sc, y: monTop + 40*sc, w: monW, h: monIH };
   const mon2 = null;
   // the diagram deck: FRAME/GOAL keycaps on the bezel foot, and - when
@@ -1336,14 +1462,9 @@ function drawAbacusWideStatic(){
       c.font = "bold " + Math.round(10.5*sc) + "px monospace";
       c.fillText(cur, rx + rw/2, ry + rh/2 + 3.5*sc);
       c.shadowBlur = 0;
-      // OVERTIME: the freed space becomes a five-place counter,
-      // etched name beside a dark window that waits for the bell
+      // the red annunciator: the session's program name while it
+      // runs, the five-place overtime once the bell is outrun
       const W9 = U.otWin;
-      c.font = Math.round(8*sc) + "px monospace"; c.textAlign = "right";
-      c.fillStyle = "rgba(0,0,0,0.55)";
-      c.fillText("OVERTIME", W9.x - 7*sc + 0.8, W9.y + W9.h/2 + 3*sc + 0.8);
-      c.fillStyle = "rgba(168,184,205,0.55)";
-      c.fillText("OVERTIME", W9.x - 8*sc, W9.y + W9.h/2 + 3*sc);
       c.fillStyle = "#040404";
       c.beginPath(); c.roundRect(W9.x, W9.y, W9.w, W9.h, 3); c.fill();
       c.strokeStyle = "rgba(255,255,255,0.10)";
@@ -1531,17 +1652,26 @@ function drawAbacusWideDots(t){
       ctx.beginPath(); ctx.arc(u.x0 + u.w/2, u.y0 + u.h, u.w*0.8, 0, 2*Math.PI); ctx.fill();
     }
   };
-  if (finished && overtimeStr){
-    const W9 = U.otWin;
-    ctx.save();
-    ctx.beginPath(); ctx.roundRect(W9.x, W9.y, W9.w, W9.h, 3); ctx.clip();
-    ctx.font = "bold " + Math.round(12*sc) + "px monospace"; ctx.textAlign = "center";
-    ctx.shadowColor = "rgba(255,40,30,0.9)"; ctx.shadowBlur = 6*sc;
-    ctx.fillStyle = "#ff3b30";
-    ctx.fillText(overtimeStr, W9.x + W9.w/2, W9.y + W9.h/2 + 4*sc);
-    ctx.shadowBlur = 0;
-    ctx.restore();
-    ctx.textAlign = "left";
+  {
+    let red9 = "";
+    if (finished && overtimeStr) red9 = overtimeStr;
+    else {
+      const S9r = sessCurrent();
+      if (S9r && (running || pauseMs > 0))
+        red9 = S9r.w ? "W" : ((S9r.n || "").toUpperCase().slice(0, 13));
+    }
+    if (red9){
+      const W9 = U.otWin;
+      ctx.save();
+      ctx.beginPath(); ctx.roundRect(W9.x, W9.y, W9.w, W9.h, 3); ctx.clip();
+      ctx.font = "bold " + Math.round(12*sc) + "px monospace"; ctx.textAlign = "center";
+      ctx.shadowColor = "rgba(255,40,30,0.9)"; ctx.shadowBlur = 6*sc;
+      ctx.fillStyle = "#ff3b30";
+      ctx.fillText(red9, W9.x + W9.w/2, W9.y + W9.h/2 + 4*sc);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      ctx.textAlign = "left";
+    }
   }
   if (abStoreFail && Date.now() - abStoreFail < 30000){
     ctx.font = "bold " + Math.round(10*sc) + "px monospace"; ctx.textAlign = "center";
@@ -1882,41 +2012,85 @@ function drawAbacusWideDots(t){
     ctx.font = "bold " + Math.round(10*sc) + "px monospace"; ctx.textAlign = "left";
     ctx.fillStyle = "rgba(255,190,90,0.9)";
     if (abLog === 0){
-      ctx.fillText("S E S S I O N S · " + sessLog.length, S.x + 12*sc, S.y + 18*sc);
+      ctx.fillText("D A Y B O O K · " + sessLog.length, S.x + 12*sc, S.y + 18*sc);
       if (!sessLog.length){
         ctx.font = Math.round(10*sc) + "px monospace";
         ctx.fillStyle = "rgba(168,184,205,0.6)";
         ctx.fillText("no sessions yet · START writes the first page", S.x + 12*sc, top9 + 10*sc);
       }
-      if (abLogSel < abLogScroll) abLogScroll = abLogSel;
-      if (abLogSel >= abLogScroll + fit9) abLogScroll = abLogSel - fit9 + 1;
-      for (let i = abLogScroll; i < Math.min(sessLog.length, abLogScroll + fit9); i++){
-        const s9 = sessLog[i], ry = top9 + (i - abLogScroll)*rowH;
-        if (i === abLogSel){
-          ctx.fillStyle = "rgba(255,170,60,0.12)";
-          ctx.beginPath(); ctx.roundRect(S.x + 8*sc, ry - 12*sc, S.w - 16*sc, rowH - 2*sc, 4); ctx.fill();
+      const ent9 = sessDayEntries();
+      let selEnt = -1, rc9 = -1;
+      for (let e9 = 0; e9 < ent9.length; e9++){
+        if (ent9[e9].si !== undefined){ rc9++; if (rc9 === abLogSel){ selEnt = e9; break; } }
+      }
+      if (selEnt >= 0){
+        if (selEnt < abLogScroll) abLogScroll = Math.max(0, selEnt - 1);
+        if (selEnt >= abLogScroll + fit9) abLogScroll = selEnt - fit9 + 1;
+      }
+      abLogScroll = Math.max(0, Math.min(abLogScroll, Math.max(0, ent9.length - 1)));
+      let rIdx = -1;
+      for (let e9 = 0; e9 < abLogScroll; e9++) if (ent9[e9].si !== undefined) rIdx++;
+      for (let e9 = abLogScroll; e9 < Math.min(ent9.length, abLogScroll + fit9); e9++){
+        const it9 = ent9[e9], ry = top9 + (e9 - abLogScroll)*rowH;
+        if (it9.si === undefined){
+          const d8 = new Date(it9.h);
+          ctx.font = "bold " + Math.round(9*sc) + "px monospace";
+          ctx.fillStyle = "rgba(255,170,60,0.6)";
+          ctx.fillText(d8.toLocaleDateString(undefined,
+            { weekday: "short", month: "short", day: "numeric" }).toUpperCase() +
+            " · " + it9.n, S.x + 12*sc, ry);
+          ctx.strokeStyle = "rgba(255,170,60,0.18)"; ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(S.x + 12*sc, ry + 5*sc); ctx.lineTo(S.x + S.w - 12*sc, ry + 5*sc);
+          ctx.stroke();
+        } else {
+          rIdx++;
+          const s9 = sessLog[it9.si];
+          if (rIdx === abLogSel){
+            ctx.fillStyle = "rgba(255,170,60,0.12)";
+            ctx.beginPath(); ctx.roundRect(S.x + 8*sc, ry - 12*sc, S.w - 16*sc, rowH - 2*sc, 4); ctx.fill();
+          }
+          const net9 = s9.marks.reduce((a9, m9) => a9 + (m9.s || 0), 0);
+          const vd9 = sessVerdicts(s9);
+          ctx.font = Math.round(9.5*sc) + "px monospace";
+          ctx.fillStyle = rIdx === abLogSel ? "rgba(235,240,250,0.95)" : "rgba(224,232,250,0.7)";
+          ctx.fillText(it9.num + " · " + abClockCode(s9.at) + " · " + sessMinsLive(s9) + "m" +
+                       (s9.w ? (('rw' in s9) ? "" : " · W")
+                             : (s9.n ? " · " + s9.n.toUpperCase().slice(0, 9) : "")) +
+                       (vd9 ? " · " + vd9 : "") +
+                       (net9 ? " · " + (net9 > 0 ? "+" + net9 : "\u2212" + (-net9)) : ""),
+                       S.x + 14*sc, ry);
         }
-        ctx.font = Math.round(9.5*sc) + "px monospace";
-        ctx.fillStyle = i === abLogSel ? "rgba(235,240,250,0.95)" : "rgba(224,232,250,0.7)";
-        const net9 = s9.marks.reduce((a9, m9) => a9 + (m9.s || 0), 0);
-        ctx.fillText(sessWhen(s9.at) + " · " + sessMinsLive(s9) + "m · " +
-                     s9.marks.length + (s9.marks.length === 1 ? " mark" : " marks") +
-                     (net9 ? " · " + (net9 > 0 ? "+" + net9 : "\u2212" + (-net9)) : "") +
-                     (s9.done ? " · FIN" : ""), S.x + 14*sc, ry);
       }
     } else {
       const s9 = sessLog[abLog - 1];
       if (s9){
         const netH = s9.marks.reduce((a9, m9) => a9 + (m9.s || 0), 0);
-        ctx.fillText(sessWhen(s9.at) + " · " + sessMinsLive(s9) + "m" +
-                     (netH ? " · " + (netH > 0 ? "+" + netH : "\u2212" + (-netH)) : "") +
-                     (s9.done ? " · FIN" : ""), S.x + 12*sc, S.y + 18*sc);
+        const vdH = sessVerdicts(s9);
+        ctx.fillText(new Date(s9.at).toLocaleDateString(undefined,
+                       { month: "short", day: "numeric" }).toUpperCase() +
+                     " · " + abClockCode(s9.at) + " · " + sessMinsLive(s9) + "m" +
+                     (s9.w ? "" : (s9.n ? " · " + s9.n.toUpperCase().slice(0, 10) : "")) +
+                     (vdH ? " · " + vdH : "") +
+                     (netH ? " · " + (netH > 0 ? "+" + netH : "\u2212" + (-netH)) : ""),
+                     S.x + 12*sc, S.y + 18*sc);
         ctx.font = Math.round(9.5*sc) + "px monospace";
+        let ry = top9;
+        if (!s9.w && (s9.tx || s9.px)){
+          ctx.fillStyle = "rgba(255,196,120,0.75)";
+          if (s9.tx){ ctx.fillText(("T · " + s9.tx).slice(0, 52), S.x + 12*sc, ry); ry += 15*sc; }
+          if (s9.px){ ctx.fillText(("P · " + s9.px).slice(0, 52), S.x + 12*sc, ry); ry += 15*sc; }
+          ry += 4*sc;
+        }
+        if (s9.nx){
+          ctx.fillStyle = "rgba(168,184,205,0.7)";
+          ctx.fillText(("\u201C" + s9.nx + "\u201D").slice(0, 52), S.x + 12*sc, ry);
+          ry += 18*sc;
+        }
         if (!s9.marks.length){
           ctx.fillStyle = "rgba(168,184,205,0.6)";
-          ctx.fillText("no marks in this session", S.x + 12*sc, top9 + 10*sc);
+          ctx.fillText("no marks in this session", S.x + 12*sc, ry + 4*sc);
         }
-        let ry = top9;
         const maxW9 = S.w - 110*sc;
         for (let i = abLogScroll; i < s9.marks.length && ry < S.y + S.h - 26*sc; i++){
           const mk = s9.marks[i];
@@ -3956,6 +4130,40 @@ function sessWhen(ms){
          d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 function sessMins(s9){ return s9.sec > 0 ? Math.max(1, Math.round(s9.sec/60)) : s9.dur; }
+function abClockCode(ms){
+  // the 24-letter clock: A is the one o'clock hour, X the midnight
+  // hour; the digit is the ten-minute band, floored - the band you
+  // actually sat down in
+  const d9 = new Date(ms);
+  return String.fromCharCode(65 + ((d9.getHours() + 23) % 24)) +
+         Math.floor(d9.getMinutes()/10);
+}
+function sessVerdicts(s9){
+  const g9 = (v9) => v9 > 0 ? "+" : v9 < 0 ? "\u2212" : "0";
+  if (s9.w) return ('rw' in s9) ? "W" + g9(s9.rw) : "W";
+  if ('rt' in s9) return "T" + g9(s9.rt) + " P" + g9(s9.rp);
+  return "";
+}
+function sessDayEntries(){
+  // the daybook: newest day first; within a day, the sessions run
+  // in the order they were sat, numbered from one
+  const days9 = [];
+  for (let i9 = 0; i9 < sessLog.length; i9++){
+    const dk9 = (function(ms){ const d = new Date(ms);
+      return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); })(sessLog[i9].at);
+    if (!days9.length || days9[days9.length - 1].k !== dk9)
+      days9.push({ k: dk9, at: sessLog[i9].at, list: [] });
+    days9[days9.length - 1].list.push(i9);
+  }
+  const ent9 = [];
+  for (const d8 of days9){
+    ent9.push({ h: d8.at, n: d8.list.length });
+    const chron = d8.list.slice().reverse();
+    chron.forEach((si9, ix9) => ent9.push({ si: si9, num: ix9 + 1 }));
+  }
+  return ent9;
+}
+function sessSelList(){ return sessDayEntries().filter(e9 => e9.si !== undefined).map(e9 => e9.si); }
 function sessMinsLive(s9){
   // the open session's row ticks: running, paused, or deep in overtime
   if (s9 && s9 === sessCurrent()){
@@ -7376,7 +7584,8 @@ for (const ev9 of ["pointerup", "pointercancel", "pointerleave"])
 function toggleClock(){
   if (running){ pauseClock(); }
   else if (finished){ haptic('light'); return; } // RESET first, then START
-  else startClock();
+  else if (pauseMs === 0){ openStartCard(); }    // fresh: name it first
+  else startClock();                              // resume goes straight in
   haptic('medium');
 }
 // The tap target sits on the icon itself (tap-to-start / pause / play),
@@ -7436,7 +7645,8 @@ canvasAnim.addEventListener("click", (e) => {
         // and on that page it opens the chosen mark's note. The score
         // is never on the table: set at the pressing, kept for good.
         if (abLog === 0 && sessLog.length){
-          abLog = 1 + Math.min(abLogSel, sessLog.length - 1);
+          const L9 = sessSelList();
+          abLog = 1 + L9[Math.min(abLogSel, L9.length - 1)];
           abLogScroll = 0; abLogMSel = 0;
           haptic('medium');
         } else if (abLog >= 1){
@@ -7826,7 +8036,7 @@ canvasAnim.addEventListener("click", (e) => {
       } else {
         // reset demands a stopped clock: pause first, then reset
         if (running || (!finished && pauseMs === 0)){ haptic('light'); }
-        else { resetClock(); haptic('medium'); }
+        else { requestReset(); haptic('medium'); }
       }
       return;
     }
@@ -7908,6 +8118,163 @@ function feScoreSync(){
 }
 for (const b of feScore.children)
   b.addEventListener('click', () => { markScore = Number(b.dataset.s); feScoreSync(); });
+
+/* ---------- THE START CARD: name the session before it begins.
+   Presets live at two-trit addresses, 00 through 22 - nine programs.
+   The day's first sit dials 00 (the morning); afterwards the card
+   wakes with whatever you last used; midnight swings it home. ---- */
+const startCard = document.getElementById('startCard');
+const scPre = document.getElementById('scPre'), scT1 = document.getElementById('scT1'),
+      scT2 = document.getElementById('scT2'), scSet = document.getElementById('scSet'),
+      scName = document.getElementById('scName'), scTask = document.getElementById('scTask'),
+      scPrac = document.getElementById('scPrac'), scW = document.getElementById('scW'),
+      scFields = document.getElementById('scFields');
+let presets = {};
+try { presets = JSON.parse(localStorage.getItem('salvationPresets') || "{}") || {}; } catch(e) {}
+let lastProg = null;
+try { lastProg = JSON.parse(localStorage.getItem('salvationLastProg') || "null"); } catch(e) {}
+let pendProg = null, scDial = [0, 0], scPreOn = true, scSetArm = 0;
+function dayKey9(ms){
+  const d = new Date(ms === undefined ? Date.now() : ms);
+  return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+}
+function scCode(){ return "" + scDial[0] + scDial[1]; }
+function scLoad(){
+  const P9 = presets[scCode()];
+  scName.value = P9 ? (P9.n || "") : "";
+  scTask.value = P9 ? (P9.t || "") : "";
+  scPrac.value = P9 ? (P9.p || "") : "";
+}
+function scSync(){
+  document.getElementById('scD1').textContent = scDial[0];
+  document.getElementById('scD2').textContent = scDial[1];
+  scPre.classList.toggle('on', scPreOn);
+  const off9 = !scPreOn || scW.checked;
+  scT1.disabled = scT2.disabled = scSet.disabled = off9;
+  document.getElementById('scDialBox').classList.toggle('dim', off9);
+  scSet.textContent = scSetArm ? "SURE?" : "SET";
+  scSet.classList.toggle('arm', !!scSetArm);
+  scFields.classList.toggle('dim', scW.checked);
+}
+scPre.addEventListener('click', () => {
+  scPreOn = !scPreOn; scSetArm = 0;
+  if (scPreOn) scLoad();
+  scSync();
+});
+const scBump = (i) => {
+  if (!scPreOn || scW.checked) return;
+  scDial[i] = (scDial[i] + 1) % 3;
+  scSetArm = 0; scLoad(); scSync(); haptic('light');
+};
+scT1.addEventListener('click', () => scBump(0));
+scT2.addEventListener('click', () => scBump(1));
+document.getElementById('scD1').addEventListener('click', () => scBump(0));
+document.getElementById('scD2').addEventListener('click', () => scBump(1));
+scSet.addEventListener('click', () => {
+  if (!scPreOn || scW.checked) return;
+  const cur9 = { n: scName.value.trim().slice(0, 14),
+                 t: scTask.value.trim(), p: scPrac.value.trim() };
+  const old9 = presets[scCode()];
+  const differs = old9 && (old9.n !== cur9.n || old9.t !== cur9.t || old9.p !== cur9.p);
+  if (differs && !scSetArm){
+    scSetArm = Date.now(); scSync();
+    setTimeout(() => { if (scSetArm && Date.now() - scSetArm > 2400){ scSetArm = 0; scSync(); } }, 2600);
+    return;
+  }
+  scSetArm = 0;
+  presets[scCode()] = cur9;
+  try { localStorage.setItem('salvationPresets', JSON.stringify(presets)); abStoreFail = 0; }
+  catch(e) { abStoreFail = Date.now(); }
+  scSet.textContent = "SAVED";
+  setTimeout(scSync, 900);
+  haptic('medium');
+});
+scW.addEventListener('change', scSync);
+function openStartCard(){
+  const today = dayKey9();
+  if (lastProg && lastProg.day === today){
+    scPreOn = !!lastProg.pre;
+    scDial = (lastProg.code && lastProg.code.length === 2)
+      ? [+lastProg.code[0] % 3, +lastProg.code[1] % 3] : [0, 0];
+    scW.checked = !!lastProg.w;
+    scName.value = lastProg.n || ""; scTask.value = lastProg.t || ""; scPrac.value = lastProg.p || "";
+  } else {
+    scPreOn = true; scDial = [0, 0]; scW.checked = false;
+    scLoad();
+  }
+  scSetArm = 0; scSync();
+  startCard.style.display = "block";
+}
+document.getElementById('scCancel').addEventListener('click', () => {
+  startCard.style.display = "none";
+});
+/* ---------- THE VERDICT CARD: RESET closes the account. W sessions
+   rate W; named sessions rate T and P; a note is welcome, nothing is
+   required, and SKIP leaves the session unrated. Verdicts, like all
+   scores, are set once and kept. ---------- */
+const verdictCard = document.getElementById('verdictCard');
+const vcNote = document.getElementById('vcNote');
+let vcVal = { t: 0, p: 0, w: 0 };
+for (const rowId of [['vcT', 't'], ['vcP', 'p'], ['vcW', 'w']]){
+  const el9 = document.getElementById(rowId[0]);
+  for (const b9 of el9.children)
+    b9.addEventListener('click', () => {
+      vcVal[rowId[1]] = Number(b9.dataset.s);
+      for (const c9 of el9.children)
+        c9.classList.toggle('on', Number(c9.dataset.s) === vcVal[rowId[1]]);
+    });
+}
+function vcResetRows(){
+  vcVal = { t: 0, p: 0, w: 0 };
+  for (const id9 of ['vcT', 'vcP', 'vcW'])
+    for (const c9 of document.getElementById(id9).children)
+      c9.classList.toggle('on', c9.dataset.s === "0");
+}
+let vcFor = null;
+function requestReset(){
+  const S9 = sessCurrent();
+  if (S9 && !('rt' in S9) && !('rw' in S9)){
+    vcFor = S9;
+    vcResetRows();
+    vcNote.value = "";
+    document.getElementById('vcRowW').style.display = S9.w ? "flex" : "none";
+    document.getElementById('vcRowT').style.display = S9.w ? "none" : "flex";
+    document.getElementById('vcRowP').style.display = S9.w ? "none" : "flex";
+    verdictCard.style.display = "block";
+  } else resetClock();
+}
+document.getElementById('vcSkip').addEventListener('click', () => {
+  verdictCard.style.display = "none";
+  vcFor = null;
+  resetClock();
+  haptic('light');
+});
+document.getElementById('vcSave').addEventListener('click', () => {
+  if (vcFor){
+    if (vcFor.w) vcFor.rw = vcVal.w;
+    else { vcFor.rt = vcVal.t; vcFor.rp = vcVal.p; }
+    const nx9 = vcNote.value.trim().replace(/[^\S\n]+/g, " ");
+    if (nx9) vcFor.nx = nx9;
+    sessSave();
+  }
+  verdictCard.style.display = "none";
+  vcFor = null;
+  resetClock();
+  haptic('medium');
+});
+
+document.getElementById('scGo').addEventListener('click', () => {
+  pendProg = scW.checked ? { w: 1 }
+           : { n: scName.value.trim().slice(0, 14), t: scTask.value.trim(),
+               p: scPrac.value.trim(), code: scPreOn ? scCode() : null };
+  lastProg = { day: dayKey9(), pre: scPreOn ? 1 : 0, code: scCode(),
+               w: scW.checked ? 1 : 0, n: scName.value.trim().slice(0, 14),
+               t: scTask.value.trim(), p: scPrac.value.trim() };
+  try { localStorage.setItem('salvationLastProg', JSON.stringify(lastProg)); } catch(e) {}
+  startCard.style.display = "none";
+  startClock();
+  haptic('medium');
+});
 frameEditLabel.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowDown' || e.key === 'Enter'){ e.preventDefault(); frameEditText.focus(); }
 });
@@ -8590,7 +8957,7 @@ drawStaticLayer();
 btnReset.onclick = ()=>{
   // reset demands a stopped clock: pause first, then reset
   if (running || (!finished && pauseMs === 0)){ haptic('light'); return; }
-  pulseButton(btnReset); resetClock();
+  pulseButton(btnReset); requestReset();
 };
 btnPlay.onclick = ()=>{
   btnPlay.classList.add('pulse');
