@@ -1028,6 +1028,11 @@ function startClock(){
     if (sessLog.length > 100) sessLog.length = 100;   // a century, then it rolls
     sessSave();
   }
+  if (pauseMs > 0 && pauseWall && sessCurrent()){
+    curSess.ps = (curSess.ps || 0) + Math.max(0, (Date.now() - pauseWall)/1000);
+    sessSave();
+  }
+  pauseWall = 0;
   abLib = -1; abLibCarry = -1; abLog = -1;   // the tale resumes; decks shut
   needsStaticRedraw = true;                  // the ring watches `running`
   startMs = pauseMs>0 ? performance.now()-pauseMs : performance.now();
@@ -1047,10 +1052,12 @@ function pauseClock(){
   if (!running||finished) return;
   running=false;
   pauseMs=performance.now()-startMs;
+  pauseWall = Date.now();
   needsStaticRedraw = true;
-  if (sessCurrent()){ curSess.sec = Math.round(pauseMs/1000); sessSave(); }
+  if (sessCurrent()){ curSess.sec = sessTrueSec(curSess, pauseWall); sessSave(); }
   try { localStorage.setItem('salvationRun',
-    JSON.stringify({ w: startWall, tc: totalCycle, tm: timeMode, p: pauseMs })); } catch(e) {}
+    JSON.stringify({ w: startWall, tc: totalCycle, tm: timeMode,
+                     p: pauseMs, pw: pauseWall })); } catch(e) {}
   releaseWakeLock();
   showTimerNotification(
     'Salvation timer paused',
@@ -1062,12 +1069,12 @@ function resetClock(){
   // RESET closes the account: the true length goes on the record
   const S9c = sessCurrent();
   if (S9c){
-    if (finished) S9c.sec = Math.round(totalCycle + Math.max(0, (Date.now() - finishWall)/1000));
-    else if (running) S9c.sec = Math.round((performance.now() - startMs)/1000);
-    else if (pauseMs > 0) S9c.sec = Math.round(pauseMs/1000);
+    S9c.sec = sessTrueSec(S9c, (!running && !finished && pauseMs > 0 && pauseWall)
+                               ? pauseWall : undefined);
     S9c.done = true;
     sessSave();
   }
+  pauseWall = 0;
   curSess = null;
   try { localStorage.removeItem('salvationRun'); } catch(e) {}
   abLib = -1; abLibCarry = -1; abLog = -1;
@@ -1087,7 +1094,7 @@ function finishClock(){
   needsStaticRedraw = true;
   finished=true;
   if (sessCurrent()){ curSess.done = true; curSess.dur = Math.round(totalCycle/60);
-    curSess.sec = Math.round(totalCycle); sessSave(); }
+    curSess.sec = sessTrueSec(curSess); sessSave(); }
   running=false;
   overtimeStart = startMs + totalCycle * 1000;
   finishWall = Date.now() - (performance.now() - overtimeStart);
@@ -4129,6 +4136,14 @@ function sessWhen(ms){
   return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }) + " " +
          d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
 }
+let pauseWall = 0;   // the wall moment the current pause began
+function sessTrueSec(s9, stopMs){
+  // the session's honest length: wall stop minus wall start, minus
+  // every paused stretch - measured entirely on the wall clock, which
+  // neither screen locks nor page deaths can freeze
+  const stop9 = stopMs !== undefined ? stopMs : Date.now();
+  return Math.max(0, Math.round((stop9 - s9.at)/1000 - (s9.ps || 0)));
+}
 function sessMins(s9){ return s9.sec > 0 ? Math.max(1, Math.round(s9.sec/60)) : s9.dur; }
 function abClockCode(ms){
   // the 24-letter clock: A is the one o'clock hour, X the midnight
@@ -4166,11 +4181,8 @@ function sessDayEntries(){
 function sessSelList(){ return sessDayEntries().filter(e9 => e9.si !== undefined).map(e9 => e9.si); }
 function sessMinsLive(s9){
   // the open session's row ticks: running, paused, or deep in overtime
-  if (s9 && s9 === sessCurrent()){
-    let sec9 = 0;
-    if (finished) sec9 = totalCycle + Math.max(0, (Date.now() - finishWall)/1000);
-    else if (running) sec9 = (performance.now() - startMs)/1000;
-    else if (pauseMs > 0) sec9 = pauseMs/1000;
+  if (s9 && s9 === sessCurrent() && (running || finished || pauseMs > 0)){
+    const sec9 = sessTrueSec(s9, (!running && !finished && pauseWall) ? pauseWall : undefined);
     if (sec9 > 0) return Math.max(1, Math.round(sec9/60));
   }
   return sessMins(s9);
@@ -7376,9 +7388,7 @@ function draw(now){
 
     if ((running || finished) && sessCurrent() && now - sessSecAt > 30000){
       sessSecAt = now;
-      curSess.sec = Math.round(finished
-        ? totalCycle + Math.max(0, (Date.now() - finishWall)/1000)
-        : elapsed);
+      curSess.sec = sessTrueSec(curSess);
       sessSave();
     }
     if (running){
@@ -8890,6 +8900,7 @@ try {
       pauseMs = R9.p;
       startMs = performance.now() - pauseMs;
       startWall = Date.now() - pauseMs;
+      pauseWall = R9.pw || Date.now();
       running = false;
     } else {
       const el9 = (Date.now() - R9.w)/1000;
