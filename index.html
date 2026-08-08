@@ -1538,6 +1538,13 @@ function drawAbacusWideDots(t){
       ctx.beginPath(); ctx.arc(u.x0 + u.w/2, u.y0 + u.h, u.w*0.8, 0, 2*Math.PI); ctx.fill();
     }
   };
+  if (abStoreFail && Date.now() - abStoreFail < 30000){
+    ctx.font = "bold " + Math.round(10*sc) + "px monospace"; ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(255,60,40," + (0.6 + 0.4*Math.sin(performance.now()/300)).toFixed(2) + ")";
+    ctx.fillText("· STORAGE WRITE FAILED · EDITS MAY NOT KEEP ·",
+                 U.x0 + U.A.w/2, U.mon.y - 12*sc);
+    ctx.textAlign = "left";
+  }
   drawUnit(U.A, 1);   // skip the 27s place: the side LEDs carry it
   drawUnit(U.B, U.R.mw);
   // milestone lamps: one per completed 27
@@ -2621,7 +2628,10 @@ function longBody(i){
   if (longMeta[i] && longMeta[i].t) return longMeta[i].t;
   return LONG_DEFS[i].body === null ? AB_LETTER : LONG_DEFS[i].body;
 }
-function longSave(){ try { localStorage.setItem('salvationTexts', JSON.stringify(longMeta)); } catch(e) {} }
+function longSave(){
+  try { localStorage.setItem('salvationTexts', JSON.stringify(longMeta)); abStoreFail = 0; }
+  catch(e) { abStoreFail = Date.now(); }
+}
 function abLetterRender(w, sc, ti, bare){
   ti = ti === undefined ? storyTxt : ti;
   const body = longBody(ti) ||
@@ -3858,7 +3868,8 @@ try { sessLog = JSON.parse(localStorage.getItem('salvationSessions') || "[]") ||
 let curSess = null;
 let abLog = -1, abLogSel = 0, abLogScroll = 0;   // -1 off · 0 ledger · 1+n session
 function sessSave(){
-  try { localStorage.setItem('salvationSessions', JSON.stringify(sessLog)); } catch(e) {}
+  try { localStorage.setItem('salvationSessions', JSON.stringify(sessLog)); abStoreFail = 0; }
+  catch(e) { abStoreFail = Date.now(); }
 }
 function sessCurrent(){
   if (curSess) return curSess;
@@ -3913,8 +3924,10 @@ for (let v8 = 0; v8 < 2; v8++){
     }
   } catch(e) {}
 }
+let abStoreFail = 0;
 function storySaveMeta(v8){
-  try { localStorage.setItem('salvationStory' + (v8 + 1) + 'Meta', JSON.stringify(storyVolMeta[v8])); } catch(e) {}
+  try { localStorage.setItem('salvationStory' + (v8 + 1) + 'Meta', JSON.stringify(storyVolMeta[v8])); abStoreFail = 0; }
+  catch(e) { abStoreFail = Date.now(); }
 }
 const storyVolOrder = [null, null];
 for (let v9 = 0; v9 < 2; v9++){
@@ -8349,6 +8362,12 @@ document.addEventListener('visibilitychange', async () => {
 });
 
 /* ---------- INIT ---------- */
+// Ask the browser to treat this site's storage as durable: the user's
+// rewritten ekphrases, orders, texts, and ledger must not be swept by
+// storage-pressure eviction. Browsers grant this silently to installed
+// PWAs; a denial changes nothing about how we store.
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch(e) {}
+
 // Launcher shortcut deep links (?mode=27|54|81)
 const modeParam = new URLSearchParams(location.search).get('mode');
 const modeIdx = {"27": 0, "54": 1, "81": 2}[modeParam];
