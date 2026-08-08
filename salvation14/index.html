@@ -8404,6 +8404,9 @@ try {
       lastBeepMinute = Math.floor(el9/60);
       requestWakeLock();
     }
+    if (sessLog.length && sessLog[0] &&
+        Math.abs((sessLog[0].at || 0) - R9.w) < 120000)
+      curSess = sessLog[0];
     finished = false;
     needsStaticRedraw = true;
   } else if (R9){ localStorage.removeItem('salvationRun'); }
