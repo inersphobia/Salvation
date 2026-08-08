@@ -1183,15 +1183,16 @@ function abacusWideUnits(){
   for (let i = 0; i < 3; i++)
     keys.push({ x: x0 + 24*sc + i*(kw + 12*sc), y: Cd.y0 + 14*sc, w: kw, h: kh });
   const tallForm = viewH > viewW;
-  const monH = Math.max(170*sc, Math.min((tallForm ? 720 : 480)*sc,
-                                          Ay0 - (tallForm ? 18 : 44)));
+  const monH = Math.max(170*sc, Math.min((tallForm ? 730 : 490)*sc,
+                                          Ay0 - (tallForm ? 8 : 34)));
   const monTop = Ay0 - monH + 3;
   const bayX = slotX(slots - 1);
   const faceR = bayX - cell/2 - 12*sc;
   const extX = faceR + 8*sc;
   // one monitor, always - on wide glass its interior splits instead
-  const monW = target - 52*sc, monIH = monH - 148*sc;
-  const mon = { x: x0 + 26*sc, y: monTop + 30*sc, w: monW, h: monIH };
+  const monW = target - 52*sc, monIH = monH - 158*sc;
+  const otWin = { x: x0 + 160*sc, y: monTop + 9*sc, w: 84*sc, h: 22*sc };
+  const mon = { x: x0 + 26*sc, y: monTop + 40*sc, w: monW, h: monIH };
   const mon2 = null;
   // the diagram deck: FRAME/GOAL keycaps on the bezel foot, and - when
   // a diagram is up - a side device with two letter wheels, SEL, a stick
@@ -1251,7 +1252,7 @@ function abacusWideUnits(){
     : { x: mon.x + mon.w/2 - 28*sc, y: mon.y + mon.h - 26*sc,
         w: 56*sc, h: 18*sc };
   return { sc, x0, R, A, B, Cd, keys, bayX, faceR, monTop, monH, mon, mon2,
-           dgm, dgmBtns, selBtn, backBtn, letterBtn, edit, duo, markBtn, logBtn,
+           dgm, dgmBtns, selBtn, backBtn, letterBtn, otWin, edit, duo, markBtn, logBtn,
            bedA,
            ext: { x: bedA + 10*sc, y: A.y0 + 88*sc,
                   w: 58*sc, h: 22*sc } };
@@ -1316,58 +1317,49 @@ function drawAbacusWideStatic(){
     wideScrew(c, U.x0 + 10*sc, My0 + 10*sc, sc); wideScrew(c, U.x0 + U.A.w - 10*sc, My0 + 10*sc, sc);
     wideScrew(c, U.x0 + 10*sc, My0 + Mh - 10*sc, sc); wideScrew(c, U.x0 + U.A.w - 10*sc, My0 + Mh - 10*sc, sc);
     {
-      // the indicator reads the ACTIVE key's own cycle: center is where
-      // you stand, the sides are one press back and one press on
-      let prv, cur, nxt;
-      if (abDgm >= 0){
-        cur = abDgm ? "GOAL" : "FRAME"; prv = nxt = abDgm ? "FRAME" : "GOAL";
-      } else if (abViz >= 0){
-        cur = "VISUALS"; prv = nxt = "LIST";
-      } else if (abLog >= 0){
-        cur = "SESSIONS"; prv = nxt = "STORY";
-      } else {
-        const ring = running ? ["STORY"] : ["STORY", "LIBRARY"];
-        cur = abLib >= 0 ? "LIBRARY" : abStoryPage ? "LETTER" : "STORY";
-        const ci = ring.indexOf(cur);
-        if (ci < 0){ prv = nxt = "STORY"; }
-        else if (ring.length < 2){ prv = nxt = "\u00b7"; }
-        else {
-          prv = ring[(ci + ring.length - 1) % ring.length];
-          nxt = ring[(ci + 1) % ring.length];
-        }
-      }
-      const rx = U.x0 + 12*sc, rh = 17*sc, ry = My0 + 5*sc;
-      const rw = Math.min(260*sc, U.A.w - 180*sc);
+      // the channel window: just where you stand, burning red
+      let cur;
+      if (abDgm >= 0) cur = abDgm ? "GOAL" : "FRAME";
+      else if (abViz >= 0) cur = "VISUALS";
+      else if (abLog >= 0) cur = "SESSIONS";
+      else if (abLib >= 0) cur = "LIBRARY";
+      else cur = abStoryPage ? "LETTER" : "STORY";
+      const rx = U.x0 + 12*sc, rh = 22*sc, ry = My0 + 9*sc, rw = 96*sc;
       c.fillStyle = "#040404";
       c.beginPath(); c.roundRect(rx, ry, rw, rh, 3); c.fill();
       c.strokeStyle = "rgba(255,255,255,0.10)"; c.lineWidth = 1;
       c.beginPath(); c.roundRect(rx, ry, rw, rh, 3); c.stroke();
-      c.strokeStyle = "rgba(255,255,255,0.07)";
-      c.beginPath();
-      c.moveTo(rx + rw/3, ry + 2*sc); c.lineTo(rx + rw/3, ry + rh - 2*sc);
-      c.moveTo(rx + rw*2/3, ry + 2*sc); c.lineTo(rx + rw*2/3, ry + rh - 2*sc);
-      c.stroke();
       c.textAlign = "center";
       c.shadowColor = "rgba(255,40,30,0.85)"; c.shadowBlur = 5*sc;
       c.fillStyle = "#ff3b30";
-      c.font = Math.round(7.5*sc) + "px monospace";
-      c.fillText(prv, rx + rw/6, ry + rh/2 + 2.8*sc);
-      c.fillText(nxt, rx + rw*5/6, ry + rh/2 + 2.8*sc);
-      c.font = "bold " + Math.round(8.5*sc) + "px monospace";
-      c.fillText(cur, rx + rw/2, ry + rh/2 + 3*sc);
+      c.font = "bold " + Math.round(10.5*sc) + "px monospace";
+      c.fillText(cur, rx + rw/2, ry + rh/2 + 3.5*sc);
       c.shadowBlur = 0;
+      // OVERTIME: the freed space becomes a five-place counter,
+      // etched name beside a dark window that waits for the bell
+      const W9 = U.otWin;
+      c.font = Math.round(8*sc) + "px monospace"; c.textAlign = "right";
+      c.fillStyle = "rgba(0,0,0,0.55)";
+      c.fillText("OVERTIME", W9.x - 7*sc + 0.8, W9.y + W9.h/2 + 3*sc + 0.8);
+      c.fillStyle = "rgba(168,184,205,0.55)";
+      c.fillText("OVERTIME", W9.x - 8*sc, W9.y + W9.h/2 + 3*sc);
+      c.fillStyle = "#040404";
+      c.beginPath(); c.roundRect(W9.x, W9.y, W9.w, W9.h, 3); c.fill();
+      c.strokeStyle = "rgba(255,255,255,0.10)";
+      c.beginPath(); c.roundRect(W9.x, W9.y, W9.w, W9.h, 3); c.stroke();
+      c.textAlign = "left";
     }
     c.font = Math.round(10*sc) + "px monospace"; c.textAlign = "left";
     c.fillStyle = "rgba(168,184,205,0.8)";
     if (U.duo && abViz < 0 && abLib < 0 && abLog < 0){
       c.fillStyle = "rgba(168,184,205,0.7)";
       c.fillText(abDgm >= 0 ? "D I A G R A M" : "T E X T",
-                 U.duo.R.x - 4, My0 + 18*sc);
+                 U.duo.R.x - 4, My0 + 24*sc);
     }
     c.textAlign = "right";
     c.fillStyle = "rgba(168,184,205,0.52)";
     c.fillText((U.mon2 ? "MON · D + E" : "MON · D") + (abVer ? "  ·  " + abVer : ""),
-               U.x0 + U.A.w - 16*sc, My0 + 18*sc);
+               U.x0 + U.A.w - 16*sc, My0 + 24*sc);
     // brass trim around the tube(s)
     for (const S of (U.mon2 ? [U.mon, U.mon2] : [U.mon])){
       c.strokeStyle = "rgba(200,160,85,0.55)"; c.lineWidth = 3;
@@ -1538,6 +1530,18 @@ function drawAbacusWideDots(t){
       ctx.beginPath(); ctx.arc(u.x0 + u.w/2, u.y0 + u.h, u.w*0.8, 0, 2*Math.PI); ctx.fill();
     }
   };
+  if (finished && overtimeStr){
+    const W9 = U.otWin;
+    ctx.save();
+    ctx.beginPath(); ctx.roundRect(W9.x, W9.y, W9.w, W9.h, 3); ctx.clip();
+    ctx.font = "bold " + Math.round(12*sc) + "px monospace"; ctx.textAlign = "center";
+    ctx.shadowColor = "rgba(255,40,30,0.9)"; ctx.shadowBlur = 6*sc;
+    ctx.fillStyle = "#ff3b30";
+    ctx.fillText(overtimeStr, W9.x + W9.w/2, W9.y + W9.h/2 + 4*sc);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+    ctx.textAlign = "left";
+  }
   if (abStoreFail && Date.now() - abStoreFail < 30000){
     ctx.font = "bold " + Math.round(10*sc) + "px monospace"; ctx.textAlign = "center";
     ctx.fillStyle = "rgba(255,60,40," + (0.6 + 0.4*Math.sin(performance.now()/300)).toFixed(2) + ")";
@@ -6928,8 +6932,8 @@ function drawTimerText(t){
     if (ext) str = str.replace("₃", ext + "₃");
   }
   if (viewMode === 2){
-    // the abacus register IS the counter - only overtime prints
-    if (finished && overtimeStr) drawSevenSegText(overtimeStr, y, 0.62);
+    // the abacus register IS the counter; the bezel window carries
+    // the overtime - nothing floats over the equipment
     return;
   }
   if (stackCounter){
@@ -6944,8 +6948,8 @@ function drawTimerText(t){
     return;
   }
   if (viewMode === 2){
-    // the abacus register IS the counter - only overtime prints
-    if (finished && overtimeStr) drawSevenSegText(overtimeStr, y, 0.62);
+    // the abacus register IS the counter; the bezel window carries
+    // the overtime - nothing floats over the equipment
     return;
   }
   if (viewMode === 6){ // LED readout on TRIAD
