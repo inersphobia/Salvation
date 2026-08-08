@@ -1215,7 +1215,7 @@ function abacusWideUnits(){
   // up/down: two squares filling the foot, glass to bezel, a hair shy
   // of each; left/right: the same squares beside them, their vertical
   // center riding the up/down junction
-  const gBot = (monTop + 30*sc) + monIH;
+  const gBot = mon.y + monIH;   // the true glass bottom, wherever the header ends
   const dS = ((monTop + monH - 4*sc) - (gBot + 9*sc))/2;
   const dX0 = x0 + 16*sc, dJy = gBot + 9*sc + dS;
   const railGap0 = ((target - 32*sc) - 6*dS)/5;
