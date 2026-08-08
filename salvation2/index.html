@@ -1843,7 +1843,7 @@ function drawAbacusWideDots(t){
         ctx.font = Math.round(9.5*sc) + "px monospace";
         ctx.fillStyle = i === abLogSel ? "rgba(235,240,250,0.95)" : "rgba(224,232,250,0.7)";
         const net9 = s9.marks.reduce((a9, m9) => a9 + (m9.s || 0), 0);
-        ctx.fillText(sessWhen(s9.at) + " · " + sessMins(s9) + "m · " +
+        ctx.fillText(sessWhen(s9.at) + " · " + sessMinsLive(s9) + "m · " +
                      s9.marks.length + (s9.marks.length === 1 ? " mark" : " marks") +
                      (net9 ? " · " + (net9 > 0 ? "+" + net9 : "\u2212" + (-net9)) : "") +
                      (s9.done ? " · FIN" : ""), S.x + 14*sc, ry);
@@ -1852,7 +1852,7 @@ function drawAbacusWideDots(t){
       const s9 = sessLog[abLog - 1];
       if (s9){
         const netH = s9.marks.reduce((a9, m9) => a9 + (m9.s || 0), 0);
-        ctx.fillText(sessWhen(s9.at) + " · " + sessMins(s9) + "m" +
+        ctx.fillText(sessWhen(s9.at) + " · " + sessMinsLive(s9) + "m" +
                      (netH ? " · " + (netH > 0 ? "+" + netH : "\u2212" + (-netH)) : "") +
                      (s9.done ? " · FIN" : ""), S.x + 12*sc, S.y + 18*sc);
         ctx.font = Math.round(9.5*sc) + "px monospace";
@@ -3872,6 +3872,17 @@ function sessWhen(ms){
          d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 function sessMins(s9){ return s9.sec > 0 ? Math.max(1, Math.round(s9.sec/60)) : s9.dur; }
+function sessMinsLive(s9){
+  // the open session's row ticks: running, paused, or deep in overtime
+  if (s9 && s9 === sessCurrent()){
+    let sec9 = 0;
+    if (finished) sec9 = totalCycle + Math.max(0, (Date.now() - finishWall)/1000);
+    else if (running) sec9 = (performance.now() - startMs)/1000;
+    else if (pauseMs > 0) sec9 = pauseMs/1000;
+    if (sec9 > 0) return Math.max(1, Math.round(sec9/60));
+  }
+  return sessMins(s9);
+}
 let sessSecAt = 0;
 function ternMark(t){
   const m = Math.floor(t/60), f = Math.max(0, Math.floor(((t % 60)/60)*27));
@@ -7069,13 +7080,15 @@ function draw(now){
       if (dv !== viewMode){ gotoView(dv); menuSync(); }
     }
 
+    if ((running || finished) && sessCurrent() && now - sessSecAt > 30000){
+      sessSecAt = now;
+      curSess.sec = Math.round(finished
+        ? totalCycle + Math.max(0, (Date.now() - finishWall)/1000)
+        : elapsed);
+      sessSave();
+    }
     if (running){
       updateTimerText(pElapsed);
-      if (sessCurrent() && now - sessSecAt > 30000){
-        sessSecAt = now;
-        curSess.sec = Math.round(elapsed);
-        sessSave();
-      }
 
       for (const d of TONE_DEFS){
         const idx = Math.floor(elapsed / d.interval);
@@ -8391,6 +8404,9 @@ try {
       lastBeepMinute = Math.floor(el9/60);
       requestWakeLock();
     }
+    if (sessLog.length && sessLog[0] &&
+        Math.abs((sessLog[0].at || 0) - R9.w) < 120000)
+      curSess = sessLog[0];
     finished = false;
     needsStaticRedraw = true;
   } else if (R9){ localStorage.removeItem('salvationRun'); }
