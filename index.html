@@ -1371,8 +1371,9 @@ function abacusWideUnits(){
                  w: dgm.scr.w - lw - 14*sc, h: dgm.scr.h } };
   }
   const navEnd = dX0 + 3*dS + 2*navGap;
-  const rGap = Math.max(navGap, ((x0 + target - 16*sc - navEnd) - 3*dS)/3);
-  const railX = i => navEnd + rGap + (i - 3)*(dS + rGap);
+  const rEdge = x0 + target - 16*sc;
+  const rGap = Math.max(6*sc, Math.min(navGap, (rEdge - navEnd - 3*dS)/3));
+  const railX = i => rEdge - (6 - i)*dS - (5 - i)*rGap;
   const dgmBtns = [
     { x: railX(3), y: gBot + 9*sc, w: dS, h: dS },
     { x: railX(3), y: dJy,         w: dS, h: dS }
