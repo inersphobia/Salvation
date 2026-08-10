@@ -51,6 +51,7 @@
   }
 
   /* 48dp minimum touch targets (Material guidelines) */
+  #btnExtend { background: #6b4a12 !important; color: #ffd79a !important; display: none; }
   #ui button {
     min-width: 46px;
     min-height: 48px;
@@ -526,6 +527,7 @@
     <button id="btnMenu">MENU</button>
     <button id="btnPlay">START</button>
     <button id="btnReset">RESET</button>
+    <button id="btnExtend">EXTEND</button>
   </div>
 </div>
 
@@ -5423,11 +5425,51 @@ function drawSquareStatic(){
     }
   }
 }
+function sqReadout(t){
+  // three places for the minute inside its block of 27, three for the
+  // fraction - the 27s place is not a digit here, it is a lamp
+  const idle9 = !running && !finished && pauseMs === 0;
+  const el9 = finished ? totalCycle : idle9 ? 0 : t;
+  const m9 = Math.floor(el9/60) % 27;
+  let ms = "";
+  { let v = m9; for (let i = 0; i < 3; i++){ ms = (v % 3) + ms; v = Math.floor(v/3); } }
+  const f9 = el9 % 60;
+  let fs = "";
+  for (let i = 1; i <= 4; i++) fs += String(Math.floor(f9/(60/Math.pow(3, i))) % 3);
+  return ms + ":" + fs + "\u2083";
+}
+function drawSquareLamps(y, t){
+  // 27 / 54 / 81 - the blocks completed, standing beside the digits
+  const idle9 = !running && !finished && pauseMs === 0;
+  const el9 = finished ? totalCycle : idle9 ? 0 : t;
+  const r9 = 5, pitch9 = 17;
+  const lx = viewW - 26, ly0 = y + pitch9;
+  ctx.font = "9px monospace"; ctx.textAlign = "right";
+  for (let k = 0; k < 3; k++){
+    const cy = ly0 - k*pitch9, lit = el9 >= (k + 1)*27*60;
+    ctx.fillStyle = lit ? "rgba(255,190,90,0.85)" : "rgba(168,184,205,0.35)";
+    ctx.fillText(["27", "54", "81"][k], lx - 10, cy + 3);
+    ctx.fillStyle = "#141922";
+    ctx.beginPath(); ctx.arc(lx, cy, r9, 0, 2*Math.PI); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.15)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(lx, cy, r9, 0, 2*Math.PI); ctx.stroke();
+    if (lit){
+      const g9 = ctx.createRadialGradient(lx, cy, 0, lx, cy, r9*3.2);
+      g9.addColorStop(0, "rgba(255,149,0,0.5)"); g9.addColorStop(1, "rgba(255,149,0,0)");
+      ctx.fillStyle = g9;
+      ctx.beginPath(); ctx.arc(lx, cy, r9*3.2, 0, 2*Math.PI); ctx.fill();
+      ctx.fillStyle = "#ff9500";
+      ctx.beginPath(); ctx.arc(lx, cy, r9*0.72, 0, 2*Math.PI); ctx.fill();
+    }
+  }
+}
 function drawSquare(t){
   const L = sqLayout();
   const idle9 = !running && !finished && pauseMs === 0;
-  const unit9 = totalCycle/6561;               // at 27 minutes: 1/243 of one
-  const el9 = finished ? totalCycle : idle9 ? 0 : Math.min(t, totalCycle);
+  const unit9 = (27*60)/6561;                 // one lamp, 1/243 of a minute
+  const raw9 = finished ? totalCycle : idle9 ? 0 : Math.min(t, totalCycle);
+  const blk9 = raw9 % (27*60);
+  const el9 = (blk9 === 0 && raw9 > 0) ? 27*60 : blk9;
   const lit = Math.max(0, Math.min(6561, Math.floor(el9/unit9)));
   if (!lit) return;
   const pad = Math.max(0, (L.pitch - Math.max(1, L.pitch*0.62))/2);
@@ -7549,8 +7591,9 @@ function drawTimerText(t){
   }
   if (viewMode === 13){
     // the square keeps one readout and no choice about it: the LED
-    // counter, which is the right one
-    drawLedCounter(str, y, t);
+    // counter, three places and three, with the 27s kept as a lamp
+    drawLedCounter(sqReadout(t), y, t);
+    drawSquareLamps(y, t);
     if (finished && overtimeStr){
       ctx.font = viewW < 500 ? "19px monospace" : "23px monospace";
       ctx.fillStyle = "rgba(255,149,0,0.7)";
@@ -7817,6 +7860,13 @@ function draw(now){
   btnPlay.classList.toggle('disabled', finished);
   // and RESET grays out once there is nothing left to reset
   btnReset.classList.toggle('disabled', running || (!finished && pauseMs === 0));
+  {
+    const mE = Math.round(totalCycle/60);
+    const canE = finished && (mE === 27 || mE === 54) && timeMode !== 3;
+    const bE = document.getElementById('btnExtend');
+    const wantE = canE ? 'inline-block' : 'none';
+    if (bE.style.display !== wantE) bE.style.display = wantE;
+  }
   // the abacus carries its own control deck - the bar stands down there
   const uiBar = document.getElementById('ui');
   const wantBar = viewMode === 2 ? 'none' : '';
@@ -9413,6 +9463,11 @@ updateTimerText(0);
 drawStaticLayer();
 
 /* ---------- BUTTON HOOKS ---------- */
+document.getElementById('btnExtend').onclick = ()=>{
+  pulseButton(document.getElementById('btnExtend'));
+  abacusExtend();
+  haptic('medium');
+};
 btnReset.onclick = ()=>{
   // reset demands a stopped clock: pause first, then reset
   if (running || (!finished && pauseMs === 0)){ haptic('light'); return; }
