@@ -1352,7 +1352,9 @@ function abacusWideUnits(){
   const dS = ((monTop + monH - 4*sc) - (gBot + 9*sc))/2;
   const dX0 = x0 + 16*sc, dJy = gBot + 9*sc + dS;
   const railGapEven = ((target - 32*sc) - 6*dS)/5;
-  const navGap = Math.min(railGapEven, 26*sc);   // the compass never spreads
+  // the compass never spreads: its gap is the width of a milestone
+  // lamp, so the arrows keep the machine's own smallest measure
+  const navGap = Math.min(railGapEven, 16*sc);
   dgm.dpad = {
     up:    { x: dX0 + dS + navGap, y: gBot + 9*sc, w: dS, h: dS },
     down:  { x: dX0 + dS + navGap, y: dJy,         w: dS, h: dS },
