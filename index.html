@@ -5434,8 +5434,8 @@ function sqReadout(t){
   let ms = "";
   { let v = m9; for (let i = 0; i < 3; i++){ ms = (v % 3) + ms; v = Math.floor(v/3); } }
   const f9 = el9 % 60;
-  const fs = String(Math.floor(f9/20) % 3) + String(Math.floor(f9/(20/3)) % 3) +
-             String(Math.floor(f9/(20/9)) % 3);
+  let fs = "";
+  for (let i = 1; i <= 4; i++) fs += String(Math.floor(f9/(60/Math.pow(3, i))) % 3);
   return ms + ":" + fs + "\u2083";
 }
 function drawSquareLamps(y, t){
