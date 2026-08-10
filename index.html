@@ -534,7 +534,7 @@
 const numDials = 7;
 let timeMode = 0; // 0=27-min, 1=54-min, 2=81-min
 let viewMode = 2; // the ABACUS console greets first; 0=rings, 1=septagram, 3=fractal
-const VIEW_NAMES = ["RINGS", "STAR", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "TRIAD", "DREAM", "GOETIA", "GEARS", "FRAME", "GOAL", "CUBE"];
+const VIEW_NAMES = ["RINGS", "STAR", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "TRIAD", "DREAM", "GOETIA", "GEARS", "FRAME", "GOAL", "CUBE", "SQUARE"];
 const isChart = (v) => v === 10 || v === 11;   // FRAME and GOAL, and only those
 
 const dotsPerEdge = [1,2];
@@ -3198,6 +3198,7 @@ const VIZ_DEFS = [
   { n: "GOETIA",  v: 8, ms: 120, d: (t) => drawGoetia(t) },
   { n: "GEARS",   v: 9, d: (t) => drawGears(t) },
   { n: "CUBE",    v: 12, d: (t) => drawCube(t) },
+  { n: "SQUARE",  v: 13, d: (t) => drawSquare(t) },
 ];
 let abVizStaticCv = null, abVizStaticKey = "", abVizStaticAt = 0;
 function abVizSandbox(fn){
@@ -5381,6 +5382,87 @@ function drawCube(t){
     }
   }
 }
+/* ---------- THE SQUARE: 3^8 lamps, eighty-one on a side - the only
+   square the machine's arithmetic allows. One lamp per 1/243 minute,
+   the finest place the register keeps, and the fill runs in nested
+   ternary order: a 3x3 is 1/27 of a minute, a 9x9 is twenty seconds,
+   a 27x27 is three minutes - one pass of the brothers - and the whole
+   square is the session, complete at the bell. ---------- */
+function sqLayout(){
+  // the figure keeps the upper room; the readout and the three keys
+  // take the floor beneath it
+  const topPad = 34, readH = 78, botPad = 96;
+  const side = Math.max(81, Math.min(viewW - 26, viewH - topPad - readH - botPad));
+  const pitch = side/81;
+  const y0 = Math.round(topPad + Math.max(0, (viewH - topPad - readH - botPad - side)/2));
+  return { pitch, side, x0: Math.round((viewW - side)/2), y0,
+           textY: Math.round(y0 + side + 48) };
+}
+function sqCellXY(n){
+  // n's four base-nine digits place it at four scales at once
+  const b = [Math.floor(n/729) % 9, Math.floor(n/81) % 9, Math.floor(n/9) % 9, n % 9];
+  let x = 0, y = 0, sz = 27;
+  for (let i = 0; i < 4; i++){ x += (b[i] % 3)*sz; y += Math.floor(b[i]/3)*sz; sz /= 3; }
+  return { x, y };
+}
+function drawSquareStatic(){
+  const L = sqLayout(), c = ctxStatic;
+  const d9 = Math.max(1, L.pitch*0.62);
+  c.fillStyle = "rgba(150,180,235,0.10)";
+  for (let gy = 0; gy < 81; gy++) for (let gx = 0; gx < 81; gx++)
+    c.fillRect(L.x0 + gx*L.pitch + (L.pitch - d9)/2,
+               L.y0 + gy*L.pitch + (L.pitch - d9)/2, d9, d9);
+  // the nesting, drawn only as thin air between the blocks
+  for (const [step, a9] of [[27, 0.16], [9, 0.07]]){
+    c.strokeStyle = "rgba(150,180,235," + a9 + ")"; c.lineWidth = 1;
+    for (let k = 0; k <= 81; k += step){
+      c.beginPath();
+      c.moveTo(L.x0 + k*L.pitch, L.y0); c.lineTo(L.x0 + k*L.pitch, L.y0 + L.side);
+      c.moveTo(L.x0, L.y0 + k*L.pitch); c.lineTo(L.x0 + L.side, L.y0 + k*L.pitch);
+      c.stroke();
+    }
+  }
+}
+function drawSquare(t){
+  const L = sqLayout();
+  const idle9 = !running && !finished && pauseMs === 0;
+  const unit9 = totalCycle/6561;               // at 27 minutes: 1/243 of one
+  const el9 = finished ? totalCycle : idle9 ? 0 : Math.min(t, totalCycle);
+  const lit = Math.max(0, Math.min(6561, Math.floor(el9/unit9)));
+  if (!lit) return;
+  const pad = Math.max(0, (L.pitch - Math.max(1, L.pitch*0.62))/2);
+  const blk = (bx, by, cells) => {
+    // a completed block is one stroke of light, not many
+    ctx.fillRect(L.x0 + bx*L.pitch + pad, L.y0 + by*L.pitch + pad,
+                 cells*L.pitch - 2*pad, cells*L.pitch - 2*pad);
+  };
+  ctx.fillStyle = "rgba(255,170,60,0.82)";
+  let done = 0;
+  for (const [sz, span] of [[729, 27], [81, 9], [9, 3]]){
+    const full = Math.floor((lit - done)/sz);
+    for (let k = 0; k < full; k++){
+      const o = sqCellXY(done + k*sz);
+      blk(o.x, o.y, span);
+    }
+    done += full*sz;
+  }
+  for (let k = done; k < lit; k++){
+    const o = sqCellXY(k);
+    const fresh = k >= lit - 2;
+    if (fresh) ctx.fillStyle = "rgba(255,238,196,0.98)";
+    blk(o.x, o.y, 1);
+    if (fresh) ctx.fillStyle = "rgba(255,170,60,0.82)";
+  }
+  // the working edge, breathing
+  if (!idle9 && !finished && lit < 6561){
+    const o = sqCellXY(lit);
+    const pu = 0.45 + 0.4*Math.sin(performance.now()/380);
+    ctx.strokeStyle = "rgba(255,220,170," + pu.toFixed(2) + ")";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(L.x0 + o.x*L.pitch + 0.5, L.y0 + o.y*L.pitch + 0.5,
+                   L.pitch - 1, L.pitch - 1);
+  }
+}
 function drawGearsStatic(){
   const G = gearLayout(), s = G.s;
   // plate shadows and labels hold still; the steel turns on the anim layer
@@ -7072,6 +7154,7 @@ function getTextY(){
   if (viewMode===7){ const L = dreamLayout();   return Math.min(viewH - 170, L.textY); }
   if (viewMode===8){ const L = goetiaLayout();  return L.textY; }
   if (viewMode===9){ const G = gearLayout();    return G.textY; }
+  if (viewMode===13){ const Q = sqLayout();     return Q.textY; }
   return viewH/2 - 40;
 }
 
@@ -7099,6 +7182,7 @@ function drawStaticLayer(){
   if (viewMode===8){ drawGoetiaStatic(); needsStaticRedraw = false; return; }   // the chamber is static
   if (viewMode===9){ drawGearsStatic(); needsStaticRedraw = false; return; } // the ring's labels are still
   if (viewMode===12){ drawCubeStatic(); needsStaticRedraw = false; return; }  // the cube's empty cells
+  if (viewMode===13){ drawSquareStatic(); needsStaticRedraw = false; return; } // the square's dark lamps
   if (isChart(viewMode)){ needsStaticRedraw = false; return; } // frame/goal render on the anim layer (pannable)
 
   // Star lines - matched to the WEAVE track (thin, faint)
@@ -7463,9 +7547,21 @@ function drawTimerText(t){
     // the overtime - nothing floats over the equipment
     return;
   }
+  if (viewMode === 13){
+    // the square keeps one readout and no choice about it: the LED
+    // counter, which is the right one
+    drawLedCounter(str, y, t);
+    if (finished && overtimeStr){
+      ctx.font = viewW < 500 ? "19px monospace" : "23px monospace";
+      ctx.fillStyle = "rgba(255,149,0,0.7)";
+      ctx.textAlign = "center";
+      ctx.fillText(overtimeStr, viewW/2, y + (viewW < 500 ? 34 : 40));
+    }
+    return;
+  }
   if (viewMode === 12){
-    // the cube counts itself: eighty-one lamps to the minute, twenty
-    // seven cells to the session - only the overtime needs saying
+    // the cube counts itself, lamp by lamp - only the overtime
+    // needs saying
     if (finished && overtimeStr) drawSevenSegText(overtimeStr, y, 0.62);
     return;
   }
@@ -7703,6 +7799,8 @@ function draw(now){
     drawGears(vizT);
   } else if (viewMode===12){
     drawCube(vizT);
+  } else if (viewMode===13){
+    drawSquare(vizT);
   } else {
     drawFrameView();
   }
