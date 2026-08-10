@@ -1337,7 +1337,8 @@ function abacusWideUnits(){
   };
   // the wheel column owns the whole side panel now - the stick moved
   // to the bezel foot; pu compresses on unusually short glass
-  const pu = sc*Math.min(1, dgm.pan.h/(334*sc));
+  // the wheel column yields a strip at its foot for the brothers
+  const pu = sc*Math.min(1, Math.max(0.5, (dgm.pan.h - 92*sc)/(334*sc)));
   const px5 = dgm.pan.x + 5*sc, pw5 = panW - 10*sc;
   dgm.w1u = { x: px5, y: dgm.pan.y + 12*pu,  w: pw5, h: 36*pu };
   dgm.w1  = { x: px5, y: dgm.pan.y + 52*pu,  w: pw5, h: 72*pu };
@@ -1345,6 +1346,20 @@ function abacusWideUnits(){
   dgm.w2u = { x: px5, y: dgm.pan.y + 172*pu, w: pw5, h: 36*pu };
   dgm.w2  = { x: px5, y: dgm.pan.y + 212*pu, w: pw5, h: 72*pu };
   dgm.w2d = { x: px5, y: dgm.pan.y + 288*pu, w: pw5, h: 36*pu };
+  // THE BROTHERS: three sockets beneath the dials, one minute apiece -
+  // forethought, the messenger, afterthought, walking the session down
+  {
+    // the stack stands on the panel's floor, clear of the dials above,
+    // so it keeps its footing however the wheel column compresses
+    const wBot = dgm.w2d.y + dgm.w2d.h + 10*sc;
+    const floor9 = dgm.pan.y + dgm.pan.h - 8*sc;
+    const pitch = Math.max(13*sc, Math.min(28*sc, (floor9 - wBot)/3));
+    const top9 = Math.max(wBot, floor9 - 3*pitch);
+    const r9 = Math.min(6.5*sc, pitch*0.30);
+    dgm.bro = [0, 1, 2].map(i => ({
+      cx: dgm.pan.x + panW/2, cy: top9 + pitch/2 + i*pitch, r: r9
+    }));
+  }
   // up/down: two squares filling the foot, glass to bezel, a hair shy
   // of each; left/right: the same squares beside them, their vertical
   // center riding the up/down junction
@@ -2689,6 +2704,38 @@ function drawAbacusWideDots(t){
     ctx.beginPath(); ctx.roundRect(Pn.x, Pn.y, Pn.w, Pn.h, 8); ctx.fill();
     ctx.strokeStyle = "rgba(160,190,235,0.26)"; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.roundRect(Pn.x, Pn.y, Pn.w, Pn.h, 8); ctx.stroke();
+    // the brothers: three wells, the lit one filling through its minute
+    {
+      const B9 = D.bro;
+      const idle9 = !running && !finished && pauseMs === 0;
+      const el9 = finished ? totalCycle
+                : idle9 ? 0
+                : (running ? (performance.now() - startMs)/1000 : pauseMs/1000);
+      const which9 = idle9 ? -1 : Math.floor(el9/60) % 3;
+      const frac9 = idle9 ? 0 : (el9 % 60)/60;
+      for (let i = 0; i < 3; i++){
+        const b9 = B9[i], on9 = i === which9;
+        ctx.fillStyle = "#0c0f15";
+        ctx.beginPath(); ctx.arc(b9.cx, b9.cy, b9.r, 0, 2*Math.PI); ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.13)"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(b9.cx, b9.cy, b9.r, 0, 2*Math.PI); ctx.stroke();
+        if (on9){
+          const gl = ctx.createRadialGradient(b9.cx, b9.cy, 0, b9.cx, b9.cy, b9.r*3.4);
+          gl.addColorStop(0, "rgba(255,149,0,0.42)"); gl.addColorStop(1, "rgba(255,149,0,0)");
+          ctx.fillStyle = gl;
+          ctx.beginPath(); ctx.arc(b9.cx, b9.cy, b9.r*3.4, 0, 2*Math.PI); ctx.fill();
+          const jr = b9.r*(0.42 + 0.42*frac9);   // the jewel grows through the minute
+          const jg = ctx.createRadialGradient(b9.cx - jr*0.3, b9.cy - jr*0.35, 0, b9.cx, b9.cy, jr);
+          jg.addColorStop(0, "#ffe6b0"); jg.addColorStop(0.55, "#ffb340"); jg.addColorStop(1, "#c46a00");
+          ctx.fillStyle = jg;
+          ctx.beginPath(); ctx.arc(b9.cx, b9.cy, jr, 0, 2*Math.PI); ctx.fill();
+        } else if (which9 >= 0 && i < which9){
+          // the brothers already passed keep an ember
+          ctx.fillStyle = "rgba(255,149,0,0.16)";
+          ctx.beginPath(); ctx.arc(b9.cx, b9.cy, b9.r*0.42, 0, 2*Math.PI); ctx.fill();
+        }
+      }
+    }
     const wheel = (wr, wi) => {
       // a luggage combination wheel seen edge-on: only the front shows
       const wg = ctx.createLinearGradient(0, wr.y, 0, wr.y + wr.h);
