@@ -332,6 +332,31 @@
     font-weight: 600; color: white; min-height: 44px; cursor: pointer; }
   #vcSkip { background: #555; }
   #vcSave { background: #a9843e; color: #1d1608; }
+  #strikeCard {
+    position: fixed; top: 36%; left: 50%; transform: translate(-50%, -50%);
+    width: min(330px, 88vw); background: #0a0f14;
+    border: 1.5px solid rgba(255,170,60,0.55); border-radius: 12px;
+    padding: 14px; z-index: 40; display: none; font-family: monospace;
+  }
+  #strikeCard .sk-lab { color: rgba(255,190,90,0.8); font: bold 10px monospace;
+    letter-spacing: 2px; margin-bottom: 6px; }
+  #strikeCard .sk-row { margin-bottom: 12px; }
+  #strikeCard .sc-dial { margin: 0 0 7px 0; }
+  #strikeCard .sci { width: 100%; box-sizing: border-box; background: #0a0d16;
+    color: #ffc478; border: 1px solid rgba(255,170,60,0.35); border-radius: 6px;
+    font: 13px monospace; padding: 8px 10px; outline: none; }
+  #skJudge { border-bottom: 1px solid rgba(160,190,235,0.18);
+    padding-bottom: 12px; margin-bottom: 12px; display: none; }
+  #skJudge .vc-tern { display: flex; gap: 8px; }
+  #skJudge .vc-tern button { flex: 1; min-height: 40px; font: bold 16px monospace;
+    background: #10141c; color: rgba(168,184,205,0.55);
+    border: 1px solid rgba(0,191,255,0.25); border-radius: 8px; cursor: pointer; }
+  #skJudge .vc-tern button.on { color: #ffc478; border-color: rgba(255,170,60,0.85); background: #241d10; }
+  #strikeCard .fe-row { display: flex; gap: 8px; justify-content: flex-end; }
+  #strikeCard .fe-row button { border: none; border-radius: 8px; padding: 10px 18px;
+    font-weight: 600; color: white; min-height: 44px; cursor: pointer; }
+  #skCancel { background: #555; }
+  #skLog { background: #a9843e; color: #1d1608; }
   #frameEdit button {
     border: none; border-radius: 8px; padding: 10px 18px;
     font-weight: 600; color: white; min-height: 44px; cursor: pointer;
@@ -429,6 +454,35 @@
   <div class="fe-row">
     <button id="scCancel" type="button">CANCEL</button>
     <button id="scGo" type="button">GO</button>
+  </div>
+</div>
+
+<div id="strikeCard">
+  <div id="skJudge">
+    <div class="sk-lab" id="skJudgeLab">DID IT HOLD?</div>
+    <div class="vc-tern" id="skHold"><button data-s="-1">&#8722;</button><button data-s="0" class="on">0</button><button data-s="1">+</button></div>
+  </div>
+  <div id="skPick">
+    <div class="sk-row">
+      <div class="sk-lab">DISTRACTION</div>
+      <div class="sc-dial">
+        <div class="sc-place"><div class="sc-digit" id="skD1">0</div><button id="skA1" type="button">&#9650;</button></div>
+        <div class="sc-place"><div class="sc-digit" id="skD2">0</div><button id="skA2" type="button">&#9650;</button></div>
+      </div>
+      <input class="sci" id="skDName" maxlength="18" placeholder="name it" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="sk-row">
+      <div class="sk-lab">RESPONSE</div>
+      <div class="sc-dial">
+        <div class="sc-place"><div class="sc-digit" id="skR1">0</div><button id="skB1" type="button">&#9650;</button></div>
+        <div class="sc-place"><div class="sc-digit" id="skR2">0</div><button id="skB2" type="button">&#9650;</button></div>
+      </div>
+      <input class="sci" id="skRName" maxlength="18" placeholder="name it" autocomplete="off" spellcheck="false">
+    </div>
+  </div>
+  <div class="fe-row">
+    <button id="skCancel" type="button">CANCEL</button>
+    <button id="skLog" type="button">LOG</button>
   </div>
 </div>
 
@@ -1787,7 +1841,7 @@ function drawAbacusWideDots(t){
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.roundRect(lb2b.x, lb2b.y, lb2b.w, lb2b.h, 4); ctx.stroke();
     ctx.font = "bold " + Math.round(11*sc) + "px monospace";
-    ctx.fillStyle = logOn ? "rgba(255,190,90,0.95)" : running ? "rgba(150,165,185,0.35)" : "rgba(200,215,235,0.7)";
+    ctx.fillStyle = logOn ? "rgba(255,190,90,0.95)" : "rgba(200,215,235,0.7)";
     ctx.fillText("LOG", lb2b.x + lb2b.w/2, lb2b.y + lb2b.h/2 + 4*sc);
     // the SLIP key: one bolt for a wandered mind - no words, minus one
     {
@@ -2143,6 +2197,21 @@ function drawAbacusWideDots(t){
           ctx.fillStyle = mk.s > 0 ? "rgba(120,220,140,0.9)"
                         : mk.s < 0 ? "rgba(255,90,80,0.9)" : "rgba(168,184,205,0.4)";
           ctx.fillText(mk.s > 0 ? "+" : mk.s < 0 ? "\u2212" : "\u00b7", S.x + 72*sc, ry);
+          if (mk.d !== undefined){
+            const dn9 = (distractDict[mk.d] || mk.d).toUpperCase();
+            const rn9 = (responseDict[mk.r] || mk.r).toUpperCase();
+            ctx.fillStyle = "rgba(255,150,120,0.9)";
+            ctx.fillText(dn9.slice(0, 11), S.x + 88*sc, ry);
+            const dw9 = ctx.measureText(dn9.slice(0, 11)).width;
+            ctx.fillStyle = "rgba(168,184,205,0.55)";
+            ctx.fillText(" \u2192 ", S.x + 88*sc + dw9, ry);
+            const aw9 = ctx.measureText(" \u2192 ").width;
+            ctx.fillStyle = mk.o > 0 ? "rgba(120,220,140,0.95)"
+                          : mk.o < 0 ? "rgba(255,120,110,0.9)" : "rgba(224,232,250,0.75)";
+            ctx.fillText(rn9.slice(0, 11), S.x + 88*sc + dw9 + aw9, ry);
+            ry += rowH;
+            continue;
+          }
           if (!mk.x && mk.s < 0){
             // a bare strike: the bolt itself stands where words would
             ctx.strokeStyle = "rgba(255,90,80,0.8)"; ctx.lineWidth = 1.6;
@@ -3121,6 +3190,7 @@ const VIZ_DEFS = [
   { n: "DREAM",   v: 7, d: (t) => drawDream(t) },
   { n: "GOETIA",  v: 8, ms: 120, d: (t) => drawGoetia(t) },
   { n: "GEARS",   v: 9, d: (t) => drawGears(t) },
+  { n: "CUBE",    v: 12, d: (t) => drawCube(t) },
 ];
 let abVizStaticCv = null, abVizStaticKey = "", abVizStaticAt = 0;
 function abVizSandbox(fn){
@@ -5207,6 +5277,103 @@ function drawGearShape(c, cx, cy, r, teeth, angle, style, s){
   c.beginPath(); c.arc(0, 0, Math.max(3.5, r*0.16), 0, 2*Math.PI); c.stroke();
   c.restore();
 }
+/* ---------- THE CUBE: twenty-seven minutes as a 3x3x3 solid, its
+   three layers drawn apart like a Rubik's cube taken to pieces. Each
+   cell is a field of eighty-one dots - one dot per 1/81 minute - so
+   the whole cube is 3^7 lamps, the very count the register keeps. -- */
+function cubeLayout(){
+  const k9 = Math.min(viewW/430, viewH/620, 1.6);
+  const hw = 46*k9, hh = 24*k9;
+  const gap = 112*k9;
+  return { k: k9, hw, hh, gap, ox: viewW/2, oy: viewH*0.5 - gap*0.08,
+           dr: Math.max(0.8, 1.5*k9) };
+}
+function cubeCell(L, ly, cx, cz){
+  return { x: L.ox + (cx - cz)*L.hw,
+           y: L.oy + (cx + cz)*L.hh - (2 - ly)*L.gap };
+}
+function cubeDot(L, p, i, j){
+  // nine by nine, laid on the rhombus in its own oblique frame
+  const u = (i + 0.5)/9, v = (j + 0.5)/9;
+  return { x: p.x + (u - v)*L.hw, y: p.y + (u + v - 1)*L.hh };
+}
+function cubeRim(c, p, L){
+  c.beginPath();
+  c.moveTo(p.x, p.y - L.hh); c.lineTo(p.x + L.hw, p.y);
+  c.lineTo(p.x, p.y + L.hh); c.lineTo(p.x - L.hw, p.y);
+  c.closePath();
+}
+function drawCubeStatic(){
+  const L = cubeLayout(), c = ctxStatic;
+  for (let ly = 0; ly < 3; ly++){
+    for (let cz = 0; cz < 3; cz++) for (let cx = 0; cx < 3; cx++){
+      const p = cubeCell(L, ly, cx, cz);
+      cubeRim(c, p, L);
+      c.fillStyle = "rgba(8,11,20,0.9)"; c.fill();
+      c.strokeStyle = "rgba(120,170,255,0.10)"; c.lineWidth = 1;
+      c.stroke();
+      // the dark sockets: every lamp in its place, waiting
+      c.fillStyle = "rgba(150,180,235,0.09)";
+      for (let j = 0; j < 9; j++) for (let i = 0; i < 9; i++){
+        const d = cubeDot(L, p, i, j);
+        c.fillRect(d.x - L.dr/2, d.y - L.dr/2, L.dr, L.dr);
+      }
+    }
+    const e9 = cubeCell(L, ly, 0, 2);
+    c.font = "bold " + Math.round(9*L.k) + "px monospace";
+    c.textAlign = "right";
+    c.fillStyle = "rgba(168,184,205,0.30)";
+    c.fillText(String(ly), e9.x - L.hw - 9*L.k, e9.y + 3*L.k);
+  }
+  c.textAlign = "left";
+}
+function drawCube(t){
+  const L = cubeLayout();
+  const idle9 = !running && !finished && pauseMs === 0;
+  const el9 = finished ? totalCycle : idle9 ? 0 : t;
+  const unit9 = 60/81;                       // one dot, one 1/81 minute
+  const dots9 = Math.floor(el9/unit9);
+  const cellDone = Math.floor(dots9/81);
+  const inCell = dots9 % 81;
+  const r9 = L.dr*1.5;
+  for (let ly = 0; ly < 3; ly++){
+    for (let cz = 0; cz < 3; cz++) for (let cx = 0; cx < 3; cx++){
+      const idx = ly*9 + cz*3 + cx;
+      if (idx > cellDone || idx >= 27) continue;
+      const p = cubeCell(L, ly, cx, cz);
+      const live = idx === cellDone && !idle9 && !finished;
+      const upto = live ? inCell : 81;
+      if (upto <= 0 && !live) continue;
+      // the cell's own glow, rising with its filling
+      const fr9 = upto/81;
+      const gl = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, L.hw*1.25);
+      gl.addColorStop(0, "rgba(255,149,0," + (0.10 + 0.10*fr9).toFixed(3) + ")");
+      gl.addColorStop(1, "rgba(255,149,0,0)");
+      ctx.fillStyle = gl;
+      ctx.beginPath(); ctx.arc(p.x, p.y, L.hw*1.25, 0, 2*Math.PI); ctx.fill();
+      for (let n = 0; n < upto; n++){
+        const i9 = n % 9, j9 = Math.floor(n/9);
+        const d = cubeDot(L, p, i9, j9);
+        const fresh = live && n >= upto - 3;
+        ctx.fillStyle = fresh ? "rgba(255,235,190,0.95)" : "rgba(255,170,60,0.80)";
+        ctx.fillRect(d.x - r9/2, d.y - r9/2, r9, r9);
+      }
+      cubeRim(ctx, p, L);
+      ctx.strokeStyle = live ? "rgba(255,196,120,0.7)" : "rgba(255,170,60,0.28)";
+      ctx.lineWidth = live ? 1.5 : 1;
+      ctx.stroke();
+    }
+    if (cellDone >= (ly + 1)*9){
+      const a9 = cubeCell(L, ly, 0, 0), b9 = cubeCell(L, ly, 2, 0);
+      const c9 = cubeCell(L, ly, 2, 2), d9 = cubeCell(L, ly, 0, 2);
+      ctx.strokeStyle = "rgba(255,196,120,0.45)"; ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(a9.x, a9.y - L.hh); ctx.lineTo(b9.x + L.hw, b9.y);
+      ctx.lineTo(c9.x, c9.y + L.hh); ctx.lineTo(d9.x - L.hw, d9.y);
+      ctx.closePath(); ctx.stroke();
+    }
+  }
+}
 function drawGearsStatic(){
   const G = gearLayout(), s = G.s;
   // plate shadows and labels hold still; the steel turns on the anim layer
@@ -6924,6 +7091,7 @@ function drawStaticLayer(){
   if (viewMode===7){ drawDreamDungeon(); needsStaticRedraw = false; return; } // the dungeon is static
   if (viewMode===8){ drawGoetiaStatic(); needsStaticRedraw = false; return; }   // the chamber is static
   if (viewMode===9){ drawGearsStatic(); needsStaticRedraw = false; return; } // the ring's labels are still
+  if (viewMode===12){ drawCubeStatic(); needsStaticRedraw = false; return; }  // the cube's empty cells
   if (viewMode>=10){ needsStaticRedraw = false; return; } // frame/goal render on the anim layer (pannable)
 
   // Star lines - matched to the WEAVE track (thin, faint)
@@ -8069,20 +8237,13 @@ canvasAnim.addEventListener("click", (e) => {
       return;
     }
     if (hit(U.slipBtn)){
-      const S9k = sessCurrent();
-      if (S9k){
+      if (sessCurrent()){
         abDgmFlash = { k: "slip", until: performance.now() + 140 };
-        const tS = running ? (performance.now() - startMs)/1000
-                 : finished ? totalCycle + Math.max(0, (Date.now() - finishWall)/1000)
-                 : pauseMs/1000;
-        S9k.marks.push({ t: Math.round(tS), x: "", s: -1 });
-        sessSave();
-        haptic('medium');
+        openStrikeCard(true);
       } else haptic('light');
       return;
     }
     if (hit(U.logBtn)){
-      if (running){ haptic('light'); return; }
       abLog = abLog >= 0 ? -1 : 0;
       abLogSel = 0; abLogScroll = 0;
       abDgm = -1; abViz = -1;
@@ -8095,6 +8256,7 @@ canvasAnim.addEventListener("click", (e) => {
     if (hit(U.ext)){
       abKeyFlash = { id: 3, until: performance.now() + 140 };
       abacusExtend();
+      if (openMarkOf(sessCurrent())) openStrikeCard(false);
       return;
     }
     for (let i = 0; i < 3; i++){
@@ -8207,6 +8369,31 @@ try { presets = JSON.parse(localStorage.getItem('salvationPresets') || "{}") || 
 let lastProg = null;
 try { lastProg = JSON.parse(localStorage.getItem('salvationLastProg') || "null"); } catch(e) {}
 let pendProg = null, scDial = [0, 0], scPreOn = true, scSetArm = 0;
+/* the practice's own vocabulary: nine distractions, nine responses,
+   each at a two-trit address. An edge is a distraction met with a
+   response; its verdict arrives at the next strike or at the close. */
+let distractDict = {}, responseDict = {};
+try { distractDict = JSON.parse(localStorage.getItem('salvationDistract') || "{}") || {}; } catch(e) {}
+try { responseDict = JSON.parse(localStorage.getItem('salvationResponse') || "{}") || {}; } catch(e) {}
+let lastEdge = null;
+try { lastEdge = JSON.parse(localStorage.getItem('salvationLastEdge') || "null"); } catch(e) {}
+function vocabSave(){
+  try {
+    localStorage.setItem('salvationDistract', JSON.stringify(distractDict));
+    localStorage.setItem('salvationResponse', JSON.stringify(responseDict));
+    abStoreFail = 0;
+  } catch(e) { abStoreFail = Date.now(); }
+}
+function openMarkOf(S9){
+  // the one edge still awaiting its verdict, if there is one
+  if (!S9) return null;
+  for (let i = S9.marks.length - 1; i >= 0; i--){
+    const m = S9.marks[i];
+    if (m.d !== undefined && m.r !== undefined && m.o === undefined) return m;
+    if (m.d !== undefined) return null;
+  }
+  return null;
+}
 function dayKey9(ms){
   const d = new Date(ms === undefined ? Date.now() : ms);
   return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
@@ -8281,6 +8468,87 @@ function openStartCard(){
 document.getElementById('scCancel').addEventListener('click', () => {
   startCard.style.display = "none";
 });
+/* ---------- THE STRIKE CARD: a distraction met with a response.
+   The verdict on the last pairing rides at the top - reflection is
+   always retrospective, arriving with the next interruption or at
+   the session's close. ---------- */
+const strikeCard = document.getElementById('strikeCard');
+const skDName = document.getElementById('skDName'), skRName = document.getElementById('skRName');
+let skD = [0, 0], skR = [0, 0], skHoldVal = 0, skOpen = null, skPickMode = true;
+function skCode(a){ return "" + a[0] + a[1]; }
+function skSync(){
+  document.getElementById('skD1').textContent = skD[0];
+  document.getElementById('skD2').textContent = skD[1];
+  document.getElementById('skR1').textContent = skR[0];
+  document.getElementById('skR2').textContent = skR[1];
+  skDName.value = distractDict[skCode(skD)] || "";
+  skRName.value = responseDict[skCode(skR)] || "";
+  for (const b of document.getElementById('skHold').children)
+    b.classList.toggle('on', Number(b.dataset.s) === skHoldVal);
+}
+const skBump = (arr, i) => { arr[i] = (arr[i] + 1) % 3; skSync(); haptic('light'); };
+document.getElementById('skA1').addEventListener('click', () => skBump(skD, 0));
+document.getElementById('skA2').addEventListener('click', () => skBump(skD, 1));
+document.getElementById('skB1').addEventListener('click', () => skBump(skR, 0));
+document.getElementById('skB2').addEventListener('click', () => skBump(skR, 1));
+document.getElementById('skD1').addEventListener('click', () => skBump(skD, 0));
+document.getElementById('skD2').addEventListener('click', () => skBump(skD, 1));
+document.getElementById('skR1').addEventListener('click', () => skBump(skR, 0));
+document.getElementById('skR2').addEventListener('click', () => skBump(skR, 1));
+for (const b of document.getElementById('skHold').children)
+  b.addEventListener('click', () => { skHoldVal = Number(b.dataset.s); skSync(); });
+function openStrikeCard(pickMode){
+  const S9 = sessCurrent();
+  if (!S9) return;
+  skOpen = openMarkOf(S9);
+  skPickMode = pickMode !== false;
+  skHoldVal = 0;
+  if (skOpen){
+    document.getElementById('skJudgeLab').textContent =
+      "DID IT HOLD? \u00b7 " + (responseDict[skOpen.r] || skOpen.r).toUpperCase();
+    document.getElementById('skJudge').style.display = "block";
+  } else document.getElementById('skJudge').style.display = "none";
+  document.getElementById('skPick').style.display = skPickMode ? "block" : "none";
+  document.getElementById('skLog').textContent = skPickMode ? "LOG" : "CLOSE";
+  if (skPickMode && lastEdge){
+    skD = [+lastEdge.d[0] % 3, +lastEdge.d[1] % 3];
+    skR = [+lastEdge.r[0] % 3, +lastEdge.r[1] % 3];
+  }
+  skSync();
+  if (!skOpen && !skPickMode) return;
+  strikeCard.style.display = "block";
+  haptic('light');
+}
+function skCommitJudge(){
+  if (skOpen){ skOpen.o = skHoldVal; skOpen.s = skHoldVal; }
+  skOpen = null;
+}
+document.getElementById('skCancel').addEventListener('click', () => {
+  strikeCard.style.display = "none"; skOpen = null;
+});
+document.getElementById('skLog').addEventListener('click', () => {
+  const S9 = sessCurrent();
+  const wasJudgeOnly = !skPickMode;
+  skCommitJudge();
+  if (skPickMode && S9){
+    const dc = skCode(skD), rc = skCode(skR);
+    const dn = skDName.value.trim().slice(0, 18), rn = skRName.value.trim().slice(0, 18);
+    if (dn) distractDict[dc] = dn;
+    if (rn) responseDict[rc] = rn;
+    vocabSave();
+    const tS = running ? (performance.now() - startMs)/1000
+             : finished ? totalCycle + Math.max(0, (Date.now() - finishWall)/1000)
+             : pauseMs/1000;
+    S9.marks.push({ t: Math.round(tS), x: "", s: -1, d: dc, r: rc });
+    lastEdge = { d: dc, r: rc };
+    try { localStorage.setItem('salvationLastEdge', JSON.stringify(lastEdge)); } catch(e) {}
+  }
+  if (S9) sessSave();
+  strikeCard.style.display = "none";
+  haptic('medium');
+  if (wasJudgeOnly && !running && (finished || pauseMs > 0)) requestReset();
+});
+
 /* ---------- THE VERDICT CARD: RESET closes the account. W sessions
    rate W; named sessions rate T and P; a note is welcome, nothing is
    required, and SKIP leaves the session unrated. Verdicts, like all
@@ -8306,6 +8574,7 @@ function vcResetRows(){
 let vcFor = null;
 function requestReset(){
   const S9 = sessCurrent();
+  if (S9 && openMarkOf(S9)){ openStrikeCard(false); return; }
   if (S9 && !('rt' in S9) && !('rw' in S9)){
     vcFor = S9;
     vcResetRows();
