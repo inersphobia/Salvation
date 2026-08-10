@@ -5394,11 +5394,17 @@ function sqLayout(){
   // the figure keeps the upper room; the readout and the three keys
   // take the floor beneath it
   const topPad = 34, readH = 78, botPad = 96;
-  const side = Math.max(81, Math.min(viewW - 26, viewH - topPad - readH - botPad));
-  const pitch = side/81;
+  const side = Math.max(81, Math.min(viewW - 10, viewH - topPad - readH - botPad));
+  // the nesting is spacing, not ink: a wider gutter at each 27, a
+  // narrower one at each 9, so the little squares stand apart
+  const g27 = Math.max(2, side*0.011), g9 = Math.max(1, side*0.004);
+  const pitch = (side - 2*g27 - 6*g9)/81;
   const y0 = Math.round(topPad + Math.max(0, (viewH - topPad - readH - botPad - side)/2));
-  return { pitch, side, x0: Math.round((viewW - side)/2), y0,
+  return { pitch, side, g27, g9, x0: Math.round((viewW - side)/2), y0,
            textY: Math.round(y0 + side + 48) };
+}
+function sqPos(L, g){
+  return g*L.pitch + Math.floor(g/9)*L.g9 + Math.floor(g/27)*(L.g27 - L.g9);
 }
 function sqCellXY(n){
   // n's four base-nine digits place it at four scales at once
@@ -5409,19 +5415,14 @@ function sqCellXY(n){
 }
 function drawSquareStatic(){
   const L = sqLayout(), c = ctxStatic;
-  const d9 = Math.max(1, L.pitch*0.62);
-  c.fillStyle = "rgba(150,180,235,0.10)";
-  for (let gy = 0; gy < 81; gy++) for (let gx = 0; gx < 81; gx++)
-    c.fillRect(L.x0 + gx*L.pitch + (L.pitch - d9)/2,
-               L.y0 + gy*L.pitch + (L.pitch - d9)/2, d9, d9);
-  // the nesting, drawn only as thin air between the blocks
-  for (const [step, a9] of [[27, 0.16], [9, 0.07]]){
-    c.strokeStyle = "rgba(150,180,235," + a9 + ")"; c.lineWidth = 1;
-    for (let k = 0; k <= 81; k += step){
+  const r9 = Math.max(0.7, L.pitch*0.40);
+  c.fillStyle = "rgba(150,180,235,0.11)";
+  for (let gy = 0; gy < 81; gy++){
+    const py = L.y0 + sqPos(L, gy) + L.pitch/2;
+    for (let gx = 0; gx < 81; gx++){
       c.beginPath();
-      c.moveTo(L.x0 + k*L.pitch, L.y0); c.lineTo(L.x0 + k*L.pitch, L.y0 + L.side);
-      c.moveTo(L.x0, L.y0 + k*L.pitch); c.lineTo(L.x0 + L.side, L.y0 + k*L.pitch);
-      c.stroke();
+      c.arc(L.x0 + sqPos(L, gx) + L.pitch/2, py, r9, 0, 2*Math.PI);
+      c.fill();
     }
   }
 }
@@ -5463,6 +5464,29 @@ function drawSquareLamps(y, t){
     }
   }
 }
+let sqCv = null, sqKey = "";
+function sqPlate(L, lit){
+  const key = lit + ":" + Math.round(L.side);
+  if (sqCv && sqKey === key) return sqCv;
+  const dpr9 = Math.min(window.devicePixelRatio || 1, 3);
+  if (!sqCv) sqCv = document.createElement('canvas');
+  const px = Math.max(2, Math.round(L.side*dpr9));
+  if (sqCv.width !== px || sqCv.height !== px){ sqCv.width = px; sqCv.height = px; }
+  const c2 = sqCv.getContext('2d');
+  c2.setTransform(1, 0, 0, 1, 0, 0);
+  c2.clearRect(0, 0, sqCv.width, sqCv.height);
+  c2.scale(dpr9, dpr9);
+  const r9 = Math.max(0.8, L.pitch*0.42);
+  c2.fillStyle = "rgba(249,246,236,0.95)";   // the register's own warm white
+  for (let n = 0; n < lit; n++){
+    const o = sqCellXY(n);
+    c2.beginPath();
+    c2.arc(sqPos(L, o.x) + L.pitch/2, sqPos(L, o.y) + L.pitch/2, r9, 0, 2*Math.PI);
+    c2.fill();
+  }
+  sqKey = key;
+  return sqCv;
+}
 function drawSquare(t){
   const L = sqLayout();
   const idle9 = !running && !finished && pauseMs === 0;
@@ -5471,39 +5495,7 @@ function drawSquare(t){
   const blk9 = raw9 % (27*60);
   const el9 = (blk9 === 0 && raw9 > 0) ? 27*60 : blk9;
   const lit = Math.max(0, Math.min(6561, Math.floor(el9/unit9)));
-  if (!lit) return;
-  const pad = Math.max(0, (L.pitch - Math.max(1, L.pitch*0.62))/2);
-  const blk = (bx, by, cells) => {
-    // a completed block is one stroke of light, not many
-    ctx.fillRect(L.x0 + bx*L.pitch + pad, L.y0 + by*L.pitch + pad,
-                 cells*L.pitch - 2*pad, cells*L.pitch - 2*pad);
-  };
-  ctx.fillStyle = "rgba(255,170,60,0.82)";
-  let done = 0;
-  for (const [sz, span] of [[729, 27], [81, 9], [9, 3]]){
-    const full = Math.floor((lit - done)/sz);
-    for (let k = 0; k < full; k++){
-      const o = sqCellXY(done + k*sz);
-      blk(o.x, o.y, span);
-    }
-    done += full*sz;
-  }
-  for (let k = done; k < lit; k++){
-    const o = sqCellXY(k);
-    const fresh = k >= lit - 2;
-    if (fresh) ctx.fillStyle = "rgba(255,238,196,0.98)";
-    blk(o.x, o.y, 1);
-    if (fresh) ctx.fillStyle = "rgba(255,170,60,0.82)";
-  }
-  // the working edge, breathing
-  if (!idle9 && !finished && lit < 6561){
-    const o = sqCellXY(lit);
-    const pu = 0.45 + 0.4*Math.sin(performance.now()/380);
-    ctx.strokeStyle = "rgba(255,220,170," + pu.toFixed(2) + ")";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(L.x0 + o.x*L.pitch + 0.5, L.y0 + o.y*L.pitch + 0.5,
-                   L.pitch - 1, L.pitch - 1);
-  }
+  if (lit) ctx.drawImage(sqPlate(L, lit), L.x0, L.y0, L.side, L.side);
 }
 function drawGearsStatic(){
   const G = gearLayout(), s = G.s;
