@@ -1351,12 +1351,13 @@ function abacusWideUnits(){
   const gBot = mon.y + monIH;   // the true glass bottom, wherever the header ends
   const dS = ((monTop + monH - 4*sc) - (gBot + 9*sc))/2;
   const dX0 = x0 + 16*sc, dJy = gBot + 9*sc + dS;
-  const railGap0 = ((target - 32*sc) - 6*dS)/5;
+  const railGapEven = ((target - 32*sc) - 6*dS)/5;
+  const navGap = Math.min(railGapEven, 26*sc);   // the compass never spreads
   dgm.dpad = {
-    up:    { x: dX0 + dS + railGap0, y: gBot + 9*sc, w: dS, h: dS },
-    down:  { x: dX0 + dS + railGap0, y: dJy,         w: dS, h: dS },
-    left:  { x: dX0,                 y: dJy - dS/2,  w: dS, h: dS },
-    right: { x: dX0 + 2*(dS + railGap0), y: dJy - dS/2, w: dS, h: dS }
+    up:    { x: dX0 + dS + navGap, y: gBot + 9*sc, w: dS, h: dS },
+    down:  { x: dX0 + dS + navGap, y: dJy,         w: dS, h: dS },
+    left:  { x: dX0,               y: dJy - dS/2,  w: dS, h: dS },
+    right: { x: dX0 + 2*(dS + navGap), y: dJy - dS/2, w: dS, h: dS }
   };
   // on wide glass the tube splits: a square bay left (scene or box),
   // the working surface right (letter or chart)
@@ -1367,8 +1368,9 @@ function abacusWideUnits(){
             R: { x: dgm.scr.x + lw + 14*sc, y: dgm.scr.y,
                  w: dgm.scr.w - lw - 14*sc, h: dgm.scr.h } };
   }
-  const railGap = ((target - 32*sc) - 6*dS)/5;
-  const railX = i => x0 + 16*sc + i*(dS + railGap);
+  const navEnd = dX0 + 3*dS + 2*navGap;
+  const rGap = Math.max(navGap, ((x0 + target - 16*sc - navEnd) - 3*dS)/3);
+  const railX = i => navEnd + rGap + (i - 3)*(dS + rGap);
   const dgmBtns = [
     { x: railX(3), y: gBot + 9*sc, w: dS, h: dS },
     { x: railX(3), y: dJy,         w: dS, h: dS }
