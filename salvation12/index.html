@@ -277,21 +277,21 @@
     font: bold 12px monospace; min-height: 40px; padding: 4px 10px; cursor: pointer;
   }
   #scPre.on { color: #ffc478; border-color: rgba(255,170,60,0.8); background: #241d10; }
-  #startCard .sc-dial { display: flex; gap: 26px; margin: 0 auto; }
-  #startCard .sc-place { display: flex; flex-direction: column; gap: 6px; align-items: center; }
-  #startCard .sc-digit {
+  .sc-dial { display: flex; gap: 26px; margin: 0 auto; }
+  .sc-place { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  .sc-digit {
     min-width: 48px; text-align: center; font: bold 22px monospace;
     color: #ff5b4d; background: #050505; text-shadow: 0 0 7px rgba(255,40,30,0.75);
     border: 1px solid rgba(255,255,255,0.12); border-radius: 6px;
     padding: 7px 0; cursor: pointer;
   }
-  #scT1, #scT2 {
+  #scT1, #scT2, #skA1, #skA2, #skB1, #skB2 {
     width: 48px; min-height: 36px !important; font-size: 13px !important;
-    color: #dce4f2 !important;
+    color: #dce4f2 !important; border-radius: 6px; cursor: pointer;
     background: linear-gradient(#414d63, #2a3240 55%, #1c222d) !important;
     border: 1px solid rgba(0,0,0,0.7) !important;
   }
-  #startCard .sc-dial.dim { opacity: 0.32; pointer-events: none; }
+  .sc-dial.dim { opacity: 0.32; pointer-events: none; }
   #scSet { margin-left: auto; }
   #scSet.arm { color: #ff5b4d !important; border-color: rgba(255,60,40,0.8) !important; }
   #startCard .sc-top button:disabled { opacity: 0.3; }
@@ -340,8 +340,10 @@
   }
   #strikeCard .sk-lab { color: rgba(255,190,90,0.8); font: bold 10px monospace;
     letter-spacing: 2px; margin-bottom: 6px; }
-  #strikeCard .sk-row { margin-bottom: 12px; }
-  #strikeCard .sc-dial { margin: 0 0 7px 0; }
+  #strikeCard .sk-row { margin-bottom: 14px; }
+  #strikeCard .sk-body { display: flex; gap: 14px; align-items: flex-start; }
+  #strikeCard .sc-dial { margin: 0; gap: 10px; }
+  #strikeCard .sk-body .sci { flex: 1; margin-top: 14px; }
   #strikeCard .sci { width: 100%; box-sizing: border-box; background: #0a0d16;
     color: #ffc478; border: 1px solid rgba(255,170,60,0.35); border-radius: 6px;
     font: 13px monospace; padding: 8px 10px; outline: none; }
@@ -465,19 +467,23 @@
   <div id="skPick">
     <div class="sk-row">
       <div class="sk-lab">DISTRACTION</div>
-      <div class="sc-dial">
-        <div class="sc-place"><div class="sc-digit" id="skD1">0</div><button id="skA1" type="button">&#9650;</button></div>
-        <div class="sc-place"><div class="sc-digit" id="skD2">0</div><button id="skA2" type="button">&#9650;</button></div>
+      <div class="sk-body">
+        <div class="sc-dial">
+          <div class="sc-place"><div class="sc-digit" id="skD1">0</div><button id="skA1" type="button">&#9650;</button></div>
+          <div class="sc-place"><div class="sc-digit" id="skD2">0</div><button id="skA2" type="button">&#9650;</button></div>
+        </div>
+        <input class="sci" id="skDName" maxlength="18" placeholder="name it" autocomplete="off" spellcheck="false">
       </div>
-      <input class="sci" id="skDName" maxlength="18" placeholder="name it" autocomplete="off" spellcheck="false">
     </div>
     <div class="sk-row">
       <div class="sk-lab">RESPONSE</div>
-      <div class="sc-dial">
-        <div class="sc-place"><div class="sc-digit" id="skR1">0</div><button id="skB1" type="button">&#9650;</button></div>
-        <div class="sc-place"><div class="sc-digit" id="skR2">0</div><button id="skB2" type="button">&#9650;</button></div>
+      <div class="sk-body">
+        <div class="sc-dial">
+          <div class="sc-place"><div class="sc-digit" id="skR1">0</div><button id="skB1" type="button">&#9650;</button></div>
+          <div class="sc-place"><div class="sc-digit" id="skR2">0</div><button id="skB2" type="button">&#9650;</button></div>
+        </div>
+        <input class="sci" id="skRName" maxlength="18" placeholder="name it" autocomplete="off" spellcheck="false">
       </div>
-      <input class="sci" id="skRName" maxlength="18" placeholder="name it" autocomplete="off" spellcheck="false">
     </div>
   </div>
   <div class="fe-row">
@@ -8490,8 +8496,11 @@ function skSync(){
   document.getElementById('skD2').textContent = skD[1];
   document.getElementById('skR1').textContent = skR[0];
   document.getElementById('skR2').textContent = skR[1];
-  skDName.value = distractDict[skCode(skD)] || "";
-  skRName.value = responseDict[skCode(skR)] || "";
+  const dn9 = distractDict[skCode(skD)], rn9 = responseDict[skCode(skR)];
+  skDName.value = dn9 || "";
+  skRName.value = rn9 || "";
+  skDName.placeholder = dn9 ? dn9 : "name it \u00b7 " + skCode(skD) + " is empty";
+  skRName.placeholder = rn9 ? rn9 : "name it \u00b7 " + skCode(skR) + " is empty";
   for (const b of document.getElementById('skHold').children)
     b.classList.toggle('on', Number(b.dataset.s) === skHoldVal);
 }
