@@ -5395,16 +5395,20 @@ function sqLayout(){
   // take the floor beneath it
   const topPad = 34, readH = 78, botPad = 96;
   const side = Math.max(81, Math.min(viewW - 10, viewH - topPad - readH - botPad));
-  // the nesting is spacing, not ink: a wider gutter at each 27, a
-  // narrower one at each 9, so the little squares stand apart
-  const g27 = Math.max(2, side*0.011), g9 = Math.max(1, side*0.004);
-  const pitch = (side - 2*g27 - 6*g9)/81;
+  // the nesting is spacing, not ink: a wide gutter at each 27, a
+  // narrower one at each 9, and the narrowest at each 3 - every
+  // square in the ladder standing clear of its neighbours
+  const g27 = Math.max(2.5, side*0.0115), g9 = Math.max(1.4, side*0.0055),
+        g3 = Math.max(0.8, side*0.0028);
+  const pitch = (side - 2*g27 - 6*g9 - 18*g3)/81;
   const y0 = Math.round(topPad + Math.max(0, (viewH - topPad - readH - botPad - side)/2));
-  return { pitch, side, g27, g9, x0: Math.round((viewW - side)/2), y0,
+  return { pitch, side, g27, g9, g3, x0: Math.round((viewW - side)/2), y0,
            textY: Math.round(y0 + side + 48) };
 }
 function sqPos(L, g){
-  return g*L.pitch + Math.floor(g/9)*L.g9 + Math.floor(g/27)*(L.g27 - L.g9);
+  return g*L.pitch + Math.floor(g/3)*L.g3
+       + Math.floor(g/9)*(L.g9 - L.g3)
+       + Math.floor(g/27)*(L.g27 - L.g9);
 }
 function sqCellXY(n){
   // n's four base-nine digits place it at four scales at once
