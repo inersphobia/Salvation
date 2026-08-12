@@ -1074,7 +1074,7 @@ function startClock(){
       try { localStorage.setItem('salvationStoryVol', storyVol); } catch(e) {}
     }
   }
-  if (!running && pauseMs === 0){
+  if (!running && pauseMs === 0 && !blitzMode){
     curSess = { at: Date.now(), dur: Math.round(totalCycle/60),
                 vol: storyVol, marks: [], done: false };
     if (pendProg){
@@ -1129,6 +1129,7 @@ function pauseClock(){
   );
 }
 function resetClock(){
+  blitzMode = 0;                    // the bench gear disengages
   // RESET closes the account: the true length goes on the record
   const S9c = sessCurrent();
   if (S9c){
@@ -5067,6 +5068,11 @@ function curFrameIdx(){ return viewMode === 11 ? 1 : 0; }
 function CF(){ return FRAME_DEFS[curFrameIdx()]; }
 let frameHintUntil = 0;
 let lastTimerView = 0;
+// BLITZ: the bench gear. The clock runs twenty-seven times over, so a
+// whole session passes in a minute and a figure can be watched fill.
+// It is never written down and never survives a launch.
+let blitzMode = 0;
+const BLITZ_X = 27;
 let frameStatus = null;
 let frameSelected = -1;
 let frameSelectedF = 0;
@@ -5522,14 +5528,14 @@ function cb3Layout(){
   const availW = viewW - 14, availH = viewH - topPad - readH - botPad;
   // the camera is fitted, not guessed: project the eight corners and
   // scale so the whole solid sits inside its room
-  const L0 = { f: 1, D: 3.9, yaw: 0.62, pit: 0.42, cx: 0, cy: 0 };
+  const L0 = { f: 1, D: 3.35, yaw: 0.565, pit: 0.335, cx: 0, cy: 0 };
   let ex = 0, ey = 0;
   for (const i of [0, 8]) for (const j of [0, 8]) for (const k of [0, 8]){
     const q = cb3Project(L0, i, j, k);
     ex = Math.max(ex, Math.abs(q.x)); ey = Math.max(ey, Math.abs(q.y));
   }
   const f = Math.min(availW/(2*ex), availH/(2*ey))*0.97;
-  return { f, D: 3.9, yaw: 0.62, pit: 0.42,
+  return { f, D: 3.35, yaw: 0.565, pit: 0.335,
            cx: viewW/2, cy: topPad + availH/2,
            textY: Math.round(topPad + availH + 34) };
 }
@@ -5539,6 +5545,24 @@ function cb3Cell(n){
            y: (Math.floor(B/3) % 3)*3 + (Math.floor(I/3) % 3),
            z: Math.floor(B/9)*3 + Math.floor(I/9) };
 }
+let cb3Sprite = null;
+function cb3Lamp(){
+  // one lamp, drawn once: white core, warm falloff, transparent rim
+  if (cb3Sprite) return cb3Sprite;
+  const S = 64;
+  cb3Sprite = document.createElement('canvas');
+  cb3Sprite.width = S; cb3Sprite.height = S;
+  const c2 = cb3Sprite.getContext('2d');
+  const g = c2.createRadialGradient(S/2, S/2, 0, S/2, S/2, S/2);
+  g.addColorStop(0.00, "rgba(255,254,250,1)");
+  g.addColorStop(0.22, "rgba(255,252,244,0.98)");
+  g.addColorStop(0.30, "rgba(252,244,228,0.55)");
+  g.addColorStop(0.48, "rgba(246,232,206,0.16)");
+  g.addColorStop(1.00, "rgba(238,222,196,0)");
+  c2.fillStyle = g;
+  c2.beginPath(); c2.arc(S/2, S/2, S/2, 0, 2*Math.PI); c2.fill();
+  return cb3Sprite;
+}
 function drawCube3Static(){
   const L = cb3Layout(), c = ctxStatic;
   const pts = [];
@@ -5547,9 +5571,9 @@ function drawCube3Static(){
   pts.sort((p, q) => p.z - q.z);
   for (const p of pts){
     const n9 = Math.min(1, Math.max(0, (p.s - 0.73)/0.70));
-    c.fillStyle = "rgba(150,180,235," + (0.030 + 0.070*n9).toFixed(3) + ")";
+    c.fillStyle = "rgba(160,190,240," + (0.035 + 0.075*n9).toFixed(3) + ")";
     c.beginPath();
-    c.arc(p.x, p.y, Math.max(0.4, L.f*0.0072*p.s*(0.60 + 0.52*n9)), 0, 2*Math.PI);
+    c.arc(p.x, p.y, Math.max(0.35, L.f*0.0026*p.s*(0.7 + 0.5*n9)), 0, 2*Math.PI);
     c.fill();
   }
 }
@@ -5568,13 +5592,20 @@ function drawCube3(t){
     pts.push(cb3Project(L, o.x, o.y, o.z));
   }
   pts.sort((p, q) => p.z - q.z);             // the far lamps drawn first
+  const sp = cb3Lamp();
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';   // light gathers where lamps meet
   for (const p of pts){
     const n9 = Math.min(1, Math.max(0, (p.s - 0.73)/0.70));   // 0 far, 1 near
-    ctx.fillStyle = "rgba(249,246,236," + (0.34 + 0.63*n9).toFixed(3) + ")";
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, Math.max(0.6, L.f*0.0072*p.s*(0.60 + 0.52*n9)), 0, 2*Math.PI);
-    ctx.fill();
+    // the far lamps are dimmer and softer - a shallow focus on the
+    // near face, which is what makes a point cloud read as a volume
+    const core = L.f*0.0062*p.s*(0.55 + 0.60*n9);
+    const halo = core*(2.5 - 0.7*n9);
+    ctx.globalAlpha = 0.26 + 0.70*n9;
+    ctx.drawImage(sp, p.x - halo, p.y - halo, halo*2, halo*2);
   }
+  ctx.globalAlpha = 1;
+  ctx.restore();
 }
 function drawGearsStatic(){
   const G = gearLayout(), s = G.s;
@@ -7811,7 +7842,8 @@ function draw(now){
     // the phone is locked, but the wall clock does not. If they disagree,
     // trust the wall - and swallow the bells that would have rung, so
     // waking the phone never triggers a burst of late tones.
-    if (running && startWall){
+    if (blitzMode && running) elapsed *= BLITZ_X;
+    if (!blitzMode && running && startWall){
       const wallEl = (Date.now() - startWall)/1000;
       if (Math.abs(wallEl - elapsed) > 1.5){
         startMs = performance.now() - wallEl*1000;
@@ -7870,7 +7902,11 @@ function draw(now){
         }
       }
 
-      if (elapsed>=totalCycle && !finished) finishClock();
+      if (elapsed>=totalCycle && !finished){
+        if (blitzMode){ startMs = performance.now() - (totalCycle/BLITZ_X)*1000;
+                        startWall = Date.now() - totalCycle*1000; }
+        finishClock();
+      }
     }
 
     // Continue animations only when running (not in overtime)
@@ -9039,7 +9075,8 @@ TONE_DEFS.forEach(d => {
 function menuSync(){
   const clean = !running && !finished && pauseMs === 0;
   document.querySelectorAll('#menuViews button').forEach((b, i) =>
-    b.classList.toggle('active', i === viewMode || (b.id === 'btnCycle' && cycleMode)));
+    b.classList.toggle('active', i === viewMode || (b.id === 'btnCycle' && cycleMode)
+                                 || (b.id === 'btnBlitz' && blitzMode)));
   document.querySelectorAll('#menuDur button').forEach((b, i) => {
     b.classList.toggle('active', i === timeMode);
     b.classList.toggle('disabled', !clean);
@@ -9089,6 +9126,19 @@ VIEW_NAMES.forEach((n, i) => {
     try { localStorage.setItem('salvationCycle', "1"); } catch(e) {}
     const el = running ? (performance.now() - startMs)/1000 : pauseMs/1000;
     gotoView(Math.floor(el/180) % 9);
+    menuSync();
+    menuEl.style.display = 'none';
+    haptic('medium');
+  };
+  document.getElementById('menuViews').appendChild(b);
+}
+{
+  const b = document.createElement('button');
+  b.id = 'btnBlitz';
+  b.textContent = 'BLITZ';
+  b.onclick = () => {
+    blitzMode = blitzMode ? 0 : 1;
+    if (blitzMode && !running && !finished && pauseMs === 0) startClock();
     menuSync();
     menuEl.style.display = 'none';
     haptic('medium');
