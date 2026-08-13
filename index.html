@@ -538,6 +538,8 @@ let timeMode = 0; // 0=27-min, 1=54-min, 2=81-min
 let viewMode = 2; // the ABACUS console greets first; 0=rings, 1=septagram, 3=fractal
 const VIEW_NAMES = ["RINGS", "STAR", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "TRIAD", "DREAM", "GOETIA", "GEARS", "FRAME", "GOAL", "CUBE", "SQUARE", "CUBE_3"];
 const isChart = (v) => v === 10 || v === 11;   // FRAME and GOAL, and only those
+// the ternary figures, every one of them a 27 that EXTEND may grow
+const isFigure = (v) => v === 2 || v === 13 || v === 14;
 
 const dotsPerEdge = [1,2];
 const baseIntervals = [4860,1620,540,180,60,20,20/3];
@@ -1050,7 +1052,7 @@ function startClock(){
   if (running) return;
   if (finished) return; // completion is a full stop - RESET, then START
   // the abacus runs 27-minute sessions only; EXTEND grows them
-  if (viewMode === 2 && pauseMs === 0 && timeMode !== 0) setDuration(0);
+  if (isFigure(viewMode) && pauseMs === 0 && timeMode !== 0) setDuration(0);
   if (pauseMs === 0) dreamVariant = Math.floor(Math.random()*9); // a new dream each session
   if (pauseMs === 0 && triadFill === 15){
     // GALLERY: hang the next plate for this session
