@@ -536,10 +536,10 @@
 const numDials = 7;
 let timeMode = 0; // 0=27-min, 1=54-min, 2=81-min
 let viewMode = 2; // the ABACUS console greets first; 0=rings, 1=septagram, 3=fractal
-const VIEW_NAMES = ["RINGS", "STAR", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "TRIAD", "DREAM", "GOETIA", "GEARS", "FRAME", "GOAL", "CUBE", "SQUARE", "CUBE_3"];
+const VIEW_NAMES = ["RINGS", "STAR", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "TRIAD", "DREAM", "GOETIA", "GEARS", "FRAME", "GOAL", "CUBE", "SQUARE", "CUBE_3", "LENS"];
 const isChart = (v) => v === 10 || v === 11;   // FRAME and GOAL, and only those
 // the ternary figures, every one of them a 27 that EXTEND may grow
-const isFigure = (v) => v === 2 || v === 13 || v === 14;
+const isFigure = (v) => v === 2 || v === 13 || v === 14 || v === 15;
 
 const dotsPerEdge = [1,2];
 const baseIntervals = [4860,1620,540,180,60,20,20/3];
@@ -3205,6 +3205,7 @@ const VIZ_DEFS = [
   { n: "CUBE",    v: 12, d: (t) => drawCube(t) },
   { n: "SQUARE",  v: 13, d: (t) => drawSquare(t) },
   { n: "CUBE 3",  v: 14, d: (t) => drawCube3(t) },
+  { n: "LENS",    v: 15, d: (t) => drawLens(t) },
 ];
 let abVizStaticCv = null, abVizStaticKey = "", abVizStaticAt = 0;
 function abVizSandbox(fn){
@@ -5714,6 +5715,106 @@ function drawCube3(t){
   if (!lit) return;
   ctx.drawImage(cb3Plate(L, lit), 0, 0, viewW, viewH);
 }
+/* ---------- THE LENS: the same 3^8 lamps, but the glass may be
+   stepped in. Whole shows all twenty-seven minutes; one step in
+   shows a 27x27 block - three minutes, one pass of the brothers;
+   one more shows a 9x9 - twenty seconds. In the stepped views the
+   lens follows the work: when a block fills, it moves to the next
+   of its own accord. ---------- */
+let lnLevel = 0;                       // 0 whole · 1 three minutes · 2 twenty seconds
+const LN_SPAN = [81, 27, 9];
+const LN_NAME = ["27 MIN", "3 MIN", "20 SEC"];
+function lnLayout(){
+  const topPad = 34, readH = 78, botPad = 130;
+  const side = Math.max(81, Math.min(viewW - 10, viewH - topPad - readH - botPad));
+  const span = LN_SPAN[lnLevel];
+  const g27 = Math.max(2.5, side*0.0115), g9 = Math.max(1.4, side*0.0055),
+        g3 = Math.max(0.8, side*0.0028);
+  const G = Math.floor((span - 1)/3)*g3
+          + (span > 9  ? Math.floor((span - 1)/9)*(g9 - g3) : 0)
+          + (span > 27 ? Math.floor((span - 1)/27)*(g27 - g9) : 0);
+  const pitch = (side - G)/span;
+  const y0 = Math.round(topPad + Math.max(0, (viewH - topPad - readH - botPad - side)/2));
+  return { pitch, side, span, g27, g9, g3,
+           x0: Math.round((viewW - side)/2), y0,
+           textY: Math.round(y0 + side + 46),
+           btn: { x: Math.round(viewW/2 - 62), y: Math.round(y0 + side + 66), w: 124, h: 30 } };
+}
+function lnPos(L, i){
+  let o = i*L.pitch + Math.floor(i/3)*L.g3;
+  if (L.span > 9)  o += Math.floor(i/9)*(L.g9 - L.g3);
+  if (L.span > 27) o += Math.floor(i/27)*(L.g27 - L.g9);
+  return o;
+}
+function lnBlock(lit){
+  // which block the lens is holding, and the run of lamps inside it
+  const per = lnLevel === 0 ? 6561 : lnLevel === 1 ? 729 : 81;
+  const b = Math.min(Math.floor(6561/per) - 1, Math.floor(lit/per));
+  return { per, b, from: b*per, origin: sqCellXY(b*per) };
+}
+let lnCv = null, lnKey = "";
+function lnPlate(L, lit){
+  const B = lnBlock(lit);
+  const upto = Math.max(0, Math.min(B.per, lit - B.from));
+  const key = lnLevel + ":" + B.b + ":" + upto + ":" + Math.round(L.side);
+  if (lnCv && lnKey === key) return lnCv;
+  const dpr9 = Math.min(window.devicePixelRatio || 1, 3);
+  if (!lnCv) lnCv = document.createElement('canvas');
+  const px = Math.max(2, Math.round(L.side*dpr9));
+  if (lnCv.width !== px){ lnCv.width = px; lnCv.height = px; }
+  const c2 = lnCv.getContext('2d');
+  c2.setTransform(1, 0, 0, 1, 0, 0);
+  c2.clearRect(0, 0, lnCv.width, lnCv.height);
+  c2.scale(dpr9, dpr9);
+  const r9 = Math.max(0.8, L.pitch*0.42);
+  // the sockets of this block, then its lit lamps
+  c2.fillStyle = "rgba(150,180,235,0.11)";
+  for (let gy = 0; gy < L.span; gy++){
+    const py = lnPos(L, gy) + L.pitch/2;
+    for (let gx = 0; gx < L.span; gx++){
+      c2.beginPath(); c2.arc(lnPos(L, gx) + L.pitch/2, py, r9, 0, 2*Math.PI); c2.fill();
+    }
+  }
+  c2.fillStyle = "rgba(249,246,236,0.95)";
+  for (let n = 0; n < upto; n++){
+    const o = sqCellXY(B.from + n);
+    const lx = o.x - B.origin.x, ly = o.y - B.origin.y;
+    if (lx < 0 || ly < 0 || lx >= L.span || ly >= L.span) continue;
+    c2.beginPath();
+    c2.arc(lnPos(L, lx) + L.pitch/2, lnPos(L, ly) + L.pitch/2, r9, 0, 2*Math.PI);
+    c2.fill();
+  }
+  lnKey = key;
+  return lnCv;
+}
+function drawLensStatic(){ /* the lens keeps everything on its plate */ }
+function drawLens(t){
+  const L = lnLayout();
+  const idle9 = !running && !finished && pauseMs === 0;
+  const unit9 = (27*60)/6561;
+  const raw9 = finished ? totalCycle : idle9 ? 0 : Math.min(t, totalCycle);
+  const blk9 = raw9 % (27*60);
+  const el9 = (blk9 === 0 && raw9 > 0) ? 27*60 : blk9;
+  const lit = Math.max(0, Math.min(6561, Math.floor(el9/unit9)));
+  ctx.drawImage(lnPlate(L, lit), L.x0, L.y0, L.side, L.side);
+  // the key: what the lens is holding, and a press steps it in
+  const b = L.btn;
+  ctx.fillStyle = "#10141c";
+  ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 6); ctx.fill();
+  ctx.strokeStyle = lnLevel ? "rgba(255,170,60,0.7)" : "rgba(160,190,235,0.3)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 6); ctx.stroke();
+  ctx.font = "bold 11px monospace"; ctx.textAlign = "center";
+  ctx.fillStyle = lnLevel ? "rgba(255,190,90,0.95)" : "rgba(200,215,235,0.8)";
+  ctx.fillText(LN_NAME[lnLevel], b.x + b.w/2, b.y + b.h/2 + 4);
+  if (lnLevel){
+    const B = lnBlock(lit);
+    ctx.font = "9px monospace";
+    ctx.fillStyle = "rgba(255,170,60,0.5)";
+    ctx.fillText((B.b + 1) + " / " + Math.floor(6561/B.per), b.x + b.w/2, b.y + b.h + 13);
+  }
+  ctx.textAlign = "left";
+}
 function drawGearsStatic(){
   const G = gearLayout(), s = G.s;
   // plate shadows and labels hold still; the steel turns on the anim layer
@@ -7407,6 +7508,7 @@ function getTextY(){
   if (viewMode===9){ const G = gearLayout();    return G.textY; }
   if (viewMode===13){ const Q = sqLayout();     return Q.textY; }
   if (viewMode===14){ const Q = cb3Layout();    return Q.textY; }
+  if (viewMode===15){ const Q = lnLayout();     return Q.textY; }
   return viewH/2 - 40;
 }
 
@@ -7436,6 +7538,7 @@ function drawStaticLayer(){
   if (viewMode===12){ drawCubeStatic(); needsStaticRedraw = false; return; }  // the cube's empty cells
   if (viewMode===13){ drawSquareStatic(); needsStaticRedraw = false; return; } // the square's dark lamps
   if (viewMode===14){ drawCube3Static(); needsStaticRedraw = false; return; }  // the solid's dark vertices
+  if (viewMode===15){ drawLensStatic(); needsStaticRedraw = false; return; }   // the lens keeps its own plate
   if (isChart(viewMode)){ needsStaticRedraw = false; return; } // frame/goal render on the anim layer (pannable)
 
   // Star lines - matched to the WEAVE track (thin, faint)
@@ -7800,7 +7903,7 @@ function drawTimerText(t){
     // the overtime - nothing floats over the equipment
     return;
   }
-  if (viewMode === 13 || viewMode === 14){
+  if (viewMode === 13 || viewMode === 14 || viewMode === 15){
     // the square keeps one readout and no choice about it: the LED
     // counter, three places and three, with the 27s kept as a lamp
     drawLedCounter(sqReadout(t), y, t);
@@ -8062,6 +8165,8 @@ function draw(now){
     drawSquare(vizT);
   } else if (viewMode===14){
     drawCube3(vizT);
+  } else if (viewMode===15){
+    drawLens(vizT);
   } else {
     drawFrameView();
   }
@@ -8095,6 +8200,20 @@ function draw(now){
   }
   requestAnimationFrame(draw);
 }
+
+/* ---------- THE LENS KEY ---------- */
+canvasAnim.addEventListener('click', (e) => {
+  if (viewMode !== 15) return;
+  const r9 = canvasAnim.getBoundingClientRect();
+  const cx = e.clientX - r9.left, cy = e.clientY - r9.top;
+  const b = lnLayout().btn;
+  if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h){
+    lnLevel = (lnLevel + 1) % 3;
+    lnCv = null; lnKey = "";
+    haptic('medium');
+    e.stopPropagation();
+  }
+}, true);
 
 /* ---------- THE D-PAD: the whole plate is the pad ---------- */
 // any press on the plinth (plus a forgiving margin) resolves to the
@@ -9563,6 +9682,7 @@ function abDropCaches(){
     abMonEOvCv = null; abMonEOvKey = "";
     abVizStaticCv = null; abVizStaticKey = "";
     cb3Cv = null; cb3Key = "";
+    lnCv = null; lnKey = "";
     abVizLive.cv = null; abVizLive.key = "";
     abDgmCvs = [null, null];
   } catch(e) {}
