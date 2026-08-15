@@ -5777,7 +5777,7 @@ function lnPlate(L, lit){
       c2.beginPath(); c2.arc(lnPos(L, gx) + L.pitch/2, py, r9, 0, 2*Math.PI); c2.fill();
     }
   }
-  const TRI = ["rgba(0,140,255,", "rgba(255,149,0,", "rgba(226,59,59,"];
+  const TRI = ["rgba(0,132,255,", "rgba(255,142,0,", "rgba(236,48,44,"];
   const glow9 = lnLevel === 2;
   const c9 = TRI[B.b % 3];                   // which third of the minute
   for (let n = 0; n < upto; n++){
@@ -5789,8 +5789,8 @@ function lnPlate(L, lit){
       // a soft breath of colour under the lamp, never on it
       const rr = r9*2.9;
       const g9 = c2.createRadialGradient(px, py, r9*0.4, px, py, rr);
-      g9.addColorStop(0, c9 + "0.20)");
-      g9.addColorStop(0.55, c9 + "0.07)");
+      g9.addColorStop(0, c9 + "0.24)");
+      g9.addColorStop(0.55, c9 + "0.085)");
       g9.addColorStop(1, c9 + "0)");
       c2.fillStyle = g9;
       c2.beginPath(); c2.arc(px, py, rr, 0, 2*Math.PI); c2.fill();
@@ -7864,10 +7864,14 @@ function drawLedCounter(str, baseY, t){
   for (const it of items){
     if (it.live) x += gap;
     if (it.colon){
-      ctx.fillStyle = "rgba(255,255,255,0.45)";
-      const rc = Math.max(1.4, s*0.09);
-      ctx.beginPath(); ctx.arc(x + wOf(it)/2, cy - s*0.5, rc, 0, 2*Math.PI); ctx.fill();
-      ctx.beginPath(); ctx.arc(x + wOf(it)/2, cy + s*0.5, rc, 0, 2*Math.PI); ctx.fill();
+      const rc = Math.max(2, s*0.135);
+      for (const dy of [-s*0.5, s*0.5]){
+        const cxk = x + wOf(it)/2, cyk = cy + dy;
+        ctx.fillStyle = "rgba(225,238,255,0.20)";
+        ctx.beginPath(); ctx.arc(cxk, cyk, rc*2.1, 0, 2*Math.PI); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.85)";
+        ctx.beginPath(); ctx.arc(cxk, cyk, rc, 0, 2*Math.PI); ctx.fill();
+      }
     } else {
       // two lamps, filling bottom-up: lamp 0 is the lower
       for (let lamp = 0; lamp < 2; lamp++){
