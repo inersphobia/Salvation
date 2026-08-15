@@ -536,10 +536,10 @@
 const numDials = 7;
 let timeMode = 0; // 0=27-min, 1=54-min, 2=81-min
 let viewMode = 2; // the ABACUS console greets first; 0=rings, 1=septagram, 3=fractal
-const VIEW_NAMES = ["RINGS", "STAR", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "TRIAD", "DREAM", "GOETIA", "GEARS", "FRAME", "GOAL", "CUBE", "SQUARE", "CUBE_3", "LENS", "PANEL"];
+const VIEW_NAMES = ["RINGS", "STAR", "ABACUS", "FRACTAL", "WHEELS", "WEAVE", "TRIAD", "DREAM", "GOETIA", "GEARS", "FRAME", "GOAL", "CUBE", "SQUARE", "CUBE_3", "LENS", "PANEL", "MOSAIC"];
 const isChart = (v) => v === 10 || v === 11;   // FRAME and GOAL, and only those
 // the ternary figures, every one of them a 27 that EXTEND may grow
-const isFigure = (v) => v === 2 || v === 13 || v === 14 || v === 15 || v === 16;
+const isFigure = (v) => v === 2 || (v >= 13 && v <= 17);
 
 const dotsPerEdge = [1,2];
 const baseIntervals = [4860,1620,540,180,60,20,20/3];
@@ -3207,6 +3207,7 @@ const VIZ_DEFS = [
   { n: "CUBE 3",  v: 14, d: (t) => drawCube3(t) },
   { n: "LENS",    v: 15, d: (t) => drawLens(t) },
   { n: "PANEL",   v: 16, d: (t) => drawPanel(t) },
+  { n: "MOSAIC",  v: 17, d: (t) => drawMosaic(t) },
 ];
 let abVizStaticCv = null, abVizStaticKey = "", abVizStaticAt = 0;
 function abVizSandbox(fn){
@@ -5951,6 +5952,133 @@ function drawPanel(t){
                b.x + b.w/2, b.y + b.h + 13);
   ctx.textAlign = "left";
 }
+/* ---------- THE MOSAIC: the twenty-second screen drawn with the
+   board itself. Eighty-one lamps land one at a time, one every
+   two hundred and forty-third of a minute - but none of them is a
+   drawn circle of its own: each is a nine by nine disc of the
+   board's own little lamps. When the screen is full it steps to
+   the next twenty seconds, and the colour turns with it. ---------- */
+let msCv = null, msKey = "";
+function msLayout(){
+  const topPad = 34, readH = 78, botPad = 112;
+  const side = Math.max(81, Math.min(viewW - 10, viewH - topPad - readH - botPad));
+  const g27 = Math.max(2.5, side*0.0115), g9 = Math.max(1.4, side*0.0055),
+        g3 = Math.max(0.8, side*0.0028);
+  // the finest gutter is eased here: each lamp of the mosaic is a
+  // nine by nine of these, and at full width the three-seam cuts the
+  // disc into a quatrefoil. Half a seam still reads, and the disc
+  // stays a disc.
+  const gg3 = g3*0.55;
+  const pitch = (side - 2*g27 - 6*g9 - 18*gg3)/81;
+  const y0 = Math.round(topPad + Math.max(0, (viewH - topPad - readH - botPad - side)/2));
+  return { pitch, side, g27, g9, g3: gg3,
+           x0: Math.round((viewW - side)/2), y0,
+           textY: Math.round(y0 + side + 46),
+           capY: Math.round(y0 + side + 72) };
+}
+function msPos(L, g){
+  return g*L.pitch + Math.floor(g/3)*L.g3
+       + Math.floor(g/9)*(L.g9 - L.g3)
+       + Math.floor(g/27)*(L.g27 - L.g9);
+}
+function msScreen(lit){
+  // the screen keeps the board until its own last lamp has landed
+  const b = Math.min(80, Math.floor(Math.max(0, lit - 1)/81));
+  return { b, upto: Math.max(0, Math.min(81, lit - b*81)) };
+}
+/* One lamp of the mosaic is sixty-nine little lamps, and eighty-one
+   of them a screen: five and a half thousand gradients a quarter of a
+   second is a stutter the timer would wear. But every lamp is the
+   same lamp - so it is drawn once, in three colours, and stamped.
+   The dark board beneath never changes at all. */
+const msArt = { key: "", disc: [], dark: null, off: [] };
+function msArtFor(L, dpr9){
+  const key = Math.round(L.side) + ":" + dpr9;
+  if (msArt.key === key) return msArt;
+  const r9 = Math.max(0.8, L.pitch*0.44), rr = r9*2.9;
+  // where the nine little lamps sit inside one nine-by-nine block
+  const off = [];
+  for (let i = 0; i < 9; i++) off.push(i*L.pitch + Math.floor(i/3)*L.g3 + L.pitch/2);
+  const span = off[8] + rr, pad = rr;
+  const sz = Math.ceil(span + pad);
+  const mk = () => {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = Math.max(2, Math.round(sz*dpr9));
+    const g = cv.getContext('2d'); g.scale(dpr9, dpr9);
+    return g;
+  };
+  const TRI = ["rgba(0,132,255,", "rgba(255,142,0,", "rgba(236,48,44,"];
+  const disc = TRI.map((c9) => {
+    const g = mk();
+    for (let j = 0; j < 9; j++) for (let i = 0; i < 9; i++){
+      if (Math.hypot(i - 4, j - 4) > 4.5) continue;   // sixty-nine of the eighty-one
+      const x = off[i] + pad, y = off[j] + pad;
+      const grd = g.createRadialGradient(x, y, r9*0.4, x, y, rr);
+      grd.addColorStop(0, c9 + "0.24)");
+      grd.addColorStop(0.55, c9 + "0.085)");
+      grd.addColorStop(1, c9 + "0)");
+      g.fillStyle = grd;
+      g.beginPath(); g.arc(x, y, rr, 0, 2*Math.PI); g.fill();
+      g.fillStyle = "rgba(249,246,236,0.95)";
+      g.beginPath(); g.arc(x, y, r9, 0, 2*Math.PI); g.fill();
+    }
+    return g.canvas;
+  });
+  // the unlit board, eighty-one by eighty-one, drawn once
+  const dk = document.createElement('canvas');
+  dk.width = dk.height = Math.max(2, Math.round(L.side*dpr9));
+  const dg = dk.getContext('2d'); dg.scale(dpr9, dpr9);
+  dg.fillStyle = "rgba(150,180,235,0.11)";
+  for (let gy = 0; gy < 81; gy++){
+    const py = msPos(L, gy) + L.pitch/2;
+    for (let gx = 0; gx < 81; gx++){
+      dg.beginPath(); dg.arc(msPos(L, gx) + L.pitch/2, py, r9, 0, 2*Math.PI); dg.fill();
+    }
+  }
+  msArt.key = key; msArt.disc = disc; msArt.dark = dk; msArt.pad = pad; msArt.sz = sz;
+  return msArt;
+}
+function msPlate(L, lit){
+  const S = msScreen(lit);
+  const key = S.b + ":" + S.upto + ":" + Math.round(L.side);
+  if (msCv && msKey === key) return msCv;
+  const dpr9 = Math.min(window.devicePixelRatio || 1, 3);
+  if (!msCv) msCv = document.createElement('canvas');
+  const px = Math.max(2, Math.round(L.side*dpr9));
+  if (msCv.width !== px){ msCv.width = px; msCv.height = px; }
+  const c2 = msCv.getContext('2d');
+  c2.setTransform(1, 0, 0, 1, 0, 0);
+  c2.clearRect(0, 0, msCv.width, msCv.height);
+  c2.scale(dpr9, dpr9);
+  const A = msArtFor(L, dpr9);
+  c2.drawImage(A.dark, 0, 0, L.side, L.side);
+  const on = A.disc[S.b % 3];                 // one colour to the screen
+  for (let k = 0; k < S.upto; k++){
+    const org = sqCellXY(k*81);               // the nine by nine this lamp is made of
+    c2.drawImage(on, msPos(L, org.x) - A.pad, msPos(L, org.y) - A.pad, A.sz, A.sz);
+  }
+  msKey = key;
+  return msCv;
+}
+function drawMosaicStatic(){ /* the mosaic keeps everything on its plate */ }
+function drawMosaic(t){
+  const L = msLayout();
+  const idle9 = !running && !finished && pauseMs === 0;
+  const unit9 = (27*60)/6561;
+  const raw9 = finished ? totalCycle : idle9 ? 0 : Math.min(t, totalCycle);
+  const blk9 = raw9 % (27*60);
+  const el9 = (blk9 === 0 && raw9 > 0) ? 27*60 : blk9;
+  const lit = Math.max(0, Math.min(6561, Math.floor(el9/unit9)));
+  ctx.drawImage(msPlate(L, lit), L.x0, L.y0, L.side, L.side);
+  const S = msScreen(lit);
+  ctx.font = "bold 11px monospace"; ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(255,190,90,0.95)";
+  ctx.fillText("20 SEC  \u00b7  " + S.upto + " / 81", viewW/2, L.capY);
+  ctx.font = "9px monospace";
+  ctx.fillStyle = "rgba(255,170,60,0.5)";
+  ctx.fillText("SCREEN " + (S.b + 1) + " / 81", viewW/2, L.capY + 15);
+  ctx.textAlign = "left";
+}
 function drawGearsStatic(){
   const G = gearLayout(), s = G.s;
   // plate shadows and labels hold still; the steel turns on the anim layer
@@ -7646,6 +7774,7 @@ function getTextY(){
   if (viewMode===14){ const Q = cb3Layout();    return Q.textY; }
   if (viewMode===15){ const Q = lnLayout();     return Q.textY; }
   if (viewMode===16){ const Q = pnLayout();     return Q.textY; }
+  if (viewMode===17){ const Q = msLayout();     return Q.textY; }
   return viewH/2 - 40;
 }
 
@@ -7677,6 +7806,7 @@ function drawStaticLayer(){
   if (viewMode===14){ drawCube3Static(); needsStaticRedraw = false; return; }  // the solid's dark vertices
   if (viewMode===15){ drawLensStatic(); needsStaticRedraw = false; return; }   // the lens keeps its own plate
   if (viewMode===16){ drawPanelStatic(); needsStaticRedraw = false; return; }  // and so does the panel
+  if (viewMode===17){ drawMosaicStatic(); needsStaticRedraw = false; return; } // and so does the mosaic
   if (isChart(viewMode)){ needsStaticRedraw = false; return; } // frame/goal render on the anim layer (pannable)
 
   // Star lines - matched to the WEAVE track (thin, faint)
@@ -8045,7 +8175,7 @@ function drawTimerText(t){
     // the overtime - nothing floats over the equipment
     return;
   }
-  if (viewMode === 13 || viewMode === 14 || viewMode === 15 || viewMode === 16){
+  if (viewMode >= 13 && viewMode <= 17){
     // the square keeps one readout and no choice about it: the LED
     // counter, three places and three, with the 27s kept as a lamp
     drawLedCounter(sqReadout(t), y, t);
@@ -8311,6 +8441,8 @@ function draw(now){
     drawLens(vizT);
   } else if (viewMode===16){
     drawPanel(vizT);
+  } else if (viewMode===17){
+    drawMosaic(vizT);
   } else {
     drawFrameView();
   }
@@ -9839,6 +9971,9 @@ function abDropCaches(){
     abVizStaticCv = null; abVizStaticKey = "";
     cb3Cv = null; cb3Key = "";
     lnCv = null; lnKey = "";
+    pnCv = null; pnKey = "";
+    msCv = null; msKey = "";
+    msArt.key = ""; msArt.disc = []; msArt.dark = null;
     abVizLive.cv = null; abVizLive.key = "";
     abDgmCvs = [null, null];
   } catch(e) {}
