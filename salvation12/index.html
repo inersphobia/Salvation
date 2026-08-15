@@ -5749,7 +5749,9 @@ function lnPos(L, i){
 function lnBlock(lit){
   // which block the lens is holding, and the run of lamps inside it
   const per = lnLevel === 0 ? 6561 : lnLevel === 1 ? 729 : 81;
-  const b = Math.min(Math.floor(6561/per) - 1, Math.floor(lit/per));
+  // the block keeps the glass until its own last lamp has landed:
+  // a block of 81 shows all 81 before the lens moves to the next
+  const b = Math.min(Math.floor(6561/per) - 1, Math.floor(Math.max(0, lit - 1)/per));
   return { per, b, from: b*per, origin: sqCellXY(b*per) };
 }
 let lnCv = null, lnKey = "";
@@ -5775,14 +5777,26 @@ function lnPlate(L, lit){
       c2.beginPath(); c2.arc(lnPos(L, gx) + L.pitch/2, py, r9, 0, 2*Math.PI); c2.fill();
     }
   }
-  c2.fillStyle = "rgba(249,246,236,0.95)";
+  const TRI = ["rgba(0,140,255,", "rgba(255,149,0,", "rgba(226,59,59,"];
+  const glow9 = lnLevel === 2;
+  const c9 = TRI[B.b % 3];                   // which third of the minute
   for (let n = 0; n < upto; n++){
     const o = sqCellXY(B.from + n);
     const lx = o.x - B.origin.x, ly = o.y - B.origin.y;
     if (lx < 0 || ly < 0 || lx >= L.span || ly >= L.span) continue;
-    c2.beginPath();
-    c2.arc(lnPos(L, lx) + L.pitch/2, lnPos(L, ly) + L.pitch/2, r9, 0, 2*Math.PI);
-    c2.fill();
+    const px = lnPos(L, lx) + L.pitch/2, py = lnPos(L, ly) + L.pitch/2;
+    if (glow9){
+      // a soft breath of colour under the lamp, never on it
+      const rr = r9*2.9;
+      const g9 = c2.createRadialGradient(px, py, r9*0.4, px, py, rr);
+      g9.addColorStop(0, c9 + "0.20)");
+      g9.addColorStop(0.55, c9 + "0.07)");
+      g9.addColorStop(1, c9 + "0)");
+      c2.fillStyle = g9;
+      c2.beginPath(); c2.arc(px, py, rr, 0, 2*Math.PI); c2.fill();
+    }
+    c2.fillStyle = "rgba(249,246,236,0.95)";
+    c2.beginPath(); c2.arc(px, py, r9, 0, 2*Math.PI); c2.fill();
   }
   lnKey = key;
   return lnCv;
